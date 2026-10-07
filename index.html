@@ -29,6 +29,9 @@
       position: sticky;
       top: 0;
       z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
     .container {
       padding: 16px;
@@ -39,23 +42,34 @@
       background-color: var(--card-bg);
       border-radius: 12px;
       padding: 16px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    .location-box h3 {
-      margin: 0 0 8px 0;
-      font-size: 1rem;
-      color: var(--primary-color);
+    .location-box h3 { margin: 0 0 8px 0; font-size: 1rem; color: var(--primary-color); }
+    .location-text { font-size: 0.9rem; color: var(--text-sub); }
+    
+    /* 카테고리 버튼 스타일 */
+    .category-container {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+      -webkit-overflow-scrolling: touch;
     }
-    .location-text {
-      font-size: 0.9rem;
-      color: var(--text-sub);
-    }
-    .error-text {
-      color: #ff3b30;
+    .category-btn {
+      background-color: var(--card-bg);
+      border: 1px solid #d1d1d6;
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 0.95rem;
       font-weight: bold;
+      white-space: nowrap;
+      cursor: pointer;
+      color: var(--text-main);
     }
-    /* 지도 컨테이너 스타일 */
+    .category-btn:active { background-color: #e5e5ea; }
+
     #map {
       width: 100%;
       height: 300px;
@@ -68,28 +82,20 @@
       font-size: 1.1rem;
       font-weight: bold;
       margin-bottom: 12px;
-    }
-    .place-list {
       display: flex;
-      flex-direction: column;
-      gap: 12px;
+      justify-content: space-between;
     }
+    .place-list { display: flex; flex-direction: column; gap: 12px; }
     .place-card {
       background-color: var(--card-bg);
       border-radius: 12px;
       padding: 16px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    .place-name {
-      font-size: 1.1rem;
-      font-weight: bold;
-      margin-bottom: 4px;
-    }
-    .place-memo {
-      font-size: 0.9rem;
-      color: var(--text-sub);
-      margin-bottom: 12px;
-    }
+    .place-name { font-size: 1.1rem; font-weight: bold; margin-bottom: 4px; }
+    .place-rating { font-size: 0.9rem; color: #ff9500; margin-bottom: 4px; }
+    .place-address { font-size: 0.85rem; color: var(--text-sub); margin-bottom: 12px; }
+    .btn-group { display: flex; gap: 8px; }
     .btn-link {
       display: inline-block;
       background-color: var(--primary-color);
@@ -99,12 +105,27 @@
       border-radius: 8px;
       font-size: 0.9rem;
       font-weight: bold;
+      text-align: center;
+      flex: 1;
+    }
+    .btn-save {
+      background-color: #ff3b30;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-  <header>Taipei Easy Trip</header>
+  <header>
+    <span>Taipei Easy Trip</span>
+    <button onclick="showSavedPlaces()" style="background:none; border:none; color:var(--primary-color); font-weight:bold; font-size:1rem;">내 장소</button>
+  </header>
 
   <div class="container">
     <div class="location-box">
@@ -112,115 +133,165 @@
       <div id="locationStatus" class="location-text">위치 정보를 불러오는 중입니다...</div>
     </div>
 
-    <!-- 지도 영역 -->
+    <!-- 카테고리 검색 버튼 -->
+    <div class="category-container">
+      <button class="category-btn" onclick="searchNearby('tourist_attraction', '관광지')">📸 관광지</button>
+      <button class="category-btn" onclick="searchNearby('cafe', '카페')">☕ 카페</button>
+      <button class="category-btn" onclick="searchNearby('restaurant', '맛집')">🍜 맛집</button>
+      <button class="category-btn" onclick="searchNearby('shopping_mall', '쇼핑')">🛍 쇼핑</button>
+    </div>
+
     <div id="map"></div>
 
-    <div class="section-title">저장된 장소 리스트</div>
+    <div class="section-title">
+      <span id="listTitle">저장된 장소 리스트</span>
+    </div>
     <div id="placeList" class="place-list"></div>
   </div>
 
   <script>
     let map; 
+    let placesService;
+    let searchMarkers = []; // 검색 결과 마커들을 담을 배열
+    let myPlaces = []; // 내 저장 장소
 
-    // 잘린 부분 없이 전체 URL이 복구된 데이터입니다.
     const INITIAL_PLACES = [
-      { 
-        id: "p2", 
-        name: "임가화원", 
-        lat: 25.0097, 
-        lng: 121.4556, 
-        memo: "중국식 정원", 
-        url: "https://www.google.com/maps/place/%EC%9E%84%EA%B0%80%ED%99%94%EC%9B%90/data=!4m2!3m1!1s0x3442a80291b1b5f9:0xb891f90afecb5572" 
-      },
-      { 
-        id: "p7", 
-        name: "국립대만박물관", 
-        lat: 25.0429, 
-        lng: 121.5150, 
-        memo: "", 
-        url: "https://www.google.com/maps/place/%EA%B5%AD%EB%A6%BD%EB%8C%80%EB%A7%8C%EB%B0%95%EB%AC%BC%EA%B4%80/data=!4m2!3m1!1s0x3442a97358771571:0xa5a599c4e339816" 
-      },
-      { 
-        id: "p9", 
-        name: "Simple Kaffa", 
-        lat: 25.0441, 
-        lng: 121.5429, 
-        memo: "101 대신 카페", 
-        url: "https://www.google.com/maps/place/Simple+Kaffa/data=!4m2!3m1!1s0x3442ab99ee85903f:0xbc46c60f2e325363" 
-      },
-      { 
-        id: "p4", 
-        name: "까르푸 구이린점", 
-        lat: 25.0388, 
-        lng: 121.5061, 
-        memo: "까르푸 큰 지점", 
-        url: "https://www.google.com/maps/place/PROSPERiTY+PLAZA+Guilin+Store/data=!4m2!3m1!1s0x3442a9a704f1f265:0xa2f5dafec64f6529" 
-      }
+      { id: "p2", name: "임가화원", lat: 25.0097, lng: 121.4556, address: "중국식 정원", url: "https://www.google.com/maps/place/%EC%9E%84%EA%B0%80%ED%99%94%EC%9B%90/data=!4m2!3m1!1s0x3442a80291b1b5f9:0xb891f90afecb5572" },
+      { id: "p7", name: "국립대만박물관", lat: 25.0429, lng: 121.5150, address: "박물관", url: "https://www.google.com/maps/place/%EA%B5%AD%EB%A6%BD%EB%8C%80%EB%A7%8C%EB%B0%95%EB%AC%BC%EA%B4%80/data=!4m2!3m1!1s0x3442a97358771571:0xa5a599c4e339816" },
+      { id: "p9", name: "Simple Kaffa", lat: 25.0441, lng: 121.5429, address: "101 대신 카페", url: "https://www.google.com/maps/place/Simple+Kaffa/data=!4m2!3m1!1s0x3442ab99ee85903f:0xbc46c60f2e325363" }
     ];
 
-    // 데이터를 브라우저에 저장하는 함수입니다. (로컬 스토리지: 브라우저를 닫아도 데이터가 유지되는 공간)
     function initData() {
-      localStorage.removeItem('taipeiPlaces'); 
-      localStorage.setItem('taipeiPlaces', JSON.stringify(INITIAL_PLACES));
-      return INITIAL_PLACES;
+      let saved = localStorage.getItem('taipeiPlaces');
+      if(!saved) {
+        localStorage.setItem('taipeiPlaces', JSON.stringify(INITIAL_PLACES));
+        saved = JSON.stringify(INITIAL_PLACES);
+      }
+      myPlaces = JSON.parse(saved);
     }
 
-    // 장소 리스트를 화면에 그리는 함수입니다.
-    function renderPlaces(places) {
+    // 리스트 렌더링 함수 (isSearchMode가 true면 검색결과용 UI, false면 내장소 UI)
+    function renderPlaces(places, isSearchMode = false) {
       const container = document.getElementById('placeList');
       container.innerHTML = '';
+      
+      if(places.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:20px; color:#8e8e93;">결과가 없습니다.</div>';
+        return;
+      }
+
       places.forEach(place => {
         const card = document.createElement('div');
         card.className = 'place-card';
-        let memoHtml = place.memo ? `<div class="place-memo">메모: ${place.memo}</div>` : '';
+        
+        let ratingHtml = place.rating ? `<div class="place-rating">★ ${place.rating} (${place.user_ratings_total || 0})</div>` : '';
+        let addressHtml = place.address ? `<div class="place-address">${place.address}</div>` : '';
+        
+        // 검색 결과일 때는 '저장' 버튼 추가
+        let saveBtnHtml = isSearchMode ? `<button class="btn-save" onclick="alert('저장 기능은 다음 단계에서 구현됩니다.')">❤️ 저장</button>` : '';
+        
+        // 검색된 장소는 URL이 없으므로 PlaceID를 이용해 구글맵 링크 생성
+        let mapUrl = place.url || (place.place_id ? `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}&query_place_id=${place.place_id}` : '#');
+
         card.innerHTML = `
           <div class="place-name">${place.name}</div>
-          ${memoHtml}
-          <a href="${place.url}" class="btn-link" target="_blank" rel="noopener noreferrer">구글 지도로 보기</a>
+          ${ratingHtml}
+          ${addressHtml}
+          <div class="btn-group">
+            <a href="${mapUrl}" class="btn-link" target="_blank" rel="noopener noreferrer">구글 지도로 보기</a>
+            ${saveBtnHtml}
+          </div>
         `;
         container.appendChild(card);
       });
     }
 
-    // 스마트폰이나 PC의 GPS 기능을 사용하여 현재 위치를 가져오는 함수입니다.
     function initLocation() {
       const statusElement = document.getElementById('locationStatus');
-      if (!navigator.geolocation) {
-        statusElement.innerHTML = '<span class="error-text">이 브라우저에서는 위치 서비스를 지원하지 않습니다.</span>';
-        return;
-      }
+      if (!navigator.geolocation) return;
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           statusElement.innerHTML = `위도: ${lat.toFixed(4)}, 경도: ${lng.toFixed(4)}`;
+          // 한국에서 테스트 시, 내 위치로 지도를 이동시키면 대만 검색이 안 되므로 이동 로직은 주석 처리합니다.
+          // map.setCenter({lat: lat, lng: lng}); 
         },
-        (error) => {
-          let errorMsg = '위치 정보를 확인할 수 없습니다.';
-          if (error.code === error.PERMISSION_DENIED) {
-            errorMsg = '위치 권한이 거부되었습니다.';
-          }
-          statusElement.innerHTML = `<span class="error-text">${errorMsg}</span>`;
-        },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        (error) => { console.warn("GPS Error"); }
       );
     }
 
-    // 구글 지도를 화면에 표시하고 마커를 찍는 함수입니다.
+    // [신규] 장소 검색 함수
+    function searchNearby(type, keywordStr) {
+      document.getElementById('listTitle').innerText = `'${keywordStr}' 검색 결과`;
+      
+      // 기존 검색 마커 지우기
+      searchMarkers.forEach(marker => marker.setMap(null));
+      searchMarkers = [];
+
+      // 현재 지도 화면의 중심점을 기준으로 검색
+      const request = {
+        location: map.getCenter(),
+        radius: 2000, // 반경 2km
+        type: [type]
+      };
+
+      placesService.nearbySearch(request, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+          const formattedResults = results.map(p => ({
+            place_id: p.place_id,
+            name: p.name,
+            lat: p.geometry.location.lat(),
+            lng: p.geometry.location.lng(),
+            address: p.vicinity,
+            rating: p.rating,
+            user_ratings_total: p.user_ratings_total
+          }));
+
+          // 검색 결과를 화면에 표시
+          renderPlaces(formattedResults, true);
+
+          // 지도에 파란색 마커로 표시
+          formattedResults.forEach(place => {
+            const marker = new google.maps.Marker({
+              position: { lat: place.lat, lng: place.lng },
+              map: map,
+              title: place.name,
+              icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' // 내 장소(기본 빨간색)와 구분하기 위해 파란색 마커 사용
+            });
+            searchMarkers.push(marker);
+          });
+        } else {
+          renderPlaces([], true);
+        }
+      });
+    }
+
+    function showSavedPlaces() {
+      document.getElementById('listTitle').innerText = "저장된 장소 리스트";
+      searchMarkers.forEach(marker => marker.setMap(null));
+      searchMarkers = [];
+      renderPlaces(myPlaces, false);
+    }
+
     function initMap() {
-      const places = initData();
-      renderPlaces(places);
+      initData();
       initLocation();
 
-      const taipeiCenter = { lat: 25.0330, lng: 121.5654 };
+      const taipeiCenter = { lat: 25.0330, lng: 121.5654 }; // 타이베이 101 근처
       map = new google.maps.Map(document.getElementById("map"), {
         center: taipeiCenter,
-        zoom: 12,
+        zoom: 14,
         disableDefaultUI: true, 
         zoomControl: true,      
       });
 
-      places.forEach(place => {
+      // Places API 서비스 객체 초기화
+      placesService = new google.maps.places.PlacesService(map);
+
+      // 내 저장 장소 마커 표시 (빨간색)
+      myPlaces.forEach(place => {
         if (place.lat && place.lng) {
           new google.maps.Marker({
             position: { lat: place.lat, lng: place.lng },
@@ -229,10 +300,13 @@
           });
         }
       });
+
+      // 초기에는 내 장소를 리스트에 렌더링
+      showSavedPlaces();
     }
   </script>
   
-  <!-- YOUR_API_KEY 부분을 발급받으신 실제 키로 변경해야 지도가 정상적으로 표시됩니다. -->
-  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ9HHd64lA_8VLXk3yQ8-jK1dTyx7WDLI&callback=initMap"></script>
+  <!-- [중요] API URL에 &libraries=places 파라미터가 추가되었습니다. YOUR_API_KEY를 수정해주세요. -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ9HHd64lA_8VLXk3yQ8-jK1dTyx7WDLI&libraries=places&callback=initMap"></script>
 </body>
 </html>
