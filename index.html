@@ -48,7 +48,6 @@
     .location-box h3 { margin: 0 0 8px 0; font-size: 1rem; color: var(--primary-color); }
     .location-text { font-size: 0.9rem; color: var(--text-sub); }
     
-    /* 카테고리 버튼 스타일 */
     .category-container {
       display: flex;
       gap: 10px;
@@ -151,9 +150,8 @@
 
   <script>
     let map; 
-    let placesService;
-    let searchMarkers = []; // 검색 결과 마커들을 담을 배열
-    let myPlaces = []; // 내 저장 장소
+    let searchMarkers = []; 
+    let myPlaces = []; 
 
     const INITIAL_PLACES = [
       { id: "p2", name: "임가화원", lat: 25.0097, lng: 121.4556, address: "중국식 정원", url: "https://www.google.com/maps/place/%EC%9E%84%EA%B0%80%ED%99%94%EC%9B%90/data=!4m2!3m1!1s0x3442a80291b1b5f9:0xb891f90afecb5572" },
@@ -170,7 +168,6 @@
       myPlaces = JSON.parse(saved);
     }
 
-    // 리스트 렌더링 함수 (isSearchMode가 true면 검색결과용 UI, false면 내장소 UI)
     function renderPlaces(places, isSearchMode = false) {
       const container = document.getElementById('placeList');
       container.innerHTML = '';
@@ -186,12 +183,8 @@
         
         let ratingHtml = place.rating ? `<div class="place-rating">★ ${place.rating} (${place.user_ratings_total || 0})</div>` : '';
         let addressHtml = place.address ? `<div class="place-address">${place.address}</div>` : '';
-        
-        // 검색 결과일 때는 '저장' 버튼 추가
         let saveBtnHtml = isSearchMode ? `<button class="btn-save" onclick="alert('저장 기능은 다음 단계에서 구현됩니다.')">❤️ 저장</button>` : '';
-        
-        // 검색된 장소는 URL이 없으므로 PlaceID를 이용해 구글맵 링크 생성
-        let mapUrl = place.url || (place.place_id ? `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}&query_place_id=${place.place_id}` : '#');
+        let mapUrl = place.url || `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
 
         card.innerHTML = `
           <div class="place-name">${place.name}</div>
@@ -215,57 +208,67 @@
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           statusElement.innerHTML = `위도: ${lat.toFixed(4)}, 경도: ${lng.toFixed(4)}`;
-          // 한국에서 테스트 시, 내 위치로 지도를 이동시키면 대만 검색이 안 되므로 이동 로직은 주석 처리합니다.
-          // map.setCenter({lat: lat, lng: lng}); 
         },
         (error) => { console.warn("GPS Error"); }
       );
     }
 
-    // [신규] 장소 검색 함수
-    function searchNearby(type, keywordStr) {
+    // [핵심 변경] 최신 Places API (New) 문법으로 업그레이드된 검색 함수
+    async function searchNearby(type, keywordStr) {
       document.getElementById('listTitle').innerText = `'${keywordStr}' 검색 결과`;
       
-      // 기존 검색 마커 지우기
+      // 기존 마커 지우기
       searchMarkers.forEach(marker => marker.setMap(null));
       searchMarkers = [];
 
-      // 현재 지도 화면의 중심점을 기준으로 검색
-      const request = {
-        location: map.getCenter(),
-        radius: 2000, // 반경 2km
-        type: [type]
-      };
+      try {
+        // 구글의 최신 라이브러리 동적 로드 방식
+        const { Place } = await google.maps.importLibrary("places");
 
-      placesService.nearbySearch(request, (results, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-          const formattedResults = results.map(p => ({
-            place_id: p.place_id,
-            name: p.name,
-            lat: p.geometry.location.lat(),
-            lng: p.geometry.location.lng(),
-            address: p.vicinity,
+        // 최신 API에 맞춘 요청 파라미터
+        const request = {
+          fields: ['id', 'displayName', 'location', 'rating', 'userRatingCount', 'formattedAddress', 'googleMapsURI'],
+          locationRestriction: {
+            center: map.getCenter(),
+            radius: 2000,
+          },
+          includedPrimaryTypes: [type], // 'cafe', 'restaurant' 등
+        };
+
+        const { places } = await Place.searchNearby(request);
+
+        if (places && places.length > 0) {
+          const formattedResults = places.map(p => ({
+            place_id: p.id,
+            name: p.displayName,
+            lat: p.location.lat(),
+            lng: p.location.lng(),
+            address: p.formattedAddress,
             rating: p.rating,
-            user_ratings_total: p.user_ratings_total
+            user_ratings_total: p.userRatingCount,
+            url: p.googleMapsURI // 최신 API는 정확한 구글맵 URL을 바로 제공합니다!
           }));
 
-          // 검색 결과를 화면에 표시
           renderPlaces(formattedResults, true);
 
-          // 지도에 파란색 마커로 표시
           formattedResults.forEach(place => {
             const marker = new google.maps.Marker({
               position: { lat: place.lat, lng: place.lng },
               map: map,
               title: place.name,
-              icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' // 내 장소(기본 빨간색)와 구분하기 위해 파란색 마커 사용
+              icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
             });
             searchMarkers.push(marker);
           });
         } else {
           renderPlaces([], true);
+          alert("현재 지도 화면 주변에 해당 장소가 없습니다. 지도를 움직인 후 다시 시도해보세요.");
         }
-      });
+      } catch (error) {
+        console.error(error);
+        alert(`API 설정 오류: Places API (New)가 활성화되어 있는지 확인해주세요.\n\n상세 에러: ${error.message}`);
+        renderPlaces([], true);
+      }
     }
 
     function showSavedPlaces() {
@@ -287,10 +290,7 @@
         zoomControl: true,      
       });
 
-      // Places API 서비스 객체 초기화
-      placesService = new google.maps.places.PlacesService(map);
-
-      // 내 저장 장소 마커 표시 (빨간색)
+      // 내 저장 장소 마커 표시
       myPlaces.forEach(place => {
         if (place.lat && place.lng) {
           new google.maps.Marker({
@@ -301,7 +301,6 @@
         }
       });
 
-      // 초기에는 내 장소를 리스트에 렌더링
       showSavedPlaces();
     }
   </script>
