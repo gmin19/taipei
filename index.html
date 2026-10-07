@@ -70,7 +70,6 @@
     }
     .category-btn:active { background-color: #e5e5ea; }
 
-    /* [수정 3] 지도 크기를 화면의 50% 높이로 확대 */
     #map {
       width: 100%;
       height: 50vh; 
@@ -114,17 +113,18 @@
       flex-shrink: 0;
     }
     
-    /* [수정 2] 장소 설명(개요) 디자인 박스 */
+    /* 장소 개요 및 업종 표시 박스 개선 */
     .place-desc {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: #2c3e50;
-      background-color: #f8f9fa;
-      padding: 8px;
-      border-radius: 6px;
-      border-left: 3px solid var(--primary-color);
-      margin-bottom: 10px;
+      background-color: #f0f8ff; /* 연한 파란색 배경으로 강조 */
+      padding: 10px;
+      border-radius: 8px;
+      border-left: 4px solid var(--primary-color);
+      margin-bottom: 12px;
       line-height: 1.4;
     }
+    .place-desc strong { color: var(--primary-color); }
 
     .place-distance { font-size: 0.95rem; font-weight: bold; color: var(--primary-color); margin-bottom: 6px; }
     .place-rating { font-size: 0.9rem; color: #ff9500; margin-bottom: 4px; }
@@ -166,7 +166,6 @@
       <button class="category-btn" onclick="searchNearby('shopping_mall', '쇼핑')">🛍 쇼핑</button>
     </div>
 
-    <!-- 지도 영역 -->
     <div id="map"></div>
 
     <div class="section-title">
@@ -213,12 +212,14 @@
         let badgeHtml = isSearchMode ? `<span class="badge">${index + 1}</span>` : '❤️';
         let distanceHtml = isSearchMode ? `<div id="dist-${index}" class="place-distance">🚶 거리 계산 중...</div>` : '';
         
-        // [수정 2] 설명 및 카테고리 태그 추가
+        // [버그 수정] 개요 및 업종 데이터 표시 로직 개선
         let descHtml = '';
-        if (place.summary) {
+        if (place.summary && place.typeDesc) {
+          descHtml = `<div class="place-desc">💡 <strong>[${place.typeDesc}]</strong> ${place.summary}</div>`;
+        } else if (place.summary) {
           descHtml = `<div class="place-desc">💡 ${place.summary}</div>`;
         } else if (place.typeDesc) {
-          descHtml = `<div class="place-desc">🏷️ ${place.typeDesc}</div>`;
+          descHtml = `<div class="place-desc">🏷️ <strong>[${place.typeDesc}]</strong> (상세 설명이 없는 현지 장소입니다)</div>`;
         }
 
         let ratingHtml = place.rating ? `<div class="place-rating">★ ${place.rating} (${place.user_ratings_total || 0})</div>` : '';
@@ -283,6 +284,12 @@
       });
     }
 
+    // 객체나 문자열로 반환되는 데이터를 안전하게 뽑아내는 유틸리티 함수
+    function getSafeText(field) {
+      if (!field) return '';
+      return typeof field === 'string' ? field : (field.text || field.displayName || '');
+    }
+
     async function searchNearby(type, keywordStr) {
       document.getElementById('listTitle').innerText = `'${keywordStr}' 검색 결과`;
       
@@ -292,7 +299,6 @@
       try {
         const { Place } = await google.maps.importLibrary("places");
         
-        // [수정 2] editorialSummary(장소 설명)와 primaryTypeDisplayName(주요 업종 한글명) 필드 추가 요청
         const request = {
           fields: ['id', 'displayName', 'location', 'rating', 'userRatingCount', 'formattedAddress', 'googleMapsURI', 'editorialSummary', 'primaryTypeDisplayName'],
           locationRestriction: {
@@ -307,19 +313,17 @@
         if (places && places.length > 0) {
           let formattedResults = places.map(p => ({
             place_id: p.id,
-            name: p.displayName,
+            name: getSafeText(p.displayName),
             lat: p.location.lat(),
             lng: p.location.lng(),
-            address: p.formattedAddress,
+            address: getSafeText(p.formattedAddress),
             rating: p.rating,
             user_ratings_total: p.userRatingCount,
             url: p.googleMapsURI,
-            // 추가된 속성들
-            typeDesc: p.primaryTypeDisplayName ? p.primaryTypeDisplayName.text : '',
-            summary: p.editorialSummary ? p.editorialSummary.text : ''
+            typeDesc: getSafeText(p.primaryTypeDisplayName),
+            summary: getSafeText(p.editorialSummary)
           }));
 
-          // [수정 1] 화면의 중심점(검색 기준점)으로부터 가장 가까운 거리 순으로 결과 배열 정렬
           const centerPos = map.getCenter();
           formattedResults.sort((a, b) => {
             const distA = google.maps.geometry.spherical.computeDistanceBetween(centerPos, {lat: a.lat, lng: a.lng});
@@ -397,8 +401,6 @@
     }
   </script>
   
-  <!-- [수정 1, 2] 파라미터에 geometry(거리계산용) 추가 및 language=ko(한글 강제) 추가 -->
-
   <!-- [중요] API URL에 &libraries=places 파라미터가 추가되었습니다. YOUR_API_KEY를 수정해주세요. -->
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ9HHd64lA_8VLXk3yQ8-jK1dTyx7WDLI&libraries=places&callback=initMap"></script>
 </body>
