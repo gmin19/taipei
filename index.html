@@ -18,7 +18,7 @@
       background-color: var(--bg-color);
       color: var(--text-main);
       padding-bottom: 30px;
-      scroll-behavior: smooth; /* 부드러운 스크롤 */
+      scroll-behavior: smooth;
     }
     header {
       background-color: var(--card-bg);
@@ -70,14 +70,17 @@
     }
     .category-btn:active { background-color: #e5e5ea; }
 
+    /* [수정 3] 지도 크기를 화면의 50% 높이로 확대 */
     #map {
       width: 100%;
-      height: 350px;
+      height: 50vh; 
+      min-height: 400px; 
       border-radius: 12px;
       margin-bottom: 20px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
       background-color: #e5e5ea;
     }
+    
     .section-title {
       font-size: 1.1rem;
       font-weight: bold;
@@ -94,11 +97,10 @@
       transition: border 0.3s ease, background-color 0.3s ease;
       border: 2px solid transparent;
     }
-    .place-name { font-size: 1.1rem; font-weight: bold; margin-bottom: 4px; display: flex; align-items: center; }
+    .place-name { font-size: 1.15rem; font-weight: bold; margin-bottom: 8px; display: flex; align-items: flex-start; line-height: 1.3; }
     
-    /* 숫자 뱃지 스타일 */
     .badge {
-      background-color: #ea4335; /* 구글맵 마커 기본 빨간색 */
+      background-color: #ea4335; 
       color: white;
       border-radius: 50%;
       display: inline-block;
@@ -109,8 +111,21 @@
       font-size: 0.85rem;
       margin-right: 8px;
       font-weight: bold;
+      flex-shrink: 0;
     }
     
+    /* [수정 2] 장소 설명(개요) 디자인 박스 */
+    .place-desc {
+      font-size: 0.85rem;
+      color: #2c3e50;
+      background-color: #f8f9fa;
+      padding: 8px;
+      border-radius: 6px;
+      border-left: 3px solid var(--primary-color);
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
     .place-distance { font-size: 0.95rem; font-weight: bold; color: var(--primary-color); margin-bottom: 6px; }
     .place-rating { font-size: 0.9rem; color: #ff9500; margin-bottom: 4px; }
     .place-address { font-size: 0.85rem; color: var(--text-sub); margin-bottom: 12px; }
@@ -164,7 +179,7 @@
     let map; 
     let searchMarkers = []; 
     let myPlaces = []; 
-    let currentPos = null; // 거리 계산을 위해 내 현재 좌표를 저장할 변수
+    let currentPos = null; 
 
     const INITIAL_PLACES = [
       { id: "p2", name: "임가화원", lat: 25.0097, lng: 121.4556, address: "중국식 정원", url: "https://www.google.com/maps/place/%EC%9E%84%EA%B0%80%ED%99%94%EC%9B%90/data=!4m2!3m1!1s0x3442a80291b1b5f9:0xb891f90afecb5572" },
@@ -193,18 +208,27 @@
       places.forEach((place, index) => {
         const card = document.createElement('div');
         card.className = 'place-card';
-        // 스크롤 이동을 위해 각 카드에 고유 ID 부여
         card.id = `place-card-${index}`;
         
         let badgeHtml = isSearchMode ? `<span class="badge">${index + 1}</span>` : '❤️';
         let distanceHtml = isSearchMode ? `<div id="dist-${index}" class="place-distance">🚶 거리 계산 중...</div>` : '';
+        
+        // [수정 2] 설명 및 카테고리 태그 추가
+        let descHtml = '';
+        if (place.summary) {
+          descHtml = `<div class="place-desc">💡 ${place.summary}</div>`;
+        } else if (place.typeDesc) {
+          descHtml = `<div class="place-desc">🏷️ ${place.typeDesc}</div>`;
+        }
+
         let ratingHtml = place.rating ? `<div class="place-rating">★ ${place.rating} (${place.user_ratings_total || 0})</div>` : '';
         let addressHtml = place.address ? `<div class="place-address">${place.address}</div>` : '';
         let saveBtnHtml = isSearchMode ? `<button class="btn-save" onclick="alert('저장 기능은 다음 단계에서 구현됩니다.')">저장</button>` : '';
         let mapUrl = place.url || `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
 
         card.innerHTML = `
-          <div class="place-name">${badgeHtml} ${place.name}</div>
+          <div class="place-name">${badgeHtml} <span>${place.name}</span></div>
+          ${descHtml}
           ${distanceHtml}
           ${ratingHtml}
           ${addressHtml}
@@ -230,9 +254,8 @@
       );
     }
 
-    // Distance Matrix API를 사용해 내 위치로부터의 거리 계산
     function calculateDistances(places) {
-      if (!currentPos) return; // 위치 권한을 안 주었거나 아직 못 가져왔다면 패스
+      if (!currentPos) return; 
 
       const service = new google.maps.DistanceMatrixService();
       const destinations = places.map(p => ({ lat: p.lat, lng: p.lng }));
@@ -240,7 +263,7 @@
       service.getDistanceMatrix({
         origins: [currentPos],
         destinations: destinations,
-        travelMode: 'WALKING' // 도보 기준
+        travelMode: 'WALKING' 
       }, (response, status) => {
         if (status === 'OK') {
           const results = response.rows[0].elements;
@@ -251,7 +274,7 @@
               if (element.status === 'OK') {
                 distElement.innerText = `🚶 도보: ${element.distance.text} (약 ${element.duration.text})`;
               } else {
-                distElement.innerText = `🚶 도보: 경로 없음 (너무 멀거나 바다 건너편)`;
+                distElement.innerText = `🚶 도보: 경로 없음 (바다 건너편)`;
                 distElement.style.color = 'var(--text-sub)';
               }
             }
@@ -268,8 +291,10 @@
 
       try {
         const { Place } = await google.maps.importLibrary("places");
+        
+        // [수정 2] editorialSummary(장소 설명)와 primaryTypeDisplayName(주요 업종 한글명) 필드 추가 요청
         const request = {
-          fields: ['id', 'displayName', 'location', 'rating', 'userRatingCount', 'formattedAddress', 'googleMapsURI'],
+          fields: ['id', 'displayName', 'location', 'rating', 'userRatingCount', 'formattedAddress', 'googleMapsURI', 'editorialSummary', 'primaryTypeDisplayName'],
           locationRestriction: {
             center: map.getCenter(),
             radius: 2000,
@@ -280,7 +305,7 @@
         const { places } = await Place.searchNearby(request);
 
         if (places && places.length > 0) {
-          const formattedResults = places.map(p => ({
+          let formattedResults = places.map(p => ({
             place_id: p.id,
             name: p.displayName,
             lat: p.location.lat(),
@@ -288,12 +313,21 @@
             address: p.formattedAddress,
             rating: p.rating,
             user_ratings_total: p.userRatingCount,
-            url: p.googleMapsURI 
+            url: p.googleMapsURI,
+            // 추가된 속성들
+            typeDesc: p.primaryTypeDisplayName ? p.primaryTypeDisplayName.text : '',
+            summary: p.editorialSummary ? p.editorialSummary.text : ''
           }));
 
-          renderPlaces(formattedResults, true);
+          // [수정 1] 화면의 중심점(검색 기준점)으로부터 가장 가까운 거리 순으로 결과 배열 정렬
+          const centerPos = map.getCenter();
+          formattedResults.sort((a, b) => {
+            const distA = google.maps.geometry.spherical.computeDistanceBetween(centerPos, {lat: a.lat, lng: a.lng});
+            const distB = google.maps.geometry.spherical.computeDistanceBetween(centerPos, {lat: b.lat, lng: b.lng});
+            return distA - distB;
+          });
 
-          // 1. 결과가 나오면 거리 계산 함수 호출
+          renderPlaces(formattedResults, true);
           calculateDistances(formattedResults);
 
           formattedResults.forEach((place, index) => {
@@ -301,11 +335,9 @@
               position: { lat: place.lat, lng: place.lng },
               map: map,
               title: place.name,
-              // 2. 마커 안에 숫자를 표시
               label: { text: String(index + 1), color: 'white', fontWeight: 'bold' }
             });
             
-            // 3. 마커 클릭 이벤트: 해당 리스트 카드로 스크롤 이동 및 강조 효과
             marker.addListener('click', () => {
               const card = document.getElementById(`place-card-${index}`);
               if(card) {
@@ -348,7 +380,7 @@
         zoom: 14,
         disableDefaultUI: true, 
         zoomControl: true,      
-        gestureHandling: 'greedy' // [문제 해결] 지도 제스처 모드를 탐욕(greedy)으로 설정하여 페이지 스크롤 방지
+        gestureHandling: 'greedy'
       });
 
       myPlaces.forEach(place => {
@@ -364,7 +396,8 @@
       showSavedPlaces();
     }
   </script>
-
+  
+  <!-- [수정 1, 2] 파라미터에 geometry(거리계산용) 추가 및 language=ko(한글 강제) 추가 -->
 
   <!-- [중요] API URL에 &libraries=places 파라미터가 추가되었습니다. YOUR_API_KEY를 수정해주세요. -->
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ9HHd64lA_8VLXk3yQ8-jK1dTyx7WDLI&libraries=places&callback=initMap"></script>
