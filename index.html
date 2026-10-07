@@ -55,14 +55,14 @@
       color: #ff3b30;
       font-weight: bold;
     }
-    /* 지도 컨테이너 스타일 추가 */
+    /* 지도 컨테이너 스타일 */
     #map {
       width: 100%;
       height: 300px;
       border-radius: 12px;
       margin-bottom: 20px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-      background-color: #e5e5ea; /* 로딩 전 배경색 */
+      background-color: #e5e5ea;
     }
     .section-title {
       font-size: 1.1rem;
@@ -112,7 +112,7 @@
       <div id="locationStatus" class="location-text">위치 정보를 불러오는 중입니다...</div>
     </div>
 
-    <!-- 지도 영역 추가 -->
+    <!-- 지도 영역 -->
     <div id="map"></div>
 
     <div class="section-title">저장된 장소 리스트</div>
@@ -120,23 +120,52 @@
   </div>
 
   <script>
-    let map; // 구글 지도 객체를 담을 전역 변수
+    let map; 
 
-    // 좌표(lat, lng)가 추가된 임시 데이터
+    // 잘린 부분 없이 전체 URL이 복구된 데이터입니다.
     const INITIAL_PLACES = [
-      { id: "p2", name: "임가화원", lat: 25.0097, lng: 121.4556, memo: "중국식 정원", url: "https://www.google.com/maps/place/..." },
-      { id: "p7", name: "국립대만박물관", lat: 25.0429, lng: 121.5150, memo: "", url: "https://www.google.com/maps/place/..." },
-      { id: "p9", name: "Simple Kaffa", lat: 25.0330, lng: 121.5654, memo: "101 대신 카페", url: "https://www.google.com/maps/place/..." },
-      { id: "p4", name: "까르푸 구이린점", lat: 25.0388, lng: 121.5061, memo: "까르푸 큰 지점", url: "https://www.google.com/maps/place/..." }
+      { 
+        id: "p2", 
+        name: "임가화원", 
+        lat: 25.0097, 
+        lng: 121.4556, 
+        memo: "중국식 정원", 
+        url: "https://www.google.com/maps/place/%EC%9E%84%EA%B0%80%ED%99%94%EC%9B%90/data=!4m2!3m1!1s0x3442a80291b1b5f9:0xb891f90afecb5572" 
+      },
+      { 
+        id: "p7", 
+        name: "국립대만박물관", 
+        lat: 25.0429, 
+        lng: 121.5150, 
+        memo: "", 
+        url: "https://www.google.com/maps/place/%EA%B5%AD%EB%A6%BD%EB%8C%80%EB%A7%8C%EB%B0%95%EB%AC%BC%EA%B4%80/data=!4m2!3m1!1s0x3442a97358771571:0xa5a599c4e339816" 
+      },
+      { 
+        id: "p9", 
+        name: "Simple Kaffa", 
+        lat: 25.0441, 
+        lng: 121.5429, 
+        memo: "101 대신 카페", 
+        url: "https://www.google.com/maps/place/Simple+Kaffa/data=!4m2!3m1!1s0x3442ab99ee85903f:0xbc46c60f2e325363" 
+      },
+      { 
+        id: "p4", 
+        name: "까르푸 구이린점", 
+        lat: 25.0388, 
+        lng: 121.5061, 
+        memo: "까르푸 큰 지점", 
+        url: "https://www.google.com/maps/place/PROSPERiTY+PLAZA+Guilin+Store/data=!4m2!3m1!1s0x3442a9a704f1f265:0xa2f5dafec64f6529" 
+      }
     ];
 
+    // 데이터를 브라우저에 저장하는 함수입니다. (로컬 스토리지: 브라우저를 닫아도 데이터가 유지되는 공간)
     function initData() {
-      // 새로운 구조를 덮어씌우기 위해 기존 스토리지 강제 초기화 (테스트용)
       localStorage.removeItem('taipeiPlaces'); 
       localStorage.setItem('taipeiPlaces', JSON.stringify(INITIAL_PLACES));
       return INITIAL_PLACES;
     }
 
+    // 장소 리스트를 화면에 그리는 함수입니다.
     function renderPlaces(places) {
       const container = document.getElementById('placeList');
       container.innerHTML = '';
@@ -153,6 +182,7 @@
       });
     }
 
+    // 스마트폰이나 PC의 GPS 기능을 사용하여 현재 위치를 가져오는 함수입니다.
     function initLocation() {
       const statusElement = document.getElementById('locationStatus');
       if (!navigator.geolocation) {
@@ -164,9 +194,6 @@
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           statusElement.innerHTML = `위도: ${lat.toFixed(4)}, 경도: ${lng.toFixed(4)}`;
-          
-          // 사용자의 위치를 가져왔다면, 그 위치로 지도의 중심을 이동시킴 (선택사항)
-          // 타이베이 여행 앱이므로 일단 중심은 타이베이로 유지하는 것이 좋을 수 있습니다.
         },
         (error) => {
           let errorMsg = '위치 정보를 확인할 수 없습니다.';
@@ -179,22 +206,20 @@
       );
     }
 
-    // Google Maps API가 로드된 후 실행되는 콜백 함수
+    // 구글 지도를 화면에 표시하고 마커를 찍는 함수입니다.
     function initMap() {
       const places = initData();
       renderPlaces(places);
       initLocation();
 
-      // 지도 초기화 (타이베이 시내 중심)
       const taipeiCenter = { lat: 25.0330, lng: 121.5654 };
       map = new google.maps.Map(document.getElementById("map"), {
         center: taipeiCenter,
         zoom: 12,
-        disableDefaultUI: true, // 모바일에서 불필요한 기본 버튼 제거
-        zoomControl: true,      // 줌 버튼만 남김
+        disableDefaultUI: true, 
+        zoomControl: true,      
       });
 
-      // 저장된 장소들에 마커 추가
       places.forEach(place => {
         if (place.lat && place.lng) {
           new google.maps.Marker({
@@ -207,7 +232,7 @@
     }
   </script>
   
-  <!-- 주의: YOUR_API_KEY 부분을 실제 발급받은 키로 변경해야 합니다. -->
+  <!-- YOUR_API_KEY 부분을 발급받으신 실제 키로 변경해야 지도가 정상적으로 표시됩니다. -->
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ9HHd64lA_8VLXk3yQ8-jK1dTyx7WDLI&callback=initMap"></script>
 </body>
 </html>
