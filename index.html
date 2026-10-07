@@ -13,26 +13,23 @@
       --text-sub: #8e8e93;
     }
     body {
-      margin: 0; padding: 0; overflow: hidden; /* 전체 화면 꽉 차게 */
+      margin: 0; padding: 0; overflow: hidden; 
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background-color: var(--bg-color); color: var(--text-main);
     }
 
-    /* 전체 화면 지도 */
     #map {
       width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1;
     }
 
-    /* 상단 플로팅 헤더 */
     header {
       position: absolute; top: 0; left: 0; right: 0; z-index: 10;
       background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px);
       padding: 16px; display: flex; justify-content: space-between; align-items: center;
       font-weight: bold; font-size: 1.2rem; border-bottom: 1px solid rgba(0,0,0,0.1);
-      padding-top: env(safe-area-inset-top, 16px); /* 아이폰 노치 대응 */
+      padding-top: env(safe-area-inset-top, 16px);
     }
 
-    /* 플로팅 카테고리 버튼 */
     .category-container {
       position: absolute; top: calc(60px + env(safe-area-inset-top, 0px)); left: 0; right: 0; z-index: 10;
       display: flex; gap: 10px; padding: 12px 16px; overflow-x: auto; -webkit-overflow-scrolling: touch;
@@ -45,18 +42,17 @@
     }
     .category-btn:active { background-color: #e5e5ea; }
 
-    /* --- 바텀 시트 (드래그 패널) 스타일 --- */
+    /* 바텀 시트 */
     .bottom-sheet {
       position: absolute; bottom: 0; left: 0; right: 0; height: 85vh;
       background: var(--bg-color); z-index: 20; border-radius: 24px 24px 0 0;
       box-shadow: 0 -4px 20px rgba(0,0,0,0.15); display: flex; flex-direction: column;
-      /* JS로 transform 이동을 제어하므로 초기엔 화면 밖으로 빼둠 */
       transform: translateY(100%);
     }
     .sheet-header {
       background: #fff; border-radius: 24px 24px 0 0; padding: 12px 16px;
       text-align: center; border-bottom: 1px solid #e5e5ea; flex-shrink: 0;
-      cursor: grab; touch-action: none; /* 스크롤 방지 */
+      cursor: grab; touch-action: none; 
     }
     .sheet-header:active { cursor: grabbing; }
     .drag-handle {
@@ -65,11 +61,12 @@
     .section-title { font-size: 1.1rem; font-weight: bold; margin: 0; }
     
     .sheet-content {
+      /* [중요 수정] position: relative를 추가하여 스크롤 위치 계산의 기준점을 명확히 합니다 */
+      position: relative; 
       flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch;
       padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px));
     }
 
-    /* 리스트 카드 디자인 */
     .place-list { display: flex; flex-direction: column; gap: 12px; }
     .place-card {
       background-color: var(--card-bg); border-radius: 12px; padding: 16px;
@@ -100,7 +97,6 @@
     .btn-map { background-color: #f2f2f7; color: #000; border: 1px solid #d1d1d6; }
     .btn-route { background-color: var(--primary-color); color: white; }
 
-    /* 모달 */
     .modal-overlay {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;
@@ -117,10 +113,8 @@
 </head>
 <body>
 
-  <!-- 전체 화면 지도 -->
   <div id="map"></div>
 
-  <!-- 상단 UI -->
   <header>
     <span>Taipei Easy Trip</span>
     <button onclick="showSavedPlaces()" style="background:none; border:none; color:var(--primary-color); font-weight:bold; font-size:1rem; cursor:pointer;">내 장소</button>
@@ -133,7 +127,6 @@
     <button class="category-btn" onclick="searchNearby('shopping_mall', '쇼핑')">🛍 쇼핑</button>
   </div>
 
-  <!-- 바텀 시트 (드래그 패널) -->
   <div id="bottomSheet" class="bottom-sheet">
     <div class="sheet-header" id="sheetHeader">
       <div class="drag-handle"></div>
@@ -144,7 +137,6 @@
     </div>
   </div>
 
-  <!-- 길찾기 모달 -->
   <div id="routeModal" class="modal-overlay" style="display:none;">
     <div class="modal-content">
       <h3 id="routeModalTitle" style="margin-top:0; color:var(--primary-color);">길찾기</h3>
@@ -162,50 +154,43 @@
     let currentPos = null; 
     let currentMode = 'saved'; 
 
-    // --- 바텀 시트 드래그 로직 ---
     const sheet = document.getElementById('bottomSheet');
     const sheetHeader = document.getElementById('sheetHeader');
     
     let windowH = window.innerHeight;
-    let sheetH = windowH * 0.85; // 시트 전체 높이
-    let POS_FULL = 0; // 맨 위까지 올림
-    let POS_HALF = sheetH * 0.55; // 절반 (지도와 리스트 반반)
-    let POS_COLLAPSED = sheetH - 65; // 맨 아래로 숨김 (손잡이만 보임)
+    let sheetH = windowH * 0.85; 
+    let POS_FULL = 0; 
+    let POS_HALF = sheetH * 0.55; 
+    let POS_COLLAPSED = sheetH - 65; 
     
     let currentSheetY = POS_HALF;
     let startY = 0;
     let startTranslateY = 0;
     let isDragging = false;
 
-    // 시트 상태를 변경하는 함수
     function setSheetState(state) {
       sheet.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
       if (state === 'full') currentSheetY = POS_FULL;
       else if (state === 'half') currentSheetY = POS_HALF;
       else if (state === 'collapsed') currentSheetY = POS_COLLAPSED;
-      
       sheet.style.transform = `translateY(${currentSheetY}px)`;
     }
 
-    // 마우스 및 터치 이벤트 연결
     function onDragStart(e) {
       isDragging = true;
       startY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
       startTranslateY = currentSheetY;
-      sheet.style.transition = 'none'; // 드래그 중에는 애니메이션 끔
+      sheet.style.transition = 'none'; 
     }
 
     function onDragMove(e) {
       if (!isDragging) return;
-      e.preventDefault(); // 스크롤 방지
+      e.preventDefault(); 
       let y = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
       let deltaY = y - startY;
       let newY = startTranslateY + deltaY;
-      
-      // 상하 한계점 설정
       if (newY < POS_FULL) newY = POS_FULL;
       if (newY > POS_COLLAPSED) newY = POS_COLLAPSED;
-      
       currentSheetY = newY;
       sheet.style.transform = `translateY(${currentSheetY}px)`;
     }
@@ -213,12 +198,9 @@
     function onDragEnd() {
       if (!isDragging) return;
       isDragging = false;
-      
-      // 드래그를 놨을 때 가장 가까운 3단계 위치로 자석처럼 붙임(Snap)
       const distFull = Math.abs(currentSheetY - POS_FULL);
       const distHalf = Math.abs(currentSheetY - POS_HALF);
       const distCollapsed = Math.abs(currentSheetY - POS_COLLAPSED);
-      
       const min = Math.min(distFull, distHalf, distCollapsed);
       if (min === distFull) setSheetState('full');
       else if (min === distHalf) setSheetState('half');
@@ -232,7 +214,6 @@
     window.addEventListener('touchend', onDragEnd);
     window.addEventListener('mouseup', onDragEnd);
 
-    // 창 크기 조절 시 변수 재계산
     window.addEventListener('resize', () => {
       windowH = window.innerHeight;
       sheetH = windowH * 0.85;
@@ -240,8 +221,6 @@
       POS_COLLAPSED = sheetH - 65;
       setSheetState('half');
     });
-    // ---------------------------------
-
 
     const INITIAL_PLACES = [
       { id: "p2", name: "임가화원", lat: 25.0097, lng: 121.4556, address: "중국식 정원", typeDesc: "관광 명소", summary: "아름다운 중국식 정원입니다.", url: "https://www.google.com/maps/search/?api=1&query=25.0097,121.4556" },
@@ -281,7 +260,6 @@
         const isAlreadySaved = myPlaces.some(p => p.id === place.id);
         let badgeBg = isAlreadySaved ? '#ff3b30' : '#007AFF';
         let badgeHtml = `<span class="badge" style="background-color:${badgeBg};">${index + 1}</span>`;
-        
         let heartIcon = isAlreadySaved ? '❤️' : '🤍';
         let heartBtnHtml = `<button class="heart-btn" onclick="toggleSave('${place.id}')">${heartIcon}</button>`;
             
@@ -398,11 +376,26 @@
 
     function closeRouteModal() { document.getElementById('routeModal').style.display = 'none'; }
 
+    // [정밀 수정] 지도 마커 클릭 시 스크롤 포지션을 완벽하게 보정하는 이벤트 핸들러
+    function handleMarkerClick(index) {
+      setSheetState('half'); 
+      const card = document.getElementById(`place-card-${index}`);
+      const sheetContent = document.getElementById('sheetContent');
+      
+      if(card && sheetContent) {
+        // 카드의 상단 위치에서 여백(16px)만큼 빼서 상단 제목란에 가려지지 않게 함
+        sheetContent.scrollTo({ top: card.offsetTop - 16, behavior: 'smooth' });
+        
+        card.style.border = "2px solid var(--primary-color)";
+        setTimeout(() => card.style.border = "2px solid transparent", 1500);
+      }
+    }
+
     async function searchNearby(type, keywordStr) {
       currentMode = 'search'; 
       document.getElementById('listTitle').innerText = `'${keywordStr}' 검색 결과`;
       clearMarkers(searchMarkers); clearMarkers(myMarkers);
-      setSheetState('half'); // 검색 시 시트를 반으로 올려서 결과 보여줌
+      setSheetState('half'); 
 
       try {
         const { Place } = await google.maps.importLibrary("places");
@@ -440,15 +433,7 @@
               label: { text: String(index + 1), color: 'white', fontWeight: 'bold' }
             });
             
-            marker.addListener('click', () => {
-              setSheetState('half'); // 마커 클릭 시 시트 올려줌
-              const card = document.getElementById(`place-card-${index}`);
-              if(card) {
-                document.getElementById('sheetContent').scrollTop = card.offsetTop - 20; // 스크롤 이동
-                card.style.border = "2px solid var(--primary-color)";
-                setTimeout(() => card.style.border = "2px solid transparent", 1500);
-              }
-            });
+            marker.addListener('click', () => handleMarkerClick(index));
             searchMarkers.push(marker);
           });
         } else {
@@ -464,15 +449,7 @@
           const marker = new google.maps.Marker({
             position: { lat: place.lat, lng: place.lng }, map: map, title: place.name, icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png', label: { text: String(index + 1), color: 'white', fontWeight: 'bold' }
           });
-          marker.addListener('click', () => {
-            setSheetState('half');
-            const card = document.getElementById(`place-card-${index}`);
-            if(card) {
-              document.getElementById('sheetContent').scrollTop = card.offsetTop - 20;
-              card.style.border = "2px solid #ff3b30";
-              setTimeout(() => card.style.border = "2px solid transparent", 1500);
-            }
-          });
+          marker.addListener('click', () => handleMarkerClick(index));
           myMarkers.push(marker);
         }
       });
@@ -493,13 +470,8 @@
       map = new google.maps.Map(document.getElementById("map"), {
         center: taipeiCenter, zoom: 14, disableDefaultUI: true, zoomControl: true, gestureHandling: 'greedy'
       });
-      
-      // 시트가 절반을 가릴 때 지도의 중앙이 잘리지 않도록 하단 패딩 적용
       map.setPadding({ bottom: window.innerHeight * 0.45 });
-      
       showSavedPlaces();
-      
-      // 최초 실행 시 애니메이션 적용을 위해 약간의 지연 후 시트를 올림
       setTimeout(() => setSheetState('half'), 500);
     }
   </script>
@@ -508,6 +480,8 @@
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ9HHd64lA_8VLXk3yQ8-jK1dTyx7WDLI&libraries=places&callback=initMap"></script>
 </body>
 </html>
+
+
 
   
   
