@@ -34,11 +34,7 @@
       justify-content: space-between;
       align-items: center;
     }
-    .container {
-      padding: 16px;
-      max-width: 600px;
-      margin: 0 auto;
-    }
+    .container { padding: 16px; max-width: 600px; margin: 0 auto; }
     .location-box {
       background-color: var(--card-bg);
       border-radius: 12px;
@@ -71,27 +67,16 @@
     .category-btn:active { background-color: #e5e5ea; }
 
     #map {
-      width: 100%;
-      height: 50vh; 
-      min-height: 400px; 
-      border-radius: 12px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-      background-color: #e5e5ea;
+      width: 100%; height: 50vh; min-height: 400px; 
+      border-radius: 12px; margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05); background-color: #e5e5ea;
     }
     
-    .section-title {
-      font-size: 1.1rem;
-      font-weight: bold;
-      margin-bottom: 12px;
-      display: flex;
-      justify-content: space-between;
-    }
+    .section-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 12px; }
     .place-list { display: flex; flex-direction: column; gap: 12px; }
     .place-card {
       background-color: var(--card-bg);
-      border-radius: 12px;
-      padding: 16px;
+      border-radius: 12px; padding: 16px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
       transition: border 0.3s ease, background-color 0.3s ease;
       border: 2px solid transparent;
@@ -99,51 +84,31 @@
     .place-name { font-size: 1.15rem; font-weight: bold; margin-bottom: 8px; display: flex; align-items: flex-start; line-height: 1.3; }
     
     .badge {
-      background-color: #ea4335; 
-      color: white;
-      border-radius: 50%;
-      display: inline-block;
-      width: 24px;
-      height: 24px;
-      text-align: center;
-      line-height: 24px;
-      font-size: 0.85rem;
-      margin-right: 8px;
-      font-weight: bold;
-      flex-shrink: 0;
+      background-color: #ea4335; color: white; border-radius: 50%;
+      display: inline-block; width: 24px; height: 24px;
+      text-align: center; line-height: 24px; font-size: 0.85rem;
+      margin-right: 8px; font-weight: bold; flex-shrink: 0;
     }
     
-    /* 장소 개요 및 업종 표시 박스 개선 */
     .place-desc {
-      font-size: 0.9rem;
-      color: #2c3e50;
-      background-color: #f0f8ff; /* 연한 파란색 배경으로 강조 */
-      padding: 10px;
-      border-radius: 8px;
-      border-left: 4px solid var(--primary-color);
-      margin-bottom: 12px;
-      line-height: 1.4;
+      font-size: 0.9rem; color: #2c3e50; background-color: #f0f8ff;
+      padding: 10px; border-radius: 8px; border-left: 4px solid var(--primary-color);
+      margin-bottom: 12px; line-height: 1.4;
     }
     .place-desc strong { color: var(--primary-color); }
-
     .place-distance { font-size: 0.95rem; font-weight: bold; color: var(--primary-color); margin-bottom: 6px; }
     .place-rating { font-size: 0.9rem; color: #ff9500; margin-bottom: 4px; }
     .place-address { font-size: 0.85rem; color: var(--text-sub); margin-bottom: 12px; }
     
     .btn-group { display: flex; gap: 8px; }
     .btn-link, .btn-save {
-      display: inline-block;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-weight: bold;
-      text-align: center;
-      flex: 1;
-      cursor: pointer;
-      text-decoration: none;
+      display: inline-block; padding: 8px 16px; border-radius: 8px;
+      font-size: 0.9rem; font-weight: bold; text-align: center;
+      flex: 1; cursor: pointer; text-decoration: none; border: none;
     }
     .btn-link { background-color: var(--primary-color); color: white; }
-    .btn-save { background-color: #ff3b30; color: white; border: none; }
+    .btn-save-add { background-color: #f2f2f7; color: #000; border: 1px solid #d1d1d6; }
+    .btn-save-remove { background-color: #ff3b30; color: white; }
   </style>
 </head>
 <body>
@@ -177,13 +142,15 @@
   <script>
     let map; 
     let searchMarkers = []; 
+    let myMarkers = []; // 내 장소 마커를 관리할 배열 추가
     let myPlaces = []; 
+    let currentSearchResults = []; // 현재 검색된 장소 목록 임시 저장
     let currentPos = null; 
 
+    // 초기 샘플 데이터 (초기화용)
     const INITIAL_PLACES = [
-      { id: "p2", name: "임가화원", lat: 25.0097, lng: 121.4556, address: "중국식 정원", url: "https://www.google.com/maps/place/%EC%9E%84%EA%B0%80%ED%99%94%EC%9B%90/data=!4m2!3m1!1s0x3442a80291b1b5f9:0xb891f90afecb5572" },
-      { id: "p7", name: "국립대만박물관", lat: 25.0429, lng: 121.5150, address: "박물관", url: "https://www.google.com/maps/place/%EA%B5%AD%EB%A6%BD%EB%8C%80%EB%A7%8C%EB%B0%95%EB%AC%BC%EA%B4%80/data=!4m2!3m1!1s0x3442a97358771571:0xa5a599c4e339816" },
-      { id: "p9", name: "Simple Kaffa", lat: 25.0441, lng: 121.5429, address: "101 대신 카페", url: "https://www.google.com/maps/place/Simple+Kaffa/data=!4m2!3m1!1s0x3442ab99ee85903f:0xbc46c60f2e325363" }
+      { id: "p2", name: "임가화원", lat: 25.0097, lng: 121.4556, address: "중국식 정원", url: "https://www.google.com/maps/place/%EC%9E%84%EA%B0%80%ED%99%94%EC%9B%90/data=!4m2!3m1!1s0x3442a80291b1b5f9:0xb891f90afecb5572", typeDesc: "관광 명소", summary: "아름다운 중국식 정원입니다." },
+      { id: "p9", name: "Simple Kaffa", lat: 25.0441, lng: 121.5429, address: "101 대신 카페", url: "https://www.google.com/maps/place/Simple+Kaffa/data=!4m2!3m1!1s0x3442ab99ee85903f:0xbc46c60f2e325363", typeDesc: "커피숍", summary: "유명한 바리스타가 운영하는 카페입니다." }
     ];
 
     function initData() {
@@ -193,6 +160,17 @@
         saved = JSON.stringify(INITIAL_PLACES);
       }
       myPlaces = JSON.parse(saved);
+    }
+
+    // 마커 일괄 삭제 헬퍼 함수
+    function clearMarkers(markerArray) {
+      markerArray.forEach(marker => marker.setMap(null));
+      markerArray.length = 0;
+    }
+
+    function getSafeText(field) {
+      if (!field) return '';
+      return typeof field === 'string' ? field : (field.text || field.displayName || '');
     }
 
     function renderPlaces(places, isSearchMode = false) {
@@ -209,10 +187,9 @@
         card.className = 'place-card';
         card.id = `place-card-${index}`;
         
-        let badgeHtml = isSearchMode ? `<span class="badge">${index + 1}</span>` : '❤️';
-        let distanceHtml = isSearchMode ? `<div id="dist-${index}" class="place-distance">🚶 거리 계산 중...</div>` : '';
+        let badgeHtml = isSearchMode ? `<span class="badge" style="background-color:#007AFF;">${index + 1}</span>` : `<span class="badge">❤️</span>`;
+        let distanceHtml = `<div id="dist-${index}" class="place-distance">🚶 거리 계산 중...</div>`;
         
-        // [버그 수정] 개요 및 업종 데이터 표시 로직 개선
         let descHtml = '';
         if (place.summary && place.typeDesc) {
           descHtml = `<div class="place-desc">💡 <strong>[${place.typeDesc}]</strong> ${place.summary}</div>`;
@@ -224,7 +201,22 @@
 
         let ratingHtml = place.rating ? `<div class="place-rating">★ ${place.rating} (${place.user_ratings_total || 0})</div>` : '';
         let addressHtml = place.address ? `<div class="place-address">${place.address}</div>` : '';
-        let saveBtnHtml = isSearchMode ? `<button class="btn-save" onclick="alert('저장 기능은 다음 단계에서 구현됩니다.')">저장</button>` : '';
+        
+        // [저장/삭제 버튼 로직]
+        let saveBtnHtml = '';
+        const isAlreadySaved = myPlaces.some(p => p.id === place.id);
+        
+        if (isSearchMode) {
+          if (isAlreadySaved) {
+            saveBtnHtml = `<button class="btn-save btn-save-remove" onclick="toggleSave('${place.id}')">❤️ 취소</button>`;
+          } else {
+            saveBtnHtml = `<button class="btn-save btn-save-add" onclick="toggleSave('${place.id}')">🤍 저장</button>`;
+          }
+        } else {
+          // 내 장소 모드
+          saveBtnHtml = `<button class="btn-save btn-save-remove" onclick="deleteMyPlace('${place.id}')">🗑️ 삭제</button>`;
+        }
+
         let mapUrl = place.url || `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
 
         card.innerHTML = `
@@ -240,6 +232,39 @@
         `;
         container.appendChild(card);
       });
+      
+      calculateDistances(places);
+    }
+
+    // [신규] 장소 저장 및 취소 토글 함수
+    function toggleSave(placeId) {
+      const existingIndex = myPlaces.findIndex(p => p.id === placeId);
+      
+      if (existingIndex > -1) {
+        // 이미 저장된 장소라면 삭제
+        myPlaces.splice(existingIndex, 1);
+      } else {
+        // 저장되지 않은 장소라면 추가
+        const placeToSave = currentSearchResults.find(p => p.id === placeId);
+        if(placeToSave) {
+          myPlaces.push(placeToSave);
+        }
+      }
+      
+      // 로컬 스토리지에 즉시 업데이트
+      localStorage.setItem('taipeiPlaces', JSON.stringify(myPlaces));
+      
+      // 현재 검색된 화면을 리렌더링하여 버튼 상태(🤍 <-> ❤️) 갱신
+      renderPlaces(currentSearchResults, true);
+    }
+
+    // [신규] 내 장소 리스트에서 영구 삭제하는 함수
+    function deleteMyPlace(placeId) {
+      if (confirm('이 장소를 내 여행 리스트에서 삭제하시겠습니까?')) {
+        myPlaces = myPlaces.filter(p => p.id !== placeId);
+        localStorage.setItem('taipeiPlaces', JSON.stringify(myPlaces));
+        showSavedPlaces(); // 삭제 후 내 장소 화면 새로고침
+      }
     }
 
     function initLocation() {
@@ -256,7 +281,7 @@
     }
 
     function calculateDistances(places) {
-      if (!currentPos) return; 
+      if (!currentPos || places.length === 0) return; 
 
       const service = new google.maps.DistanceMatrixService();
       const destinations = places.map(p => ({ lat: p.lat, lng: p.lng }));
@@ -284,27 +309,18 @@
       });
     }
 
-    // 객체나 문자열로 반환되는 데이터를 안전하게 뽑아내는 유틸리티 함수
-    function getSafeText(field) {
-      if (!field) return '';
-      return typeof field === 'string' ? field : (field.text || field.displayName || '');
-    }
-
     async function searchNearby(type, keywordStr) {
       document.getElementById('listTitle').innerText = `'${keywordStr}' 검색 결과`;
       
-      searchMarkers.forEach(marker => marker.setMap(null));
-      searchMarkers = [];
+      clearMarkers(searchMarkers);
+      clearMarkers(myMarkers);
 
       try {
         const { Place } = await google.maps.importLibrary("places");
         
         const request = {
           fields: ['id', 'displayName', 'location', 'rating', 'userRatingCount', 'formattedAddress', 'googleMapsURI', 'editorialSummary', 'primaryTypeDisplayName'],
-          locationRestriction: {
-            center: map.getCenter(),
-            radius: 2000,
-          },
+          locationRestriction: { center: map.getCenter(), radius: 2000 },
           includedPrimaryTypes: [type], 
         };
 
@@ -312,7 +328,7 @@
 
         if (places && places.length > 0) {
           let formattedResults = places.map(p => ({
-            place_id: p.id,
+            id: p.id, // [중요] 저장 로직을 위해 id로 통일
             name: getSafeText(p.displayName),
             lat: p.location.lat(),
             lng: p.location.lng(),
@@ -331,14 +347,17 @@
             return distA - distB;
           });
 
+          // 현재 검색 결과를 전역 변수에 저장
+          currentSearchResults = formattedResults;
+          
           renderPlaces(formattedResults, true);
-          calculateDistances(formattedResults);
 
           formattedResults.forEach((place, index) => {
             const marker = new google.maps.Marker({
               position: { lat: place.lat, lng: place.lng },
               map: map,
               title: place.name,
+              icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
               label: { text: String(index + 1), color: 'white', fontWeight: 'bold' }
             });
             
@@ -347,17 +366,13 @@
               if(card) {
                 card.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 card.style.border = "2px solid var(--primary-color)";
-                card.style.backgroundColor = "#e6f2ff";
-                setTimeout(() => {
-                  card.style.border = "2px solid transparent";
-                  card.style.backgroundColor = "var(--card-bg)";
-                }, 1500);
+                setTimeout(() => card.style.border = "2px solid transparent", 1500);
               }
             });
-
             searchMarkers.push(marker);
           });
         } else {
+          currentSearchResults = [];
           renderPlaces([], true);
           alert("현재 지도 화면 주변에 해당 장소가 없습니다.");
         }
@@ -367,10 +382,34 @@
       }
     }
 
+    // [신규] 내 장소 마커를 지도에 그리는 함수
+    function renderMyMarkers() {
+      clearMarkers(myMarkers);
+      myPlaces.forEach((place, index) => {
+        if (place.lat && place.lng) {
+          const marker = new google.maps.Marker({
+            position: { lat: place.lat, lng: place.lng },
+            map: map,
+            title: place.name,
+            icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' // 내 장소는 빨간 핀
+          });
+          marker.addListener('click', () => {
+            const card = document.getElementById(`place-card-${index}`);
+            if(card) {
+              card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              card.style.border = "2px solid #ff3b30";
+              setTimeout(() => card.style.border = "2px solid transparent", 1500);
+            }
+          });
+          myMarkers.push(marker);
+        }
+      });
+    }
+
     function showSavedPlaces() {
       document.getElementById('listTitle').innerText = "저장된 장소 리스트";
-      searchMarkers.forEach(marker => marker.setMap(null));
-      searchMarkers = [];
+      clearMarkers(searchMarkers);
+      renderMyMarkers();
       renderPlaces(myPlaces, false);
     }
 
@@ -387,21 +426,12 @@
         gestureHandling: 'greedy'
       });
 
-      myPlaces.forEach(place => {
-        if (place.lat && place.lng) {
-          new google.maps.Marker({
-            position: { lat: place.lat, lng: place.lng },
-            map: map,
-            title: place.name
-          });
-        }
-      });
-
       showSavedPlaces();
     }
   </script>
-  
+
   <!-- [중요] API URL에 &libraries=places 파라미터가 추가되었습니다. YOUR_API_KEY를 수정해주세요. -->
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ9HHd64lA_8VLXk3yQ8-jK1dTyx7WDLI&libraries=places&callback=initMap"></script>
 </body>
 </html>
+  
