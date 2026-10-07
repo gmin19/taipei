@@ -42,7 +42,12 @@
       background-color: var(--card-bg); border-radius: 12px; padding: 16px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: border 0.3s ease, background-color 0.3s ease; border: 2px solid transparent;
     }
-    .place-name { font-size: 1.15rem; font-weight: bold; margin-bottom: 8px; display: flex; align-items: flex-start; line-height: 1.3; }
+    
+    /* [수정] 카드 헤더 및 하트 버튼 스타일 */
+    .place-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .place-name { font-size: 1.15rem; font-weight: bold; display: flex; align-items: flex-start; line-height: 1.3; margin: 0; padding-right: 10px; }
+    .heart-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; line-height: 1; transition: transform 0.1s; }
+    .heart-btn:active { transform: scale(1.2); }
     
     .badge {
       color: white; border-radius: 50%; display: inline-block; width: 24px; height: 24px;
@@ -63,9 +68,9 @@
       display: inline-block; padding: 10px 16px; border-radius: 8px; font-size: 0.95rem; font-weight: bold; text-align: center;
       flex: 1; cursor: pointer; text-decoration: none; border: none;
     }
+    /* [수정] 버튼 컬러 정비 */
+    .btn-map { background-color: #f2f2f7; color: #000; border: 1px solid #d1d1d6; }
     .btn-route { background-color: var(--primary-color); color: white; }
-    .btn-save-add { background-color: #f2f2f7; color: #000; border: 1px solid #d1d1d6; }
-    .btn-save-remove { background-color: #ff3b30; color: white; }
 
     /* 모달(팝업창) 디자인 */
     .modal-overlay {
@@ -75,19 +80,13 @@
     .modal-content {
       background: var(--card-bg); width: 90%; max-width: 400px; border-radius: 16px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
-    .route-item {
-      display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e5e5ea;
-    }
+    .route-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e5e5ea; }
     .route-item:last-child { border-bottom: none; }
     .route-info { display: flex; flex-direction: column; gap: 4px; }
     .route-title { font-weight: bold; font-size: 1.05rem; }
     .route-meta { font-size: 0.85rem; color: var(--text-sub); }
-    .route-go-btn {
-      background-color: #34C759; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 0.9rem;
-    }
-    .btn-close {
-      width: 100%; padding: 12px; margin-top: 16px; border-radius: 8px; background-color: #e5e5ea; border: none; font-weight: bold; font-size: 1rem; cursor: pointer; color: #000;
-    }
+    .route-go-btn { background-color: #34C759; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 0.9rem; }
+    .btn-close { width: 100%; padding: 12px; margin-top: 16px; border-radius: 8px; background-color: #e5e5ea; border: none; font-weight: bold; font-size: 1rem; cursor: pointer; color: #000; }
   </style>
 </head>
 <body>
@@ -98,8 +97,6 @@
   </header>
 
   <div class="container">
-    <!-- GPS 정보 UI 박스는 삭제되었습니다. -->
-
     <div class="category-container">
       <button class="category-btn" onclick="searchNearby('tourist_attraction', '관광지')">📸 관광지</button>
       <button class="category-btn" onclick="searchNearby('cafe', '카페')">☕ 카페</button>
@@ -115,7 +112,6 @@
     <div id="placeList" class="place-list"></div>
   </div>
 
-  <!-- 길찾기 모달 -->
   <div id="routeModal" class="modal-overlay" style="display:none;">
     <div class="modal-content">
       <h3 id="routeModalTitle" style="margin-top:0; color:var(--primary-color);">길찾기</h3>
@@ -131,10 +127,11 @@
     let myPlaces = []; 
     let currentSearchResults = []; 
     let currentPos = null; 
+    let currentMode = 'saved'; // 현재 보고 있는 화면 상태 ('search' 또는 'saved')
 
     const INITIAL_PLACES = [
-      { id: "p2", name: "임가화원", lat: 25.0097, lng: 121.4556, address: "중국식 정원", typeDesc: "관광 명소", summary: "아름다운 중국식 정원입니다." },
-      { id: "p9", name: "Simple Kaffa", lat: 25.0441, lng: 121.5429, address: "101 대신 카페", typeDesc: "커피숍", summary: "유명한 바리스타가 운영하는 카페입니다." }
+      { id: "p2", name: "임가화원", lat: 25.0097, lng: 121.4556, address: "중국식 정원", typeDesc: "관광 명소", summary: "아름다운 중국식 정원입니다.", url: "https://www.google.com/maps/search/?api=1&query=25.0097,121.4556" },
+      { id: "p9", name: "Simple Kaffa", lat: 25.0441, lng: 121.5429, address: "101 대신 카페", typeDesc: "커피숍", summary: "유명한 바리스타가 운영하는 카페입니다.", url: "https://www.google.com/maps/search/?api=1&query=25.0441,121.5429" }
     ];
 
     function initData() {
@@ -171,10 +168,14 @@
         card.id = `place-card-${index}`;
         
         const isAlreadySaved = myPlaces.some(p => p.id === place.id);
+        
+        // 뱃지 색상 (내 장소 모드여도 번호 노출)
         let badgeBg = isAlreadySaved ? '#ff3b30' : '#007AFF';
-        let badgeHtml = isSearchMode 
-            ? `<span class="badge" style="background-color:${badgeBg};">${index + 1}</span>` 
-            : `<span class="badge" style="background-color:#ff3b30;">❤️</span>`;
+        let badgeHtml = `<span class="badge" style="background-color:${badgeBg};">${index + 1}</span>`;
+        
+        // [수정] 우측 상단 하트 아이콘
+        let heartIcon = isAlreadySaved ? '❤️' : '🤍';
+        let heartBtnHtml = `<button class="heart-btn" onclick="toggleSave('${place.id}')">${heartIcon}</button>`;
             
         let distText = place.distanceText || '🚶 거리 계산 중...';
         let distColor = distText.includes('경로 없음') ? 'color: var(--text-sub);' : '';
@@ -192,24 +193,21 @@
         let ratingHtml = place.rating ? `<div class="place-rating">★ ${place.rating} (${place.user_ratings_total || 0})</div>` : '';
         let addressHtml = place.address ? `<div class="place-address">${place.address}</div>` : '';
         
-        let saveBtnHtml = '';
-        if (isSearchMode) {
-          saveBtnHtml = isAlreadySaved 
-            ? `<button class="btn-action btn-save-remove" onclick="toggleSave('${place.id}')">❤️ 취소</button>` 
-            : `<button class="btn-action btn-save-add" onclick="toggleSave('${place.id}')">🤍 저장</button>`;
-        } else {
-          saveBtnHtml = `<button class="btn-action btn-save-remove" onclick="deleteMyPlace('${place.id}')">🗑️ 삭제</button>`;
-        }
+        let mapUrl = place.url || `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
 
+        // [수정] 카드 레이아웃 적용
         card.innerHTML = `
-          <div class="place-name">${badgeHtml} <span>${place.name}</span></div>
+          <div class="place-header">
+            <div class="place-name">${badgeHtml} <span>${place.name}</span></div>
+            ${heartBtnHtml}
+          </div>
           ${descHtml}
           ${distanceHtml}
           ${ratingHtml}
           ${addressHtml}
           <div class="btn-group">
+            <a href="${mapUrl}" class="btn-action btn-map" target="_blank" rel="noopener noreferrer">📍 구글 지도</a>
             <button class="btn-action btn-route" onclick="openRouteModal('${place.id}')">🗺️ 길찾기</button>
-            ${saveBtnHtml}
           </div>
         `;
         container.appendChild(card);
@@ -218,35 +216,38 @@
       calculateDistances(places);
     }
 
+    // [수정] 하트 토글 로직
     function toggleSave(placeId) {
       const existingIndex = myPlaces.findIndex(p => p.id === placeId);
+      
       if (existingIndex > -1) {
+        // 이미 있으면 삭제
         myPlaces.splice(existingIndex, 1);
       } else {
+        // 없으면 추가 (현재 검색 결과 목록에서 찾아서)
         const placeToSave = currentSearchResults.find(p => p.id === placeId);
         if(placeToSave) myPlaces.push(placeToSave);
       }
-      localStorage.setItem('taipeiPlaces', JSON.stringify(myPlaces));
-      renderPlaces(currentSearchResults, true);
       
-      currentSearchResults.forEach((place, idx) => {
-        const isSaved = myPlaces.some(p => p.id === place.id);
-        const iconUrl = isSaved 
-            ? 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' 
-            : 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png';
-        if(searchMarkers[idx]) searchMarkers[idx].setIcon(iconUrl);
-      });
-    }
-
-    function deleteMyPlace(placeId) {
-      if (confirm('이 장소를 내 여행 리스트에서 삭제하시겠습니까?')) {
-        myPlaces = myPlaces.filter(p => p.id !== placeId);
-        localStorage.setItem('taipeiPlaces', JSON.stringify(myPlaces));
-        showSavedPlaces(); 
+      localStorage.setItem('taipeiPlaces', JSON.stringify(myPlaces));
+      
+      // 현재 보고 있는 화면 상태에 따라 리렌더링 분기
+      if (currentMode === 'search') {
+        renderPlaces(currentSearchResults, true);
+        // 지도 마커 색상 실시간 반영
+        currentSearchResults.forEach((place, idx) => {
+          const isSaved = myPlaces.some(p => p.id === place.id);
+          const iconUrl = isSaved 
+              ? 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' 
+              : 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png';
+          if(searchMarkers[idx]) searchMarkers[idx].setIcon(iconUrl);
+        });
+      } else {
+        // 내 장소 모드일 때 하트를 누르면 즉시 목록에서 지워지고 새로고침됨
+        showSavedPlaces();
       }
     }
 
-    // UI 박스는 삭제되었지만, 백그라운드에서 GPS 추적은 계속 진행합니다.
     function initLocation() {
       if (!navigator.geolocation) return;
       navigator.geolocation.getCurrentPosition(
@@ -283,7 +284,6 @@
       });
     }
 
-    // [신규] 특정 수단으로 거리/시간 계산하는 프로미스 함수
     function getDistanceMatrixPromise(origin, destination, mode) {
       return new Promise((resolve) => {
         new google.maps.DistanceMatrixService().getDistanceMatrix({
@@ -296,7 +296,6 @@
       });
     }
 
-    // [신규] 길찾기 모달 열기 (비교 및 외부앱 연결)
     async function openRouteModal(placeId) {
       if (!currentPos) {
         alert("GPS 위치 정보를 가져올 수 없습니다. 권한을 확인해주세요.");
@@ -310,7 +309,6 @@
       document.getElementById('routeModal').style.display = 'flex';
       document.getElementById('routeResults').innerHTML = '<div style="text-align:center; padding:30px;">최적의 경로를 계산 중입니다... ⏳</div>';
 
-      // 대중교통, 자동차(택시), 도보 3가지 수단 병렬 요청
       const [transit, driving, walking] = await Promise.all([
         getDistanceMatrixPromise(currentPos, {lat: place.lat, lng: place.lng}, 'TRANSIT'),
         getDistanceMatrixPromise(currentPos, {lat: place.lat, lng: place.lng}, 'DRIVING'),
@@ -318,22 +316,14 @@
       ]);
 
       const createRouteRow = (icon, title, data, travelMode) => {
-        // 구글 맵스 네비게이션 앱/웹으로 넘어가는 딥링크
         const deepLinkUrl = `https://www.google.com/maps/dir/?api=1&origin=${currentPos.lat},${currentPos.lng}&destination=${place.lat},${place.lng}&travelmode=${travelMode}`;
-        
         if (!data) {
           return `<div class="route-item">
-                    <div class="route-info">
-                      <span class="route-title">${icon} ${title}</span>
-                      <span class="route-meta">현재 경로를 제공하지 않습니다.</span>
-                    </div>
+                    <div class="route-info"><span class="route-title">${icon} ${title}</span><span class="route-meta">현재 경로를 제공하지 않습니다.</span></div>
                   </div>`;
         }
         return `<div class="route-item">
-                  <div class="route-info">
-                    <span class="route-title">${icon} ${title} : ${data.duration.text}</span>
-                    <span class="route-meta">총 거리: ${data.distance.text}</span>
-                  </div>
+                  <div class="route-info"><span class="route-title">${icon} ${title} : ${data.duration.text}</span><span class="route-meta">총 거리: ${data.distance.text}</span></div>
                   <a href="${deepLinkUrl}" target="_blank" class="route-go-btn">안내시작</a>
                 </div>`;
       };
@@ -345,11 +335,10 @@
       `;
     }
 
-    function closeRouteModal() {
-      document.getElementById('routeModal').style.display = 'none';
-    }
+    function closeRouteModal() { document.getElementById('routeModal').style.display = 'none'; }
 
     async function searchNearby(type, keywordStr) {
+      currentMode = 'search'; // 모드 전환
       document.getElementById('listTitle').innerText = `'${keywordStr}' 검색 결과`;
       clearMarkers(searchMarkers);
       clearMarkers(myMarkers);
@@ -415,7 +404,7 @@
       myPlaces.forEach((place, index) => {
         if (place.lat && place.lng) {
           const marker = new google.maps.Marker({
-            position: { lat: place.lat, lng: place.lng }, map: map, title: place.name, icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' 
+            position: { lat: place.lat, lng: place.lng }, map: map, title: place.name, icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png', label: { text: String(index + 1), color: 'white', fontWeight: 'bold' }
           });
           marker.addListener('click', () => {
             const card = document.getElementById(`place-card-${index}`);
@@ -431,8 +420,11 @@
     }
 
     function showSavedPlaces() {
+      currentMode = 'saved'; // 모드 전환
       document.getElementById('listTitle').innerText = "저장된 장소 리스트";
-      clearMarkers(searchMarkers); renderMyMarkers(); renderPlaces(myPlaces, false);
+      clearMarkers(searchMarkers); 
+      renderMyMarkers(); 
+      renderPlaces(myPlaces, false);
     }
 
     function initMap() {
@@ -444,6 +436,7 @@
       showSavedPlaces();
     }
   </script>
+
 
   <!-- [중요] API URL에 &libraries=places 파라미터가 추가되었습니다. YOUR_API_KEY를 수정해주세요. -->
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ9HHd64lA_8VLXk3yQ8-jK1dTyx7WDLI&libraries=places&callback=initMap"></script>
