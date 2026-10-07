@@ -18,9 +18,7 @@
       background-color: var(--bg-color); color: var(--text-main);
     }
 
-    #map {
-      width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1;
-    }
+    #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
 
     header {
       position: absolute; top: 0; left: 0; right: 0; z-index: 10;
@@ -29,6 +27,14 @@
       font-weight: bold; font-size: 1.2rem; border-bottom: 1px solid rgba(0,0,0,0.1);
       padding-top: env(safe-area-inset-top, 16px);
     }
+    
+    /* 상단 우측 버튼 그룹 */
+    .header-btns { display: flex; gap: 12px; }
+    .header-btn {
+      background: none; border: none; font-weight: bold; font-size: 0.95rem; cursor: pointer; padding: 0;
+    }
+    .header-btn.ai { color: #8A2BE2; } /* AI 비서는 보라색 강조 */
+    .header-btn.saved { color: var(--primary-color); }
 
     .category-container {
       position: absolute; top: calc(60px + env(safe-area-inset-top, 0px)); left: 0; right: 0; z-index: 10;
@@ -47,7 +53,7 @@
       position: absolute; bottom: 0; left: 0; right: 0; height: 85vh;
       background: var(--bg-color); z-index: 20; border-radius: 24px 24px 0 0;
       box-shadow: 0 -4px 20px rgba(0,0,0,0.15); display: flex; flex-direction: column;
-      transform: translateY(100%);
+      transform: translateY(100%); /* 기본적으로 완전 숨김 상태 */
     }
     .sheet-header {
       background: #fff; border-radius: 24px 24px 0 0; padding: 12px 16px;
@@ -55,16 +61,20 @@
       cursor: grab; touch-action: none; 
     }
     .sheet-header:active { cursor: grabbing; }
-    .drag-handle {
-      width: 40px; height: 5px; background: #c7c7cc; border-radius: 3px; margin: 0 auto 12px auto;
-    }
+    .drag-handle { width: 40px; height: 5px; background: #c7c7cc; border-radius: 3px; margin: 0 auto 12px auto; }
     .section-title { font-size: 1.1rem; font-weight: bold; margin: 0; }
     
     .sheet-content {
-      /* [중요 수정] position: relative를 추가하여 스크롤 위치 계산의 기준점을 명확히 합니다 */
-      position: relative; 
-      flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch;
+      position: relative; flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch;
       padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* 플로팅 '목록 열기' 버튼 (바텀시트가 완전히 사라졌을 때 표시됨) */
+    .btn-open-list {
+      position: absolute; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%);
+      background-color: var(--card-bg); border: 1px solid #d1d1d6; border-radius: 24px; padding: 12px 24px;
+      font-size: 1rem; font-weight: bold; color: var(--text-main); box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 15; cursor: pointer; display: none; transition: opacity 0.3s;
     }
 
     .place-list { display: flex; flex-direction: column; gap: 12px; }
@@ -77,38 +87,43 @@
     .heart-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; transition: transform 0.1s; }
     .heart-btn:active { transform: scale(1.2); }
     
-    .badge {
-      color: white; border-radius: 50%; display: inline-block; width: 24px; height: 24px;
-      text-align: center; line-height: 24px; font-size: 0.85rem; margin-right: 8px; font-weight: bold; flex-shrink: 0;
-    }
-    .place-desc {
-      font-size: 0.9rem; color: #2c3e50; background-color: #f0f8ff; padding: 10px; border-radius: 8px;
-      border-left: 4px solid var(--primary-color); margin-bottom: 12px; line-height: 1.4;
-    }
+    .badge { color: white; border-radius: 50%; display: inline-block; width: 24px; height: 24px; text-align: center; line-height: 24px; font-size: 0.85rem; margin-right: 8px; font-weight: bold; flex-shrink: 0; }
+    .place-desc { font-size: 0.9rem; color: #2c3e50; background-color: #f0f8ff; padding: 10px; border-radius: 8px; border-left: 4px solid var(--primary-color); margin-bottom: 12px; line-height: 1.4; }
+    .place-desc strong { color: var(--primary-color); }
     .place-distance { font-size: 0.95rem; font-weight: bold; color: var(--primary-color); margin-bottom: 6px; }
     .place-rating { font-size: 0.9rem; color: #ff9500; margin-bottom: 4px; }
     .place-address { font-size: 0.85rem; color: var(--text-sub); margin-bottom: 12px; }
     
     .btn-group { display: flex; gap: 8px; }
-    .btn-action {
-      display: inline-block; padding: 10px 16px; border-radius: 8px; font-size: 0.95rem; font-weight: bold; text-align: center;
-      flex: 1; cursor: pointer; text-decoration: none; border: none;
-    }
+    .btn-action { display: inline-block; padding: 10px 16px; border-radius: 8px; font-size: 0.95rem; font-weight: bold; text-align: center; flex: 1; cursor: pointer; text-decoration: none; border: none; }
     .btn-map { background-color: #f2f2f7; color: #000; border: 1px solid #d1d1d6; }
     .btn-route { background-color: var(--primary-color); color: white; }
 
+    /* 모달 UI 공통 */
     .modal-overlay {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;
     }
     .modal-content { background: var(--card-bg); width: 90%; max-width: 400px; border-radius: 16px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .btn-close { width: 100%; padding: 12px; margin-top: 16px; border-radius: 8px; background-color: #e5e5ea; border: none; font-weight: bold; font-size: 1rem; cursor: pointer; color: #000; }
+
+    /* 길찾기 항목 */
     .route-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e5e5ea; }
     .route-item:last-child { border-bottom: none; }
     .route-info { display: flex; flex-direction: column; gap: 4px; }
     .route-title { font-weight: bold; font-size: 1.05rem; }
     .route-meta { font-size: 0.85rem; color: var(--text-sub); }
     .route-go-btn { background-color: #34C759; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 0.9rem; }
-    .btn-close { width: 100%; padding: 12px; margin-top: 16px; border-radius: 8px; background-color: #e5e5ea; border: none; font-weight: bold; font-size: 1rem; cursor: pointer; color: #000; }
+
+    /* AI 채팅창 UI */
+    .ai-chat-box { background-color: #f0f0f5; height: 250px; border-radius: 12px; padding: 12px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .chat-bubble { padding: 10px 14px; border-radius: 16px; max-width: 80%; font-size: 0.9rem; line-height: 1.4; }
+    .chat-ai { background-color: #ffffff; align-self: flex-start; border: 1px solid #e5e5ea; }
+    .chat-user { background-color: #8A2BE2; color: white; align-self: flex-end; }
+    .ai-input-group { display: flex; gap: 8px; }
+    .ai-input { flex: 1; padding: 10px 14px; border-radius: 20px; border: 1px solid #d1d1d6; font-size: 0.95rem; outline: none; }
+    .ai-send-btn { background-color: #8A2BE2; color: white; border: none; border-radius: 20px; padding: 0 16px; font-weight: bold; cursor: pointer; }
+
   </style>
 </head>
 <body>
@@ -117,7 +132,10 @@
 
   <header>
     <span>Taipei Easy Trip</span>
-    <button onclick="showSavedPlaces()" style="background:none; border:none; color:var(--primary-color); font-weight:bold; font-size:1rem; cursor:pointer;">내 장소</button>
+    <div class="header-btns">
+      <button onclick="openAIModal()" class="header-btn ai">🤖 AI 비서</button>
+      <button onclick="showSavedPlaces()" class="header-btn saved">❤️ 내 장소</button>
+    </div>
   </header>
 
   <div class="category-container">
@@ -126,6 +144,8 @@
     <button class="category-btn" onclick="searchNearby('restaurant', '맛집')">🍜 맛집</button>
     <button class="category-btn" onclick="searchNearby('shopping_mall', '쇼핑')">🛍 쇼핑</button>
   </div>
+
+  <button id="btnOpenList" class="btn-open-list" onclick="setSheetState('half')">📄 목록 열기</button>
 
   <div id="bottomSheet" class="bottom-sheet">
     <div class="sheet-header" id="sheetHeader">
@@ -137,6 +157,7 @@
     </div>
   </div>
 
+  <!-- 길찾기 모달 -->
   <div id="routeModal" class="modal-overlay" style="display:none;">
     <div class="modal-content">
       <h3 id="routeModalTitle" style="margin-top:0; color:var(--primary-color);">길찾기</h3>
@@ -145,23 +166,41 @@
     </div>
   </div>
 
+  <!-- AI 비서 모달 -->
+  <div id="aiModal" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+      <h3 style="margin-top:0; color:#8A2BE2;">🤖 AI 여행 비서</h3>
+      <div class="ai-chat-box" id="aiChatBox">
+        <div class="chat-bubble chat-ai">안녕하세요! 타이베이 여행 중 궁금한 점이 있으신가요? "지금 위치에서 가기 좋은 야시장 추천해줘" 처럼 물어보세요.</div>
+      </div>
+      <div class="ai-input-group">
+        <input type="text" id="aiInput" class="ai-input" placeholder="메시지를 입력하세요..." onkeypress="if(event.key === 'Enter') sendAIMessage()">
+        <button class="ai-send-btn" onclick="sendAIMessage()">전송</button>
+      </div>
+      <button onclick="closeAIModal()" class="btn-close">닫기</button>
+    </div>
+  </div>
+
   <script>
     let map; 
     let searchMarkers = []; 
     let myMarkers = []; 
+    let userMarker = null; // 내 위치 마커 전용 변수
     let myPlaces = []; 
     let currentSearchResults = []; 
     let currentPos = null; 
     let currentMode = 'saved'; 
 
+    // --- 바텀 시트 로직 (숨김 기능 추가) ---
     const sheet = document.getElementById('bottomSheet');
     const sheetHeader = document.getElementById('sheetHeader');
+    const btnOpenList = document.getElementById('btnOpenList');
     
     let windowH = window.innerHeight;
     let sheetH = windowH * 0.85; 
     let POS_FULL = 0; 
     let POS_HALF = sheetH * 0.55; 
-    let POS_COLLAPSED = sheetH - 65; 
+    let POS_HIDDEN = sheetH + 50; // 화면 밖으로 완전히 사라짐
     
     let currentSheetY = POS_HALF;
     let startY = 0;
@@ -172,8 +211,16 @@
       sheet.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
       if (state === 'full') currentSheetY = POS_FULL;
       else if (state === 'half') currentSheetY = POS_HALF;
-      else if (state === 'collapsed') currentSheetY = POS_COLLAPSED;
+      else if (state === 'hidden') currentSheetY = POS_HIDDEN;
+      
       sheet.style.transform = `translateY(${currentSheetY}px)`;
+      
+      // 완전히 숨겨졌을 때 '목록 열기' 버튼 표시
+      if (state === 'hidden') {
+        btnOpenList.style.display = 'block';
+      } else {
+        btnOpenList.style.display = 'none';
+      }
     }
 
     function onDragStart(e) {
@@ -190,7 +237,6 @@
       let deltaY = y - startY;
       let newY = startTranslateY + deltaY;
       if (newY < POS_FULL) newY = POS_FULL;
-      if (newY > POS_COLLAPSED) newY = POS_COLLAPSED;
       currentSheetY = newY;
       sheet.style.transform = `translateY(${currentSheetY}px)`;
     }
@@ -198,13 +244,15 @@
     function onDragEnd() {
       if (!isDragging) return;
       isDragging = false;
+      
       const distFull = Math.abs(currentSheetY - POS_FULL);
       const distHalf = Math.abs(currentSheetY - POS_HALF);
-      const distCollapsed = Math.abs(currentSheetY - POS_COLLAPSED);
-      const min = Math.min(distFull, distHalf, distCollapsed);
+      const distHidden = Math.abs(currentSheetY - POS_HIDDEN);
+      
+      const min = Math.min(distFull, distHalf, distHidden);
       if (min === distFull) setSheetState('full');
       else if (min === distHalf) setSheetState('half');
-      else setSheetState('collapsed');
+      else setSheetState('hidden'); // 끝까지 내리면 완전 숨김
     }
 
     sheetHeader.addEventListener('touchstart', onDragStart, {passive: false});
@@ -215,11 +263,9 @@
     window.addEventListener('mouseup', onDragEnd);
 
     window.addEventListener('resize', () => {
-      windowH = window.innerHeight;
-      sheetH = windowH * 0.85;
-      POS_HALF = sheetH * 0.55;
-      POS_COLLAPSED = sheetH - 65;
-      setSheetState('half');
+      windowH = window.innerHeight; sheetH = windowH * 0.85;
+      POS_HALF = sheetH * 0.55; POS_HIDDEN = sheetH + 50;
+      if(currentSheetY !== POS_HIDDEN) setSheetState('half');
     });
 
     const INITIAL_PLACES = [
@@ -229,10 +275,7 @@
 
     function initData() {
       let saved = localStorage.getItem('taipeiPlaces');
-      if(!saved) {
-        localStorage.setItem('taipeiPlaces', JSON.stringify(INITIAL_PLACES));
-        saved = JSON.stringify(INITIAL_PLACES);
-      }
+      if(!saved) { localStorage.setItem('taipeiPlaces', JSON.stringify(INITIAL_PLACES)); saved = JSON.stringify(INITIAL_PLACES); }
       myPlaces = JSON.parse(saved);
     }
 
@@ -246,45 +289,30 @@
     function renderPlaces(places, isSearchMode = false) {
       const container = document.getElementById('placeList');
       container.innerHTML = '';
-      
       if(places.length === 0) {
-        container.innerHTML = '<div style="text-align:center; padding:30px; color:#8e8e93;">결과가 없습니다.</div>';
-        return;
+        container.innerHTML = '<div style="text-align:center; padding:30px; color:#8e8e93;">결과가 없습니다.</div>'; return;
       }
-
       places.forEach((place, index) => {
-        const card = document.createElement('div');
-        card.className = 'place-card';
-        card.id = `place-card-${index}`;
-        
+        const card = document.createElement('div'); card.className = 'place-card'; card.id = `place-card-${index}`;
         const isAlreadySaved = myPlaces.some(p => p.id === place.id);
         let badgeBg = isAlreadySaved ? '#ff3b30' : '#007AFF';
         let badgeHtml = `<span class="badge" style="background-color:${badgeBg};">${index + 1}</span>`;
         let heartIcon = isAlreadySaved ? '❤️' : '🤍';
         let heartBtnHtml = `<button class="heart-btn" onclick="toggleSave('${place.id}')">${heartIcon}</button>`;
-            
         let distText = place.distanceText || '🚶 거리 계산 중...';
         let distColor = distText.includes('경로 없음') ? 'color: var(--text-sub);' : '';
         let distanceHtml = `<div id="dist-${index}" class="place-distance" style="${distColor}">${distText}</div>`;
-        
         let descHtml = '';
         if (place.summary && place.typeDesc) descHtml = `<div class="place-desc">💡 <strong>[${place.typeDesc}]</strong> ${place.summary}</div>`;
         else if (place.summary) descHtml = `<div class="place-desc">💡 ${place.summary}</div>`;
         else if (place.typeDesc) descHtml = `<div class="place-desc">🏷️ <strong>[${place.typeDesc}]</strong> (상세 설명이 없는 현지 장소입니다)</div>`;
-
         let ratingHtml = place.rating ? `<div class="place-rating">★ ${place.rating} (${place.user_ratings_total || 0})</div>` : '';
         let addressHtml = place.address ? `<div class="place-address">${place.address}</div>` : '';
         let mapUrl = place.url || `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
 
         card.innerHTML = `
-          <div class="place-header">
-            <div class="place-name">${badgeHtml} <span>${place.name}</span></div>
-            ${heartBtnHtml}
-          </div>
-          ${descHtml}
-          ${distanceHtml}
-          ${ratingHtml}
-          ${addressHtml}
+          <div class="place-header"><div class="place-name">${badgeHtml} <span>${place.name}</span></div>${heartBtnHtml}</div>
+          ${descHtml}${distanceHtml}${ratingHtml}${addressHtml}
           <div class="btn-group">
             <a href="${mapUrl}" class="btn-action btn-map" target="_blank" rel="noopener noreferrer">📍 구글 지도</a>
             <button class="btn-action btn-route" onclick="openRouteModal('${place.id}')">🗺️ 길찾기</button>
@@ -310,25 +338,46 @@
           const isSaved = myPlaces.some(p => p.id === place.id);
           if(searchMarkers[idx]) searchMarkers[idx].setIcon(isSaved ? 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' : 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png');
         });
-      } else {
-        showSavedPlaces();
-      }
+      } else showSavedPlaces();
     }
 
+    // [신규] 내 위치 마커 표시 및 실시간 추적 로직
     function initLocation() {
       if (!navigator.geolocation) return;
-      navigator.geolocation.getCurrentPosition(
-        (position) => { currentPos = { lat: position.coords.latitude, lng: position.coords.longitude }; },
-        (error) => { console.warn("GPS Error"); }
+      navigator.geolocation.watchPosition(
+        (position) => { 
+          currentPos = { lat: position.coords.latitude, lng: position.coords.longitude }; 
+          
+          if (!userMarker && map) {
+            // 처음 위치를 잡았을 때 파란색 원형 마커 생성
+            userMarker = new google.maps.Marker({
+              position: currentPos,
+              map: map,
+              title: "현재 내 위치",
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 8,
+                fillColor: '#007AFF',
+                fillOpacity: 1,
+                strokeColor: '#ffffff',
+                strokeWeight: 2,
+              },
+              zIndex: 999 // 다른 마커들보다 항상 위에 표시
+            });
+          } else if (userMarker) {
+            // 이동 시 마커 위치만 업데이트
+            userMarker.setPosition(currentPos);
+          }
+        },
+        (error) => { console.warn("GPS Error"); },
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
       );
     }
 
     function calculateDistances(places) {
       if (!currentPos || places.length === 0) return; 
       if (places.every(p => p.distanceText)) return;
-      const service = new google.maps.DistanceMatrixService();
-      const destinations = places.map(p => ({ lat: p.lat, lng: p.lng }));
-      service.getDistanceMatrix({ origins: [currentPos], destinations: destinations, travelMode: 'WALKING' }, (response, status) => {
+      new google.maps.DistanceMatrixService().getDistanceMatrix({ origins: [currentPos], destinations: places.map(p => ({ lat: p.lat, lng: p.lng })), travelMode: 'WALKING' }, (response, status) => {
         if (status === 'OK') {
           response.rows[0].elements.forEach((element, i) => {
             places[i].distanceText = (element.status === 'OK') ? `🚶 도보: ${element.distance.text} (약 ${element.duration.text})` : `🚶 도보: 경로 없음`;
@@ -342,6 +391,27 @@
       });
     }
 
+    // [AI 비서 모달 로직]
+    function openAIModal() { document.getElementById('aiModal').style.display = 'flex'; }
+    function closeAIModal() { document.getElementById('aiModal').style.display = 'none'; }
+    function sendAIMessage() {
+      const input = document.getElementById('aiInput');
+      const text = input.value.trim();
+      if (!text) return;
+      
+      const chatBox = document.getElementById('aiChatBox');
+      chatBox.innerHTML += `<div class="chat-bubble chat-user">${text}</div>`;
+      input.value = '';
+      chatBox.scrollTop = chatBox.scrollHeight;
+      
+      // 모의 응답 (실제 서버 API 연동 전)
+      setTimeout(() => {
+        chatBox.innerHTML += `<div class="chat-bubble chat-ai">현재는 프로토타입 버전이라 답변을 드릴 수 없습니다. 다음 단계에서 백엔드 서버를 구성하여 Gemini AI와 연동하면 여행 정보를 분석해 드릴 수 있습니다!</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }, 1000);
+    }
+
+    // 기존 길찾기 및 검색 로직 (동일)
     function getDistanceMatrixPromise(origin, destination, mode) {
       return new Promise((resolve) => {
         new google.maps.DistanceMatrixService().getDistanceMatrix({ origins: [origin], destinations: [destination], travelMode: mode }, (res, status) => {
@@ -355,17 +425,14 @@
       if (!currentPos) return alert("GPS 위치 정보를 가져올 수 없습니다.");
       const place = currentSearchResults.find(p => p.id === placeId) || myPlaces.find(p => p.id === placeId);
       if (!place) return;
-
       document.getElementById('routeModalTitle').innerText = `'${place.name}' 가는 길`;
       document.getElementById('routeModal').style.display = 'flex';
       document.getElementById('routeResults').innerHTML = '<div style="text-align:center; padding:30px;">최적의 경로를 계산 중입니다... ⏳</div>';
-
       const [transit, driving, walking] = await Promise.all([
         getDistanceMatrixPromise(currentPos, {lat: place.lat, lng: place.lng}, 'TRANSIT'),
         getDistanceMatrixPromise(currentPos, {lat: place.lat, lng: place.lng}, 'DRIVING'),
         getDistanceMatrixPromise(currentPos, {lat: place.lat, lng: place.lng}, 'WALKING')
       ]);
-
       const createRouteRow = (icon, title, data, mode) => {
         const url = `https://www.google.com/maps/dir/?api=1&origin=${currentPos.lat},${currentPos.lng}&destination=${place.lat},${place.lng}&travelmode=${mode}`;
         if (!data) return `<div class="route-item"><div class="route-info"><span class="route-title">${icon} ${title}</span><span class="route-meta">경로 제공 안함</span></div></div>`;
@@ -373,19 +440,14 @@
       };
       document.getElementById('routeResults').innerHTML = `${createRouteRow('🚇', '대중교통', transit, 'transit')}${createRouteRow('🚕', '택시/자동차', driving, 'driving')}${createRouteRow('🚶', '도보', walking, 'walking')}`;
     }
-
     function closeRouteModal() { document.getElementById('routeModal').style.display = 'none'; }
 
-    // [정밀 수정] 지도 마커 클릭 시 스크롤 포지션을 완벽하게 보정하는 이벤트 핸들러
     function handleMarkerClick(index) {
       setSheetState('half'); 
       const card = document.getElementById(`place-card-${index}`);
       const sheetContent = document.getElementById('sheetContent');
-      
       if(card && sheetContent) {
-        // 카드의 상단 위치에서 여백(16px)만큼 빼서 상단 제목란에 가려지지 않게 함
         sheetContent.scrollTo({ top: card.offsetTop - 16, behavior: 'smooth' });
-        
         card.style.border = "2px solid var(--primary-color)";
         setTimeout(() => card.style.border = "2px solid transparent", 1500);
       }
@@ -412,7 +474,6 @@
             address: getSafeText(p.formattedAddress), rating: p.rating, user_ratings_total: p.userRatingCount,
             url: p.googleMapsURI, typeDesc: getSafeText(p.primaryTypeDisplayName), summary: getSafeText(p.editorialSummary)
           }));
-
           const centerPos = map.getCenter();
           formattedResults.sort((a, b) => {
             const isASaved = myPlaces.some(p => p.id === a.id);
@@ -421,10 +482,7 @@
             if (!isASaved && isBSaved) return 1;
             return google.maps.geometry.spherical.computeDistanceBetween(centerPos, {lat: a.lat, lng: a.lng}) - google.maps.geometry.spherical.computeDistanceBetween(centerPos, {lat: b.lat, lng: b.lng});
           });
-
-          currentSearchResults = formattedResults;
-          renderPlaces(formattedResults, true);
-
+          currentSearchResults = formattedResults; renderPlaces(formattedResults, true);
           formattedResults.forEach((place, index) => {
             const isSaved = myPlaces.some(p => p.id === place.id);
             const marker = new google.maps.Marker({
@@ -432,7 +490,6 @@
               icon: isSaved ? 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' : 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
               label: { text: String(index + 1), color: 'white', fontWeight: 'bold' }
             });
-            
             marker.addListener('click', () => handleMarkerClick(index));
             searchMarkers.push(marker);
           });
@@ -458,9 +515,7 @@
     function showSavedPlaces() {
       currentMode = 'saved'; 
       document.getElementById('listTitle').innerText = "저장된 장소 리스트";
-      clearMarkers(searchMarkers); 
-      renderMyMarkers(); 
-      renderPlaces(myPlaces, false);
+      clearMarkers(searchMarkers); renderMyMarkers(); renderPlaces(myPlaces, false);
       setSheetState('half');
     }
 
@@ -470,7 +525,6 @@
       map = new google.maps.Map(document.getElementById("map"), {
         center: taipeiCenter, zoom: 14, disableDefaultUI: true, zoomControl: true, gestureHandling: 'greedy'
       });
-      map.setPadding({ bottom: window.innerHeight * 0.45 });
       showSavedPlaces();
       setTimeout(() => setSheetState('half'), 500);
     }
@@ -480,6 +534,7 @@
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ9HHd64lA_8VLXk3yQ8-jK1dTyx7WDLI&libraries=places&callback=initMap"></script>
 </body>
 </html>
+
 
 
 
