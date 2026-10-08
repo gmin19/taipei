@@ -2,123 +2,64 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- PWA 필수 메타 태그 시작 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Taipei Trip">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="manifest.json">
+  <!-- PWA 필수 메타 태그 끝 -->
+  
   <title>Taipei Easy Trip</title>
   <style>
-    :root {
-      --primary-color: #007AFF;
-      --bg-color: #f2f2f7;
-      --card-bg: #ffffff;
-      --text-main: #000000;
-      --text-sub: #8e8e93;
-    }
-    body {
-      margin: 0; padding: 0; overflow: hidden; 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: var(--bg-color); color: var(--text-main);
-    }
-
+    :root { --primary-color: #007AFF; --bg-color: #f2f2f7; --card-bg: #ffffff; --text-main: #000000; --text-sub: #8e8e93; }
+    body { margin: 0; padding: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); color: var(--text-main); }
     #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
-
-    header {
-      position: absolute; top: 0; left: 0; right: 0; z-index: 10;
-      background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px);
-      padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;
-      font-weight: bold; font-size: 1.2rem; border-bottom: 1px solid rgba(0,0,0,0.1);
-      padding-top: env(safe-area-inset-top, 12px);
-    }
-    
+    header { position: absolute; top: 0; left: 0; right: 0; z-index: 10; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 1.2rem; border-bottom: 1px solid rgba(0,0,0,0.1); padding-top: env(safe-area-inset-top, 12px); }
     .header-btns { display: flex; gap: 12px; }
     .header-btn { background: none; border: none; font-weight: bold; font-size: 0.95rem; cursor: pointer; padding: 0; }
-    .header-btn.ai { color: #8A2BE2; } 
-    .header-btn.saved { color: var(--primary-color); }
-
-    /* 상단 컨트롤 패널 (검색바 + 카테고리) */
-    .top-controls {
-      position: absolute; top: calc(52px + env(safe-area-inset-top, 0px)); left: 0; right: 0; z-index: 10;
-      display: flex; flex-direction: column; gap: 8px; padding: 12px 16px;
-    }
-    .search-bar {
-      display: flex; gap: 8px; background: white; padding: 8px 12px; border-radius: 24px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); border: 1px solid #e5e5ea;
-    }
+    .header-btn.ai { color: #8A2BE2; } .header-btn.saved { color: var(--primary-color); }
+    .top-controls { position: absolute; top: calc(52px + env(safe-area-inset-top, 0px)); left: 0; right: 0; z-index: 10; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; }
+    .search-bar { display: flex; gap: 8px; background: white; padding: 8px 12px; border-radius: 24px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); border: 1px solid #e5e5ea; }
     .search-bar input { flex: 1; border: none; outline: none; font-size: 1rem; background: transparent; padding-left: 4px; }
     .search-bar button { background: var(--primary-color); color: white; border: none; border-radius: 16px; padding: 6px 14px; font-weight: bold; cursor: pointer; }
-    
-    .category-container {
-      display: flex; gap: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px;
-    }
+    .category-container { display: flex; gap: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
     .category-container::-webkit-scrollbar { display: none; }
-    .category-btn {
-      background-color: var(--card-bg); border: 1px solid #d1d1d6; border-radius: 20px; padding: 8px 16px;
-      font-size: 0.95rem; font-weight: bold; white-space: nowrap; cursor: pointer; color: var(--text-main);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
+    .category-btn { background-color: var(--card-bg); border: 1px solid #d1d1d6; border-radius: 20px; padding: 8px 16px; font-size: 0.95rem; font-weight: bold; white-space: nowrap; cursor: pointer; color: var(--text-main); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
     .category-btn:active { background-color: #e5e5ea; }
-
-    /* 바텀 시트 */
-    .bottom-sheet {
-      position: absolute; bottom: 0; left: 0; right: 0; height: 85vh;
-      background: var(--bg-color); z-index: 20; border-radius: 24px 24px 0 0;
-      box-shadow: 0 -4px 20px rgba(0,0,0,0.15); display: flex; flex-direction: column;
-      transform: translateY(100%); 
-    }
-    .sheet-header {
-      background: #fff; border-radius: 24px 24px 0 0; padding: 12px 16px;
-      text-align: center; border-bottom: 1px solid #e5e5ea; flex-shrink: 0;
-      cursor: grab; touch-action: none; 
-    }
+    .bottom-sheet { position: absolute; bottom: 0; left: 0; right: 0; height: 85vh; background: var(--bg-color); z-index: 20; border-radius: 24px 24px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.15); display: flex; flex-direction: column; transform: translateY(100%); }
+    .sheet-header { background: #fff; border-radius: 24px 24px 0 0; padding: 12px 16px; text-align: center; border-bottom: 1px solid #e5e5ea; flex-shrink: 0; cursor: grab; touch-action: none; }
     .sheet-header:active { cursor: grabbing; }
     .drag-handle { width: 40px; height: 5px; background: #c7c7cc; border-radius: 3px; margin: 0 auto 12px auto; }
     .section-title { font-size: 1.1rem; font-weight: bold; margin: 0; }
-    
-    .sheet-content {
-      position: relative; flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch;
-      padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px));
-    }
-
-    .btn-open-list {
-      position: absolute; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%);
-      background-color: var(--card-bg); border: 1px solid #d1d1d6; border-radius: 24px; padding: 12px 24px;
-      font-size: 1rem; font-weight: bold; color: var(--text-main); box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      z-index: 15; cursor: pointer; display: none; transition: opacity 0.3s;
-    }
-
+    .sheet-content { position: relative; flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch; padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px)); }
+    .btn-open-list { position: absolute; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background-color: var(--card-bg); border: 1px solid #d1d1d6; border-radius: 24px; padding: 12px 24px; font-size: 1rem; font-weight: bold; color: var(--text-main); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 15; cursor: pointer; display: none; transition: opacity 0.3s; }
     .place-list { display: flex; flex-direction: column; gap: 12px; }
-    .place-card {
-      background-color: var(--card-bg); border-radius: 12px; padding: 16px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 2px solid transparent; transition: border 0.3s;
-    }
+    .place-card { background-color: var(--card-bg); border-radius: 12px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 2px solid transparent; transition: border 0.3s; }
     .place-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
     .place-name { font-size: 1.15rem; font-weight: bold; display: flex; align-items: flex-start; line-height: 1.3; margin: 0; padding-right: 10px; }
     .heart-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; transition: transform 0.1s; }
     .heart-btn:active { transform: scale(1.2); }
-    
     .badge { color: white; border-radius: 50%; display: inline-block; width: 24px; height: 24px; text-align: center; line-height: 24px; font-size: 0.85rem; margin-right: 8px; font-weight: bold; flex-shrink: 0; }
     .place-desc { font-size: 0.9rem; color: #2c3e50; background-color: #f0f8ff; padding: 10px; border-radius: 8px; border-left: 4px solid var(--primary-color); margin-bottom: 12px; line-height: 1.4; }
     .place-desc strong { color: var(--primary-color); }
     .place-distance { font-size: 0.95rem; font-weight: bold; color: var(--primary-color); margin-bottom: 6px; }
     .place-rating { font-size: 0.9rem; color: #ff9500; margin-bottom: 4px; }
     .place-address { font-size: 0.85rem; color: var(--text-sub); margin-bottom: 12px; }
-    
     .btn-group { display: flex; gap: 8px; }
     .btn-action { display: inline-block; padding: 10px 16px; border-radius: 8px; font-size: 0.95rem; font-weight: bold; text-align: center; flex: 1; cursor: pointer; text-decoration: none; border: none; }
     .btn-map { background-color: #f2f2f7; color: #000; border: 1px solid #d1d1d6; }
     .btn-route { background-color: var(--primary-color); color: white; }
-
-    .modal-overlay {
-      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;
-    }
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; }
     .modal-content { background: var(--card-bg); width: 90%; max-width: 400px; border-radius: 16px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     .btn-close { width: 100%; padding: 12px; margin-top: 16px; border-radius: 8px; background-color: #e5e5ea; border: none; font-weight: bold; font-size: 1rem; cursor: pointer; color: #000; }
-
     .route-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e5e5ea; }
     .route-item:last-child { border-bottom: none; }
     .route-info { display: flex; flex-direction: column; gap: 4px; }
     .route-title { font-weight: bold; font-size: 1.05rem; }
     .route-meta { font-size: 0.85rem; color: var(--text-sub); }
     .route-go-btn { background-color: #34C759; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 0.9rem; }
-
     .ai-chat-box { background-color: #f0f0f5; height: 250px; border-radius: 12px; padding: 12px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
     .chat-bubble { padding: 10px 14px; border-radius: 16px; max-width: 80%; font-size: 0.9rem; line-height: 1.4; }
     .chat-ai { background-color: #ffffff; align-self: flex-start; border: 1px solid #e5e5ea; }
@@ -126,7 +67,6 @@
     .ai-input-group { display: flex; gap: 8px; }
     .ai-input { flex: 1; padding: 10px 14px; border-radius: 20px; border: 1px solid #d1d1d6; font-size: 0.95rem; outline: none; }
     .ai-send-btn { background-color: #8A2BE2; color: white; border: none; border-radius: 20px; padding: 0 16px; font-weight: bold; cursor: pointer; }
-
   </style>
 </head>
 <body>
@@ -141,7 +81,6 @@
     </div>
   </header>
 
-  <!-- [신규] 상단 컨트롤 패널 (검색바 + 카테고리) -->
   <div class="top-controls">
     <div class="search-bar">
       <input type="text" id="keywordInput" placeholder="장소명 검색 (예: 타이베이 101, 예류)" onkeypress="if(event.key === 'Enter') executeKeywordSearch()">
@@ -190,83 +129,41 @@
   </div>
 
   <script>
-    let map; 
-    let searchMarkers = []; 
-    let myMarkers = []; 
-    let userMarker = null; 
-    let myPlaces = []; 
-    let currentSearchResults = []; 
-    let currentPos = null; 
-    let currentMode = 'saved'; 
+    let map; let searchMarkers = []; let myMarkers = []; let userMarker = null; let myPlaces = []; let currentSearchResults = []; let currentPos = null; let currentMode = 'saved'; 
 
     const sheet = document.getElementById('bottomSheet');
     const sheetHeader = document.getElementById('sheetHeader');
     const btnOpenList = document.getElementById('btnOpenList');
     
-    let windowH = window.innerHeight;
-    let sheetH = windowH * 0.85; 
-    let POS_FULL = 0; 
-    let POS_HALF = sheetH * 0.55; 
-    let POS_HIDDEN = sheetH + 50; 
-    
-    let currentSheetY = POS_HALF;
-    let startY = 0;
-    let startTranslateY = 0;
-    let isDragging = false;
+    let windowH = window.innerHeight; let sheetH = windowH * 0.85; 
+    let POS_FULL = 0; let POS_HALF = sheetH * 0.55; let POS_HIDDEN = sheetH + 50; 
+    let currentSheetY = POS_HALF; let startY = 0; let startTranslateY = 0; let isDragging = false;
 
     function setSheetState(state) {
       sheet.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
-      if (state === 'full') currentSheetY = POS_FULL;
-      else if (state === 'half') currentSheetY = POS_HALF;
-      else if (state === 'hidden') currentSheetY = POS_HIDDEN;
-      
+      if (state === 'full') currentSheetY = POS_FULL; else if (state === 'half') currentSheetY = POS_HALF; else if (state === 'hidden') currentSheetY = POS_HIDDEN;
       sheet.style.transform = `translateY(${currentSheetY}px)`;
-      if (state === 'hidden') btnOpenList.style.display = 'block';
-      else btnOpenList.style.display = 'none';
+      if (state === 'hidden') btnOpenList.style.display = 'block'; else btnOpenList.style.display = 'none';
     }
 
-    function onDragStart(e) {
-      isDragging = true;
-      startY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
-      startTranslateY = currentSheetY;
-      sheet.style.transition = 'none'; 
-    }
-
+    function onDragStart(e) { isDragging = true; startY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY; startTranslateY = currentSheetY; sheet.style.transition = 'none'; }
     function onDragMove(e) {
-      if (!isDragging) return;
-      e.preventDefault(); 
+      if (!isDragging) return; e.preventDefault(); 
       let y = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
-      let deltaY = y - startY;
-      let newY = startTranslateY + deltaY;
+      let newY = startTranslateY + (y - startY);
       if (newY < POS_FULL) newY = POS_FULL;
-      currentSheetY = newY;
-      sheet.style.transform = `translateY(${currentSheetY}px)`;
+      currentSheetY = newY; sheet.style.transform = `translateY(${currentSheetY}px)`;
     }
-
     function onDragEnd() {
-      if (!isDragging) return;
-      isDragging = false;
-      const distFull = Math.abs(currentSheetY - POS_FULL);
-      const distHalf = Math.abs(currentSheetY - POS_HALF);
-      const distHidden = Math.abs(currentSheetY - POS_HIDDEN);
-      const min = Math.min(distFull, distHalf, distHidden);
-      if (min === distFull) setSheetState('full');
-      else if (min === distHalf) setSheetState('half');
-      else setSheetState('hidden'); 
+      if (!isDragging) return; isDragging = false;
+      const min = Math.min(Math.abs(currentSheetY - POS_FULL), Math.abs(currentSheetY - POS_HALF), Math.abs(currentSheetY - POS_HIDDEN));
+      if (min === Math.abs(currentSheetY - POS_FULL)) setSheetState('full'); else if (min === Math.abs(currentSheetY - POS_HALF)) setSheetState('half'); else setSheetState('hidden'); 
     }
 
-    sheetHeader.addEventListener('touchstart', onDragStart, {passive: false});
-    sheetHeader.addEventListener('mousedown', onDragStart);
-    window.addEventListener('touchmove', onDragMove, {passive: false});
-    window.addEventListener('mousemove', onDragMove);
-    window.addEventListener('touchend', onDragEnd);
-    window.addEventListener('mouseup', onDragEnd);
-
-    window.addEventListener('resize', () => {
-      windowH = window.innerHeight; sheetH = windowH * 0.85;
-      POS_HALF = sheetH * 0.55; POS_HIDDEN = sheetH + 50;
-      if(currentSheetY !== POS_HIDDEN) setSheetState('half');
-    });
+    sheetHeader.addEventListener('touchstart', onDragStart, {passive: false}); sheetHeader.addEventListener('mousedown', onDragStart);
+    window.addEventListener('touchmove', onDragMove, {passive: false}); window.addEventListener('mousemove', onDragMove);
+    window.addEventListener('touchend', onDragEnd); window.addEventListener('mouseup', onDragEnd);
+    window.addEventListener('resize', () => { windowH = window.innerHeight; sheetH = windowH * 0.85; POS_HALF = sheetH * 0.55; POS_HIDDEN = sheetH + 50; if(currentSheetY !== POS_HIDDEN) setSheetState('half'); });
 
     const INITIAL_PLACES = [
       { id: "p2", name: "임가화원", lat: 25.0097, lng: 121.4556, address: "중국식 정원", typeDesc: "관광 명소", summary: "아름다운 중국식 정원입니다.", url: "https://www.google.com/maps/search/?api=1&query=25.0097,121.4556" },
@@ -278,27 +175,18 @@
       if(!saved) { localStorage.setItem('taipeiPlaces', JSON.stringify(INITIAL_PLACES)); saved = JSON.stringify(INITIAL_PLACES); }
       myPlaces = JSON.parse(saved);
     }
-
-    function clearMarkers(markerArray) {
-      markerArray.forEach(marker => marker.setMap(null));
-      markerArray.length = 0;
-    }
-
+    function clearMarkers(markerArray) { markerArray.forEach(marker => marker.setMap(null)); markerArray.length = 0; }
     function getSafeText(field) { return field && typeof field !== 'string' ? (field.text || field.displayName || '') : (field || ''); }
 
     function renderPlaces(places, isSearchMode = false) {
-      const container = document.getElementById('placeList');
-      container.innerHTML = '';
-      if(places.length === 0) {
-        container.innerHTML = '<div style="text-align:center; padding:30px; color:#8e8e93;">결과가 없습니다.</div>'; return;
-      }
+      const container = document.getElementById('placeList'); container.innerHTML = '';
+      if(places.length === 0) { container.innerHTML = '<div style="text-align:center; padding:30px; color:#8e8e93;">결과가 없습니다.</div>'; return; }
       places.forEach((place, index) => {
         const card = document.createElement('div'); card.className = 'place-card'; card.id = `place-card-${index}`;
         const isAlreadySaved = myPlaces.some(p => p.id === place.id);
         let badgeBg = isAlreadySaved ? '#ff3b30' : '#007AFF';
         let badgeHtml = `<span class="badge" style="background-color:${badgeBg};">${index + 1}</span>`;
-        let heartIcon = isAlreadySaved ? '❤️' : '🤍';
-        let heartBtnHtml = `<button class="heart-btn" onclick="toggleSave('${place.id}')">${heartIcon}</button>`;
+        let heartBtnHtml = `<button class="heart-btn" onclick="toggleSave('${place.id}')">${isAlreadySaved ? '❤️' : '🤍'}</button>`;
         let distText = place.distanceText || '🚶 거리 계산 중...';
         let distColor = distText.includes('경로 없음') ? 'color: var(--text-sub);' : '';
         let distanceHtml = `<div id="dist-${index}" class="place-distance" style="${distColor}">${distText}</div>`;
@@ -310,14 +198,12 @@
         let addressHtml = place.address ? `<div class="place-address">${place.address}</div>` : '';
         let mapUrl = place.url || `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
 
-        card.innerHTML = `
-          <div class="place-header"><div class="place-name">${badgeHtml} <span>${place.name}</span></div>${heartBtnHtml}</div>
+        card.innerHTML = `<div class="place-header"><div class="place-name">${badgeHtml} <span>${place.name}</span></div>${heartBtnHtml}</div>
           ${descHtml}${distanceHtml}${ratingHtml}${addressHtml}
           <div class="btn-group">
             <a href="${mapUrl}" class="btn-action btn-map" target="_blank" rel="noopener noreferrer">📍 구글 지도</a>
             <button class="btn-action btn-route" onclick="openRouteModal('${place.id}')">🗺️ 길찾기</button>
-          </div>
-        `;
+          </div>`;
         container.appendChild(card);
       });
       calculateDistances(places);
@@ -326,12 +212,8 @@
     function toggleSave(placeId) {
       const existingIndex = myPlaces.findIndex(p => p.id === placeId);
       if (existingIndex > -1) myPlaces.splice(existingIndex, 1);
-      else {
-        const placeToSave = currentSearchResults.find(p => p.id === placeId) || myPlaces.find(p=>p.id===placeId);
-        if(placeToSave) myPlaces.push(placeToSave);
-      }
+      else { const placeToSave = currentSearchResults.find(p => p.id === placeId) || myPlaces.find(p=>p.id===placeId); if(placeToSave) myPlaces.push(placeToSave); }
       localStorage.setItem('taipeiPlaces', JSON.stringify(myPlaces));
-      
       if (currentMode === 'search') {
         renderPlaces(currentSearchResults, true);
         currentSearchResults.forEach((place, idx) => {
@@ -347,32 +229,21 @@
         (position) => { 
           currentPos = { lat: position.coords.latitude, lng: position.coords.longitude }; 
           if (!userMarker && map) {
-            userMarker = new google.maps.Marker({
-              position: currentPos, map: map, title: "현재 내 위치",
-              icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#007AFF', fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2 },
-              zIndex: 999 
-            });
-          } else if (userMarker) {
-            userMarker.setPosition(currentPos);
-          }
+            userMarker = new google.maps.Marker({ position: currentPos, map: map, title: "현재 내 위치", icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#007AFF', fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2 }, zIndex: 999 });
+          } else if (userMarker) userMarker.setPosition(currentPos);
         },
-        (error) => { console.warn("GPS Error"); },
-        { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+        (error) => { console.warn("GPS Error"); }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
       );
     }
 
     function calculateDistances(places) {
-      if (!currentPos || places.length === 0) return; 
-      if (places.every(p => p.distanceText)) return;
+      if (!currentPos || places.length === 0) return; if (places.every(p => p.distanceText)) return;
       new google.maps.DistanceMatrixService().getDistanceMatrix({ origins: [currentPos], destinations: places.map(p => ({ lat: p.lat, lng: p.lng })), travelMode: 'WALKING' }, (response, status) => {
         if (status === 'OK') {
           response.rows[0].elements.forEach((element, i) => {
             places[i].distanceText = (element.status === 'OK') ? `🚶 도보: ${element.distance.text} (약 ${element.duration.text})` : `🚶 도보: 경로 없음`;
             const distElement = document.getElementById(`dist-${i}`);
-            if (distElement) {
-              distElement.innerText = places[i].distanceText;
-              if (places[i].distanceText.includes('경로 없음')) distElement.style.color = 'var(--text-sub)';
-            }
+            if (distElement) { distElement.innerText = places[i].distanceText; if (places[i].distanceText.includes('경로 없음')) distElement.style.color = 'var(--text-sub)'; }
           });
         }
       });
@@ -381,40 +252,25 @@
     function openAIModal() { document.getElementById('aiModal').style.display = 'flex'; }
     function closeAIModal() { document.getElementById('aiModal').style.display = 'none'; }
     function sendAIMessage() {
-      const input = document.getElementById('aiInput');
-      const text = input.value.trim();
-      if (!text) return;
-      const chatBox = document.getElementById('aiChatBox');
-      chatBox.innerHTML += `<div class="chat-bubble chat-user">${text}</div>`;
-      input.value = '';
-      chatBox.scrollTop = chatBox.scrollHeight;
-      setTimeout(() => {
-        chatBox.innerHTML += `<div class="chat-bubble chat-ai">현재는 프로토타입 버전이라 답변을 드릴 수 없습니다. 다음 단계에서 백엔드 서버를 구성하여 Gemini AI와 연동하면 여행 정보를 분석해 드릴 수 있습니다!</div>`;
-        chatBox.scrollTop = chatBox.scrollHeight;
-      }, 1000);
+      const input = document.getElementById('aiInput'); const text = input.value.trim(); if (!text) return;
+      const chatBox = document.getElementById('aiChatBox'); chatBox.innerHTML += `<div class="chat-bubble chat-user">${text}</div>`; input.value = ''; chatBox.scrollTop = chatBox.scrollHeight;
+      setTimeout(() => { chatBox.innerHTML += `<div class="chat-bubble chat-ai">현재는 프로토타입 버전이라 답변을 드릴 수 없습니다. 다음 단계에서 백엔드 서버를 구성하여 Gemini AI와 연동하면 여행 정보를 분석해 드릴 수 있습니다!</div>`; chatBox.scrollTop = chatBox.scrollHeight; }, 1000);
     }
 
     function getDistanceMatrixPromise(origin, destination, mode) {
       return new Promise((resolve) => {
         new google.maps.DistanceMatrixService().getDistanceMatrix({ origins: [origin], destinations: [destination], travelMode: mode }, (res, status) => {
-          if (status === 'OK' && res.rows[0].elements[0].status === 'OK') resolve(res.rows[0].elements[0]);
-          else resolve(null);
+          if (status === 'OK' && res.rows[0].elements[0].status === 'OK') resolve(res.rows[0].elements[0]); else resolve(null);
         });
       });
     }
 
     async function openRouteModal(placeId) {
       if (!currentPos) return alert("GPS 위치 정보를 가져올 수 없습니다.");
-      const place = currentSearchResults.find(p => p.id === placeId) || myPlaces.find(p => p.id === placeId);
-      if (!place) return;
-      document.getElementById('routeModalTitle').innerText = `'${place.name}' 가는 길`;
-      document.getElementById('routeModal').style.display = 'flex';
+      const place = currentSearchResults.find(p => p.id === placeId) || myPlaces.find(p => p.id === placeId); if (!place) return;
+      document.getElementById('routeModalTitle').innerText = `'${place.name}' 가는 길`; document.getElementById('routeModal').style.display = 'flex';
       document.getElementById('routeResults').innerHTML = '<div style="text-align:center; padding:30px;">최적의 경로를 계산 중입니다... ⏳</div>';
-      const [transit, driving, walking] = await Promise.all([
-        getDistanceMatrixPromise(currentPos, {lat: place.lat, lng: place.lng}, 'TRANSIT'),
-        getDistanceMatrixPromise(currentPos, {lat: place.lat, lng: place.lng}, 'DRIVING'),
-        getDistanceMatrixPromise(currentPos, {lat: place.lat, lng: place.lng}, 'WALKING')
-      ]);
+      const [transit, driving, walking] = await Promise.all([ getDistanceMatrixPromise(currentPos, {lat: place.lat, lng: place.lng}, 'TRANSIT'), getDistanceMatrixPromise(currentPos, {lat: place.lat, lng: place.lng}, 'DRIVING'), getDistanceMatrixPromise(currentPos, {lat: place.lat, lng: place.lng}, 'WALKING') ]);
       const createRouteRow = (icon, title, data, mode) => {
         const url = `https://www.google.com/maps/dir/?api=1&origin=${currentPos.lat},${currentPos.lng}&destination=${place.lat},${place.lng}&travelmode=${mode}`;
         if (!data) return `<div class="route-item"><div class="route-info"><span class="route-title">${icon} ${title}</span><span class="route-meta">경로 제공 안함</span></div></div>`;
@@ -423,106 +279,39 @@
       document.getElementById('routeResults').innerHTML = `${createRouteRow('🚇', '대중교통', transit, 'transit')}${createRouteRow('🚕', '택시/자동차', driving, 'driving')}${createRouteRow('🚶', '도보', walking, 'walking')}`;
     }
     function closeRouteModal() { document.getElementById('routeModal').style.display = 'none'; }
+    function handleMarkerClick(index) { setSheetState('half'); const card = document.getElementById(`place-card-${index}`); const sheetContent = document.getElementById('sheetContent'); if(card && sheetContent) { sheetContent.scrollTo({ top: card.offsetTop - 16, behavior: 'smooth' }); card.style.border = "2px solid var(--primary-color)"; setTimeout(() => card.style.border = "2px solid transparent", 1500); } }
 
-    function handleMarkerClick(index) {
-      setSheetState('half'); 
-      const card = document.getElementById(`place-card-${index}`);
-      const sheetContent = document.getElementById('sheetContent');
-      if(card && sheetContent) {
-        sheetContent.scrollTo({ top: card.offsetTop - 16, behavior: 'smooth' });
-        card.style.border = "2px solid var(--primary-color)";
-        setTimeout(() => card.style.border = "2px solid transparent", 1500);
-      }
-    }
-
-    // [신규] 텍스트 기반 키워드 검색 기능
     async function executeKeywordSearch() {
-      const keyword = document.getElementById('keywordInput').value.trim();
-      if (!keyword) return alert("검색할 장소명을 입력해주세요.");
-
-      currentMode = 'search'; 
-      document.getElementById('listTitle').innerText = `'${keyword}' 검색 결과`;
-      clearMarkers(searchMarkers); clearMarkers(myMarkers);
-      setSheetState('half'); 
-
+      const keyword = document.getElementById('keywordInput').value.trim(); if (!keyword) return alert("검색할 장소명을 입력해주세요.");
+      currentMode = 'search'; document.getElementById('listTitle').innerText = `'${keyword}' 검색 결과`; clearMarkers(searchMarkers); clearMarkers(myMarkers); setSheetState('half'); 
       try {
         const { Place } = await google.maps.importLibrary("places");
-        
-        // searchByText 사용 (문자열 기반 검색)
-        const request = {
-          textQuery: keyword,
-          fields: ['id', 'displayName', 'location', 'rating', 'userRatingCount', 'formattedAddress', 'googleMapsURI', 'editorialSummary', 'primaryTypeDisplayName'],
-          language: 'ko'
-        };
-        const { places } = await Place.searchByText(request);
-
-        if (places && places.length > 0) {
-          processAndRenderResults(places);
-          
-          // 검색된 첫 번째 장소로 지도 포커스 이동
-          if (places[0].location) {
-            map.panTo(places[0].location);
-            map.setZoom(15);
-          }
-        } else {
-          currentSearchResults = []; renderPlaces([], true); alert("결과가 없습니다.");
-        }
+        const { places } = await Place.searchByText({ textQuery: keyword, fields: ['id', 'displayName', 'location', 'rating', 'userRatingCount', 'formattedAddress', 'googleMapsURI', 'editorialSummary', 'primaryTypeDisplayName'], language: 'ko' });
+        if (places && places.length > 0) { processAndRenderResults(places); if (places[0].location) { map.panTo(places[0].location); map.setZoom(15); } } else { currentSearchResults = []; renderPlaces([], true); alert("결과가 없습니다."); }
       } catch (error) { console.error(error); alert(`검색 오류: ${error.message}`); }
     }
 
-    // 기존 카테고리 검색 기능
     async function searchNearby(type, keywordStr) {
-      currentMode = 'search'; 
-      document.getElementById('listTitle').innerText = `'${keywordStr}' 검색 결과`;
-      clearMarkers(searchMarkers); clearMarkers(myMarkers);
-      setSheetState('half'); 
-
+      currentMode = 'search'; document.getElementById('listTitle').innerText = `'${keywordStr}' 검색 결과`; clearMarkers(searchMarkers); clearMarkers(myMarkers); setSheetState('half'); 
       try {
         const { Place } = await google.maps.importLibrary("places");
-        const request = {
-          fields: ['id', 'displayName', 'location', 'rating', 'userRatingCount', 'formattedAddress', 'googleMapsURI', 'editorialSummary', 'primaryTypeDisplayName'],
-          locationRestriction: { center: map.getCenter(), radius: 2000 },
-          includedPrimaryTypes: [type], 
-        };
-        const { places } = await Place.searchNearby(request);
-
-        if (places && places.length > 0) {
-          processAndRenderResults(places);
-        } else {
-          currentSearchResults = []; renderPlaces([], true); alert("결과가 없습니다.");
-        }
+        const { places } = await Place.searchNearby({ fields: ['id', 'displayName', 'location', 'rating', 'userRatingCount', 'formattedAddress', 'googleMapsURI', 'editorialSummary', 'primaryTypeDisplayName'], locationRestriction: { center: map.getCenter(), radius: 2000 }, includedPrimaryTypes: [type] });
+        if (places && places.length > 0) processAndRenderResults(places); else { currentSearchResults = []; renderPlaces([], true); alert("결과가 없습니다."); }
       } catch (error) { console.error(error); alert(`오류: ${error.message}`); }
     }
 
-    // 검색 결과 공통 처리 로직 (거리순 정렬 및 마커 생성)
     function processAndRenderResults(places) {
-      let formattedResults = places.map(p => ({
-        id: p.id, name: getSafeText(p.displayName), lat: p.location.lat(), lng: p.location.lng(),
-        address: getSafeText(p.formattedAddress), rating: p.rating, user_ratings_total: p.userRatingCount,
-        url: p.googleMapsURI, typeDesc: getSafeText(p.primaryTypeDisplayName), summary: getSafeText(p.editorialSummary)
-      }));
-
+      let formattedResults = places.map(p => ({ id: p.id, name: getSafeText(p.displayName), lat: p.location.lat(), lng: p.location.lng(), address: getSafeText(p.formattedAddress), rating: p.rating, user_ratings_total: p.userRatingCount, url: p.googleMapsURI, typeDesc: getSafeText(p.primaryTypeDisplayName), summary: getSafeText(p.editorialSummary) }));
       const centerPos = map.getCenter();
       formattedResults.sort((a, b) => {
-        const isASaved = myPlaces.some(p => p.id === a.id);
-        const isBSaved = myPlaces.some(p => p.id === b.id);
-        if (isASaved && !isBSaved) return -1;
-        if (!isASaved && isBSaved) return 1;
+        const isASaved = myPlaces.some(p => p.id === a.id); const isBSaved = myPlaces.some(p => p.id === b.id);
+        if (isASaved && !isBSaved) return -1; if (!isASaved && isBSaved) return 1;
         return google.maps.geometry.spherical.computeDistanceBetween(centerPos, {lat: a.lat, lng: a.lng}) - google.maps.geometry.spherical.computeDistanceBetween(centerPos, {lat: b.lat, lng: b.lng});
       });
-
-      currentSearchResults = formattedResults;
-      renderPlaces(formattedResults, true);
-
+      currentSearchResults = formattedResults; renderPlaces(formattedResults, true);
       formattedResults.forEach((place, index) => {
-        const isSaved = myPlaces.some(p => p.id === place.id);
-        const marker = new google.maps.Marker({
-          position: { lat: place.lat, lng: place.lng }, map: map, title: place.name,
-          icon: isSaved ? 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' : 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-          label: { text: String(index + 1), color: 'white', fontWeight: 'bold' }
-        });
-        marker.addListener('click', () => handleMarkerClick(index));
-        searchMarkers.push(marker);
+        const marker = new google.maps.Marker({ position: { lat: place.lat, lng: place.lng }, map: map, title: place.name, icon: myPlaces.some(p => p.id === place.id) ? 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' : 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png', label: { text: String(index + 1), color: 'white', fontWeight: 'bold' } });
+        marker.addListener('click', () => handleMarkerClick(index)); searchMarkers.push(marker);
       });
     }
 
@@ -530,31 +319,23 @@
       clearMarkers(myMarkers);
       myPlaces.forEach((place, index) => {
         if (place.lat && place.lng) {
-          const marker = new google.maps.Marker({
-            position: { lat: place.lat, lng: place.lng }, map: map, title: place.name, icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png', label: { text: String(index + 1), color: 'white', fontWeight: 'bold' }
-          });
-          marker.addListener('click', () => handleMarkerClick(index));
-          myMarkers.push(marker);
+          const marker = new google.maps.Marker({ position: { lat: place.lat, lng: place.lng }, map: map, title: place.name, icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png', label: { text: String(index + 1), color: 'white', fontWeight: 'bold' } });
+          marker.addListener('click', () => handleMarkerClick(index)); myMarkers.push(marker);
         }
       });
     }
 
     function showSavedPlaces() {
-      currentMode = 'saved'; 
-      document.getElementById('listTitle').innerText = "저장된 장소 리스트";
-      clearMarkers(searchMarkers); renderMyMarkers(); renderPlaces(myPlaces, false);
-      setSheetState('half');
+      currentMode = 'saved'; document.getElementById('listTitle').innerText = "저장된 장소 리스트";
+      clearMarkers(searchMarkers); renderMyMarkers(); renderPlaces(myPlaces, false); setSheetState('half');
     }
 
     function initMap() {
       initData(); initLocation();
       const taipeiCenter = { lat: 25.0330, lng: 121.5654 }; 
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: taipeiCenter, zoom: 14, disableDefaultUI: true, zoomControl: true, gestureHandling: 'greedy'
-      });
-      map.setPadding({ bottom: window.innerHeight * 0.45 });
-      showSavedPlaces();
-      setTimeout(() => setSheetState('half'), 500);
+      map = new google.maps.Map(document.getElementById("map"), { center: taipeiCenter, zoom: 14, disableDefaultUI: true, zoomControl: true, gestureHandling: 'greedy' });
+      map.setPadding({ bottom: window.innerHeight * 0.45, top: 150 }); // 상단 UI 안가리게 패딩 추가
+      showSavedPlaces(); setTimeout(() => setSheetState('half'), 500);
     }
   </script>
 
@@ -562,6 +343,7 @@
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ9HHd64lA_8VLXk3yQ8-jK1dTyx7WDLI&libraries=places&callback=initMap"></script>
 </body>
 </html>
+
 
 
 
