@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -26,13 +27,16 @@
     .category-container::-webkit-scrollbar { display: none; }
     .category-btn { background-color: var(--card-bg); border: 1px solid #d1d1d6; border-radius: 20px; padding: 8px 16px; font-size: 0.95rem; font-weight: bold; white-space: nowrap; cursor: pointer; color: var(--text-main); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
     .category-btn:active { background-color: #e5e5ea; }
+    
     .bottom-sheet { position: absolute; bottom: 0; left: 0; right: 0; height: 85vh; background: var(--bg-color); z-index: 20; border-radius: 24px 24px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.15); display: flex; flex-direction: column; transform: translateY(100%); }
     .sheet-header { background: #fff; border-radius: 24px 24px 0 0; padding: 12px 16px; text-align: center; border-bottom: 1px solid #e5e5ea; flex-shrink: 0; cursor: grab; touch-action: none; }
     .sheet-header:active { cursor: grabbing; }
     .drag-handle { width: 40px; height: 5px; background: #c7c7cc; border-radius: 3px; margin: 0 auto 12px auto; }
     .section-title { font-size: 1.1rem; font-weight: bold; margin: 0; }
     .sheet-content { position: relative; flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch; padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px)); }
+    
     .btn-open-list { position: absolute; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background-color: var(--card-bg); border: 1px solid #d1d1d6; border-radius: 24px; padding: 12px 24px; font-size: 1rem; font-weight: bold; color: var(--text-main); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 15; cursor: pointer; display: none; transition: opacity 0.3s; }
+    
     .place-list { display: flex; flex-direction: column; gap: 12px; }
     .place-card { background-color: var(--card-bg); border-radius: 12px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 2px solid transparent; transition: border 0.3s; }
     .place-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
@@ -49,6 +53,7 @@
     .btn-action { display: inline-block; padding: 10px 16px; border-radius: 8px; font-size: 0.95rem; font-weight: bold; text-align: center; flex: 1; cursor: pointer; text-decoration: none; border: none; }
     .btn-map { background-color: #f2f2f7; color: #000; border: 1px solid #d1d1d6; }
     .btn-route { background-color: var(--primary-color); color: white; }
+    
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; }
     .modal-content { background: var(--card-bg); width: 90%; max-width: 400px; border-radius: 16px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     .btn-close { width: 100%; padding: 12px; margin-top: 16px; border-radius: 8px; background-color: #e5e5ea; border: none; font-weight: bold; font-size: 1rem; cursor: pointer; color: #000; }
@@ -59,7 +64,6 @@
     .route-meta { font-size: 0.85rem; color: var(--text-sub); }
     .route-go-btn { background-color: #34C759; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 0.9rem; }
     
-    /* AI 채팅창 UI */
     .ai-chat-box { background-color: #f0f0f5; height: 300px; border-radius: 12px; padding: 12px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
     .chat-bubble { padding: 10px 14px; border-radius: 16px; max-width: 85%; font-size: 0.95rem; line-height: 1.4; word-break: break-word; }
     .chat-ai { background-color: #ffffff; align-self: flex-start; border: 1px solid #e5e5ea; }
@@ -252,24 +256,22 @@
       });
     }
 
-    // [신규] API를 활용한 실제 AI 답변 생성 로직
     function openAIModal() { document.getElementById('aiModal').style.display = 'flex'; }
     function closeAIModal() { document.getElementById('aiModal').style.display = 'none'; }
     
+    // [완전 무결성 업데이트] 구글 서버에서 사용 가능한 최신 모델을 자동으로 찾아 연결하는 AI 채팅 함수
     async function sendAIMessage() {
       const input = document.getElementById('aiInput'); 
       const text = input.value.trim(); 
       if (!text) return;
       
       const chatBox = document.getElementById('aiChatBox'); 
-      // 사용자의 질문을 화면에 표시합니다.
       chatBox.innerHTML += `<div class="chat-bubble chat-user">${text}</div>`; 
       input.value = ''; 
       chatBox.scrollTop = chatBox.scrollHeight;
       
-      // 로딩 중임을 나타내는 임시 메시지를 표시합니다.
       const loadingId = "loading-" + Date.now();
-      chatBox.innerHTML += `<div id="${loadingId}" class="chat-bubble chat-ai">답변을 생성하고 있습니다...</div>`;
+      chatBox.innerHTML += `<div id="${loadingId}" class="chat-bubble chat-ai">사용 가능한 AI 채널을 찾는 중입니다... ⏳</div>`;
       chatBox.scrollTop = chatBox.scrollHeight;
 
       if (GEMINI_API_KEY === "YOUR_GEMINI_API_KEY") {
@@ -280,11 +282,30 @@
       }
 
       try {
-        // 프롬프트(Prompt, AI에게 내리는 지시사항) 설정
+        const modelsResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`);
+        const modelsData = await modelsResponse.json();
+        
+        let targetModel = "models/gemini-1.5-flash"; 
+        
+        if (modelsData && modelsData.models) {
+          const availableModels = modelsData.models.filter(m => 
+            m.supportedGenerationMethods && 
+            m.supportedGenerationMethods.includes("generateContent") &&
+            m.name.includes("gemini")
+          );
+          
+          const preferredModel = availableModels.find(m => m.name.includes("flash")) || availableModels[0];
+          
+          if (preferredModel) {
+            targetModel = preferredModel.name; 
+          }
+        }
+
+        document.getElementById(loadingId).innerText = "답변을 생성하고 있습니다... ⏳";
+        
         const systemPrompt = "당신은 타이베이 여행을 돕는 친절한 AI 비서입니다. 사용자의 질문에 짧고 명확하게 한국어로 답변해 주십시오. 과도하게 긴 설명은 피하고 핵심만 3~4문장으로 요약해 주십시오. 질문: " + text;
         
-        // Fetch API (네트워크 통신 함수)를 통해 구글 서버에 요청을 보냅니다.
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/${targetModel}:generateContent?key=${GEMINI_API_KEY}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -300,9 +321,7 @@
 
         const aiText = data.candidates[0].content.parts[0].text;
 
-        // 로딩 메시지를 지우고 실제 AI의 답변을 화면에 표시합니다.
         document.getElementById(loadingId).remove();
-        // 줄바꿈 문자를 HTML 태그로 변환합니다.
         const formattedText = aiText.replace(/\n/g, '<br>');
         chatBox.innerHTML += `<div class="chat-bubble chat-ai">${formattedText}</div>`;
       } catch (error) {
@@ -337,7 +356,7 @@
     function handleMarkerClick(index) { setSheetState('half'); const card = document.getElementById(`place-card-${index}`); const sheetContent = document.getElementById('sheetContent'); if(card && sheetContent) { sheetContent.scrollTo({ top: card.offsetTop - 16, behavior: 'smooth' }); card.style.border = "2px solid var(--primary-color)"; setTimeout(() => card.style.border = "2px solid transparent", 1500); } }
 
     async function executeKeywordSearch() {
-      const keyword = document.getElementById('keywordInput').value.trim(); if (!keyword) return alert("검색할 장소명을 입력해주세요.");
+      const keyword = document.getElementById('keywordInput').value.trim(); if (!keyword) return alert("검색할 장소명을 입력해 주십시오.");
       currentMode = 'search'; document.getElementById('listTitle').innerText = `'${keyword}' 검색 결과`; clearMarkers(searchMarkers); clearMarkers(myMarkers); setSheetState('half'); 
       try {
         const { Place } = await google.maps.importLibrary("places");
@@ -389,7 +408,7 @@
       initData(); initLocation();
       const taipeiCenter = { lat: 25.0330, lng: 121.5654 }; 
       map = new google.maps.Map(document.getElementById("map"), { center: taipeiCenter, zoom: 14, disableDefaultUI: true, zoomControl: true, gestureHandling: 'greedy' });
-      map.setPadding({ bottom: window.innerHeight * 0.45, top: 150 });
+      map.setPadding({ bottom: window.innerHeight * 0.45, top: 150 }); 
       showSavedPlaces(); setTimeout(() => setSheetState('half'), 500);
     }
   </script>
@@ -398,6 +417,7 @@
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ9HHd64lA_8VLXk3yQ8-jK1dTyx7WDLI&libraries=places&callback=initMap"></script>
 </body>
 </html>
+
 
 
 
