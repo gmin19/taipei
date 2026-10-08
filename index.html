@@ -114,8 +114,7 @@
   </div>
 
   <script>
-    // 구글 지도 API 키 (Routes API 및 Maps Javascript API 겸용)
-    const MAPS_API_KEY = "YOUR_MAPS_API_KEY"; 
+    const MAPS_API_KEY = "YOUR_MAPS_API_KEY"; // 구글 지도 API 키 입력
 
     let map; let searchMarkers = []; let myMarkers = []; let userMarker = null; let myPlaces = []; let currentSearchResults = []; let currentPos = null; let currentMode = 'saved'; 
     let initialLocationSet = false;
@@ -220,25 +219,73 @@
       } else showSavedPlaces();
     }
 
+    // =========================================================================
+    // GPS 로직 전면 개편: 에러 상세 안내 및 초기 15초 대기 시간 확보
+    // =========================================================================
     function initLocation() {
-      if (!navigator.geolocation) return;
+      if (!navigator.geolocation) {
+        alert("현재 사용 중인 브라우저에서는 위치(GPS) 기능을 지원하지 않습니다.");
+        return;
+      }
+      
+      const geoOptions = { 
+        enableHighAccuracy: true, 
+        maximumAge: 0, 
+        timeout: 15000 // 초기 탐색 시간을 15초로 늘려 실내에서도 여유 있게 GPS를 찾도록 설정합니다.
+      };
+
+      // 1. 가장 먼저 현재 위치를 확실하게 한 번 잡아와 지도를 한국(내 위치)으로 이동시킵니다.
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          currentPos = { lat: position.coords.latitude, lng: position.coords.longitude };
+          if (map) {
+             map.setCenter(currentPos);
+             map.setZoom(15); // 내 위치로 지도를 당깁니다.
+             if (!userMarker) {
+               userMarker = new google.maps.Marker({ position: currentPos, map: map, title: "현재 위치", icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#007AFF', fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2 }, zIndex: 999 });
+             } else {
+               userMarker.setPosition(currentPos);
+             }
+             initialLocationSet = true;
+          }
+        },
+        (error) => {
+          // GPS 실패 시 사용자에게 무엇이 문제인지 정확히 팝업으로 안내합니다.
+          let msg = "GPS 위치 정보를 가져올 수 없습니다.";
+          if (error.code === 1) {
+            msg = "스마트폰 또는 브라우저의 '위치 정보(GPS) 접근 권한'이 차단되어 있습니다. 설정에서 권한을 허용해 주십시오.";
+          } else if (error.code === 2) {
+            msg = "현재 위치를 파악할 수 없는 상태입니다. (실내, 지하 등)";
+          } else if (error.code === 3) {
+            msg = "위치 정보를 가져오는 데 시간이 너무 오래 걸렸습니다. (타임아웃)";
+          }
+          console.warn("GPS 초기 오류:", msg);
+          alert(msg);
+        }, 
+        geoOptions
+      );
+
+      // 2. 이후 이동할 때마다 실시간으로 추적하여 내 위치 마커를 옮깁니다.
       navigator.geolocation.watchPosition(
         (position) => { 
           currentPos = { lat: position.coords.latitude, lng: position.coords.longitude }; 
-          if (!userMarker && map) {
-            userMarker = new google.maps.Marker({ position: currentPos, map: map, title: "현재 위치", icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#007AFF', fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2 }, zIndex: 999 });
-          } else if (userMarker) {
-            userMarker.setPosition(currentPos);
-          }
-          
-          // 위치를 처음 수신했을 때 지도의 중심을 내 위치로 이동시킵니다.
-          if (!initialLocationSet && map) {
-            map.setCenter(currentPos);
-            map.setZoom(15);
-            initialLocationSet = true;
+          if (map) {
+            if (!userMarker) {
+              userMarker = new google.maps.Marker({ position: currentPos, map: map, title: "현재 위치", icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#007AFF', fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2 }, zIndex: 999 });
+            } else {
+              userMarker.setPosition(currentPos);
+            }
+            
+            // 만약 초기에 지도를 이동시키지 못했다면 실시간 추적 성공 시 이동시킵니다.
+            if (!initialLocationSet) {
+              map.setCenter(currentPos);
+              map.setZoom(15);
+              initialLocationSet = true;
+            }
           }
         },
-        (error) => { console.warn("GPS 오류 발생"); }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+        (error) => { console.warn("실시간 GPS 추적 오류:", error.message); }, 
+        geoOptions
       );
     }
 
@@ -321,7 +368,7 @@
     }
 
     async function openRouteModal(placeId) {
-      if (!currentPos) return alert("GPS 위치 정보를 가져올 수 없습니다.");
+      if (!currentPos) return alert("GPS 위치 정보를 가져올 수 없습니다. 브라우저의 위치 권한을 확인해 주십시오.");
       const place = currentSearchResults.find(p => p.id === placeId) || myPlaces.find(p => p.id === placeId); if (!place) return;
       
       document.getElementById('routeModalTitle').innerText = "[" + place.name + "] 이동 수단"; 
@@ -400,20 +447,21 @@
     function initMap() {
       initData();
       
-      // 최초 지도 생성 시 기본값은 타이베이로 설정됩니다.
+      // 혹시 GPS를 끝내 잡지 못할 경우를 대비하여 기본값은 여전히 타이베이로 설정해 둡니다.
       const taipeiCenter = { lat: 25.0330, lng: 121.5654 }; 
       map = new google.maps.Map(document.getElementById("map"), { center: taipeiCenter, zoom: 14, disableDefaultUI: true, zoomControl: true, gestureHandling: 'greedy' });
       map.setPadding({ bottom: window.innerHeight * 0.45, top: 150 }); 
       
-      // GPS 추적을 시작하여 위치 확인 시 자동으로 중심을 이동합니다.
+      // 지도가 그려지자마자 내 위치 탐색을 시작하고, 성공 시 지도를 내 위치로 확 당겨옵니다.
       initLocation();
       
       showSavedPlaces(); setTimeout(() => setSheetState('half'), 500);
     }
   </script>
-
+  
   <!-- [중요] API URL에 &libraries=places 파라미터가 추가되었습니다. YOUR_API_KEY를 수정해주세요. -->
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ9HHd64lA_8VLXk3yQ8-jK1dTyx7WDLI&libraries=places&callback=initMap"></script>
 </body>
 </html>
+
 
