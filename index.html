@@ -272,7 +272,7 @@
       chatBox.innerHTML += `<div id="${loadingId}" class="chat-bubble chat-ai">답변을 생성하고 있습니다...</div>`;
       chatBox.scrollTop = chatBox.scrollHeight;
 
-      if (GEMINI_API_KEY === "AQ.Ab8RN6Iqa1_9D-65_p78VN0pvXiK-G11ZnpeF6HSY4yRxOrWpw") {
+      if (GEMINI_API_KEY === "YOUR_GEMINI_API_KEY") {
         document.getElementById(loadingId).remove();
         chatBox.innerHTML += `<div class="chat-bubble chat-ai" style="color:red;">API 키가 설정되지 않았습니다. 코드 내부의 GEMINI_API_KEY를 확인해 주십시오.</div>`;
         chatBox.scrollTop = chatBox.scrollHeight;
@@ -398,6 +398,7 @@
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ9HHd64lA_8VLXk3yQ8-jK1dTyx7WDLI&libraries=places&callback=initMap"></script>
 </body>
 </html>
+
 
 
 
