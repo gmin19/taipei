@@ -340,7 +340,7 @@
 
     .btn-banner-help {
       border: 1px solid currentColor;
-      background: rgba(255, 255, 255, 0.7);
+      background: rgba(255, 255, 255, 0.75);
       color: inherit;
       border-radius: 6px;
       padding: 3px 8px;
@@ -381,6 +381,83 @@
     #map {
       width: 100%;
       height: 100%;
+    }
+
+    /* 지도 이동 시 나타나는 "이 지도 중심에서 주변 검색" 상단 플로팅 버튼 */
+    .btn-search-here {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-150%);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 16;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 40px;
+      padding: 0 16px;
+      border-radius: 999px;
+      border: 1.5px solid var(--accent);
+      background: rgba(255, 255, 255, 0.96);
+      color: var(--accent-dark);
+      font-size: 13.5px;
+      font-weight: 800;
+      box-shadow: var(--shadow-lg);
+      cursor: pointer;
+      white-space: nowrap;
+      backdrop-filter: blur(6px);
+      transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease;
+    }
+
+    .btn-search-here.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .btn-search-here:active {
+      transform: translateX(-50%) scale(0.96);
+    }
+
+    /* 지도 중앙 십자 타겟 표시 (지도 이동 시 중심점 확인용) */
+    .map-center-reticle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 24px;
+      height: 24px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 11;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .map-center-reticle.visible {
+      opacity: 0.75;
+    }
+
+    .map-center-reticle::before,
+    .map-center-reticle::after {
+      content: "";
+      position: absolute;
+      background: var(--accent-dark);
+      border-radius: 2px;
+    }
+
+    .map-center-reticle::before {
+      top: 11px;
+      left: 4px;
+      right: 4px;
+      height: 2px;
+    }
+
+    .map-center-reticle::after {
+      left: 11px;
+      top: 4px;
+      bottom: 4px;
+      width: 2px;
     }
 
     /* API 키 미설정 또는 오류 시 지도 위 안내 오버레이 */
@@ -699,6 +776,25 @@
 
     .btn-sheet-hide:active {
       background: var(--bg-subtle);
+    }
+
+    /* 현재 검색 기준 위치 표시 바 */
+    .origin-context-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 12px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .origin-context-bar.visible {
+      display: flex;
     }
 
     /* 패널 내부 스크롤 목록 */
@@ -1325,12 +1421,12 @@
     1. API 키 설정 방법:
        아래 스크립트 상단의 `const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY";`
        부분에 본인의 Google Maps Platform API 키를 입력하세요.
-    2. Google Cloud Console 필수 활성화 API:
+    2. Google Cloud Console 필수 활성화 API (총 3개, 레거시 Places API 불필요):
        - Maps JavaScript API (지도 표시)
-       - Places API (New) 또는 Places API (장소 검색 및 상세 정보)
-       - Routes API 또는 Directions API / Distance Matrix API (경로 및 소요 시간)
-       * 주의: Google Cloud 프로젝트에 결제 계정(Billing)이 연결되어 있어야 하며,
-         API 키에 'API 제한사항'을 설정한 경우 위 API들을 모두 허용 목록에 체크해야 합니다.
+       - Places API (New) (주변 장소 검색 및 전 세계 텍스트 검색)
+       - Routes API (도보 및 대중교통 실제 소요 시간·경로 계산)
+       * 중요: API 키에 'API 제한사항'을 설정한 경우 반드시 위 3개 API
+         (Maps JavaScript API, Places API (New), Routes API)를 모두 허용 목록에 체크하세요!
     ===========================================================================
   -->
 
@@ -1341,7 +1437,7 @@
         <h1 class="app-title">🧭 주변 여행 도우미</h1>
         <div class="header-actions">
           <button type="button" id="btnLocate" class="btn-locate" aria-label="내 위치 찾기">
-            📍 <span id="locateBtnText">내 위치 찾기</span>
+            📍 <span id="locateBtnText">내 위치</span>
           </button>
           <button type="button" id="btnOpenHelp" class="btn-icon-pill" aria-label="도움말 및 API 키 안내">
             ⚙️ 안내
@@ -1349,14 +1445,14 @@
         </div>
       </div>
 
-      <!-- 키워드 및 장소 검색창 -->
+      <!-- 전 세계 장소·도시·키워드 검색창 -->
       <form id="searchForm" class="search-row" onsubmit="return false;">
         <div class="search-input-wrap">
           <input
             type="search"
             id="searchInput"
             class="search-input"
-            placeholder="장소명, 키워드, 주소 검색 (예: 도쿄타워, 라멘)"
+            placeholder="전 세계 도시·장소·키워드 검색 (예: 도쿄 시부야, 에펠탑)"
             autocomplete="off"
           />
           <button type="button" id="btnClearSearch" class="btn-clear-search" aria-label="검색어 지우기">✕</button>
@@ -1377,7 +1473,7 @@
 
       <!-- 카테고리 가로 스크롤 버튼 -->
       <div id="categoryBar" class="category-scroll" role="tablist" aria-label="장소 카테고리">
-        <!-- JS에서 공식 Places API 장소 유형과 함께 렌더링 -->
+        <!-- JS에서 공식 Places API (New) Table A 장소 유형과 함께 렌더링 -->
       </div>
     </header>
 
@@ -1385,7 +1481,7 @@
     <div id="statusBanner" class="status-banner" role="status" aria-live="polite">
       <span id="statusBannerText"></span>
       <div class="status-banner-actions">
-        <button type="button" id="statusBannerHelpBtn" class="btn-banner-help" style="display:none;">해결 방법</button>
+        <button type="button" id="statusBannerHelpBtn" class="btn-banner-help" style="display:none;">원인·해결</button>
         <button type="button" id="statusBannerClose" class="status-banner-close" aria-label="알림 닫기">✕</button>
       </div>
     </div>
@@ -1395,6 +1491,14 @@
       <!-- 지도 영역 -->
       <section class="map-section" aria-label="Google 지도">
         <div id="map"></div>
+
+        <!-- 지도를 움직였을 때 그 위치 중심에서 주변 정보를 바로 찾는 버튼 -->
+        <button type="button" id="btnSearchMapCenter" class="btn-search-here" aria-label="현재 지도 중심에서 주변 검색">
+          🔄 현 지도 중심에서 주변 검색
+        </button>
+
+        <!-- 지도 중심 타겟 십자선 -->
+        <div id="mapCenterReticle" class="map-center-reticle" aria-hidden="true"></div>
 
         <!-- API 키 미설정/오류 시 표시되는 안내 화면 -->
         <div id="mapFallbackOverlay" class="map-fallback-overlay">
@@ -1466,6 +1570,12 @@
         </div>
 
         <div class="sheet-body">
+          <!-- 현재 검색 기준점(내 위치 vs 이동한 지도 중심/검색 지역) 안내 바 -->
+          <div id="originContextBar" class="origin-context-bar">
+            <span id="originContextText">📍 현재 내 위치 기준 검색 결과</span>
+            <button type="button" id="btnResetToMyLoc" class="btn-banner-help" style="display:none;">내 위치로 복귀</button>
+          </div>
+
           <!-- 로딩 인디케이터 -->
           <div id="loadingBox" class="loading-box">
             <div class="spinner"></div>
@@ -1475,10 +1585,10 @@
           <!-- 탭 1: 주변 장소 카드 목록 -->
           <div id="placesView">
             <div id="placesEmptyState" class="empty-state">
-              <p class="empty-state-title">내 위치를 찾거나 장소를 검색해 보세요</p>
+              <p class="empty-state-title">내 위치를 불러오거나 여행지를 검색해 보세요</p>
               <p class="empty-state-desc">
-                상단의 <strong>📍 내 위치 찾기</strong> 버튼을 누르면 현재 위치를 기준으로 주변 맛집, 카페, 관광지, 편의점, ATM 등을 찾고 도보·대중교통 실제 소요 시간을 비교합니다.<br />
-                지도를 넓게 보려면 우측의 <strong>▼ 내리기</strong> 버튼을 누르거나 상단 손잡이 바를 아래로 쓸어내리세요.
+                앱 실행 시 자동으로 내 위치를 찾아 주변 장소를 표시합니다.<br />
+                지도를 움직여 앞으로 갈 여행지를 지도 중심에 두고 <strong>🔄 현 지도 중심에서 주변 검색</strong>(또는 카테고리 버튼)을 누르거나, 상단 검색창에 전 세계 어디든 입력해 검색할 수 있습니다.
               </p>
             </div>
             <div id="placesList" class="places-list"></div>
@@ -1523,19 +1633,20 @@
     <div id="helpModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
       <div class="modal-sheet">
         <div class="modal-header">
-          <h3 id="helpModalTitle" class="modal-title">⚙️ API 키 설정 및 권한 오류 해결 방법</h3>
+          <h3 id="helpModalTitle" class="modal-title">⚙️ API 키 설정 및 Places API (New) 안내</h3>
           <button type="button" id="btnCloseHelp" class="modal-close" aria-label="닫기">✕</button>
         </div>
 
         <div class="alert-box">
-          <strong>🚨 "API 권한이 거부되었습니다" 배너가 뜰 때 해결 방법 (1분 소요)</strong>
-          <ol style="margin:6px 0 0; padding-left:18px;">
-            <li><strong>Google Cloud Console &gt; API 및 서비스 &gt; 라이브러리</strong>로 이동합니다.</li>
-            <li><strong><code>Places API (New)</code></strong>와 기존 <strong><code>Places API</code></strong>를 검색해 각각 <strong>[사용(Enable)]</strong>을 누릅니다.</li>
-            <li><strong><code>Routes API</code></strong>(및 <code>Directions API</code>, <code>Distance Matrix API</code>)도 검색해 <strong>[사용(Enable)]</strong>을 누릅니다.</li>
-            <li>가장 흔한 원인: <strong>사용자 인증 정보 &gt; API 키 클릭 &gt; API 제한사항</strong>에서 키 제한을 걸어두신 경우, 허용 목록 드롭다운에서 <strong>Places API (New), Places API, Routes API, Directions API, Distance Matrix API</strong>를 모두 체크하고 <strong>[저장]</strong>을 눌러주세요!</li>
+          <strong>🚨 권한 오류 발생 시 확인사항 (Places API (New) 전용)</strong>
+          <p style="margin:4px 0 6px;">
+            이 앱은 구형 Places API 없이 최신 <strong><code>Places API (New)</code></strong>와 <strong><code>Routes API</code></strong>만 사용합니다.
+          </p>
+          <ol style="margin:4px 0 0; padding-left:18px;">
+            <li><strong>API 및 서비스 &gt; 라이브러리</strong>에서 <code>Maps JavaScript API</code>, <code>Places API (New)</code>, <code>Routes API</code> 3개가 <strong>사용(Enable)</strong> 상태인지 확인하세요.</li>
+            <li><strong>사용자 인증 정보 &gt; API 키 클릭 &gt; API 제한사항</strong>에서 '키 제한'을 선택하신 경우, 허용 목록 드롭다운에서 <strong><code>Maps JavaScript API</code>, <code>Places API (New)</code>, <code>Routes API</code></strong> 3개가 모두 체크되어 있는지 확인 후 <strong>[저장]</strong>을 눌러주세요.</li>
           </ol>
-          <div id="lastDiagnosticErrorBox" style="margin-top:8px; font-family:ui-monospace, monospace; font-size:11.5px; background:rgba(255,255,255,0.75); padding:6px 8px; border-radius:6px; display:none;"></div>
+          <div id="lastDiagnosticErrorBox" style="margin-top:8px; font-family:ui-monospace, monospace; font-size:11.5px; background:rgba(255,255,255,0.85); padding:6px 8px; border-radius:6px; display:none;"></div>
         </div>
 
         <div class="guide-section">
@@ -1575,9 +1686,9 @@
     // API 요청 및 비용 관리 상수
     const MAX_SEARCH_RESULTS = 12;          // 주변/텍스트 검색 시 최대 결과 수 제한
     const MAX_ROUTE_MATRIX_TARGETS = 8;     // 초기 검색 결과 중 경로 행렬(도보/대중교통) 계산 최대 대상 수 (8~10개 이하)
-    const DEFAULT_CENTER = { lat: 37.5665, lng: 126.9780 }; // 초기 지도 기본 중심 (현재 위치 확인 전에는 자동 검색하지 않음)
+    const DEFAULT_CENTER = { lat: 37.5665, lng: 126.9780 }; // 초기 기본 중심
 
-    // Google Places API (New) 및 기존 PlacesService 공식 지원 장소 유형 매핑
+    // Google Places API (New) Table A 공식 지원 장소 유형 매핑
     const CATEGORIES = [
       {
         id: "all",
@@ -1585,24 +1696,23 @@
         icon: "✨",
         types: [
           "restaurant", "cafe", "tourist_attraction", "convenience_store",
-          "park", "museum", "bakery", "supermarket", "shopping_mall", "pharmacy", "atm", "bank", "gas_station"
+          "park", "museum", "bakery", "supermarket", "shopping_mall", "pharmacy"
         ],
-        legacyType: "restaurant",
-        keywordHint: "인기 장소"
+        keywordHint: "인기 명소 맛집"
       },
-      { id: "restaurant", label: "맛집", icon: "🍽️", types: ["restaurant"], legacyType: "restaurant", keywordHint: "맛집 레스토랑" },
-      { id: "cafe", label: "카페", icon: "☕", types: ["cafe"], legacyType: "cafe", keywordHint: "카페 커피" },
-      { id: "tourist_attraction", label: "관광지", icon: "📸", types: ["tourist_attraction"], legacyType: "tourist_attraction", keywordHint: "관광명소 볼거리" },
-      { id: "convenience_store", label: "편의점", icon: "🏪", types: ["convenience_store"], legacyType: "convenience_store", keywordHint: "편의점" },
-      { id: "atm", label: "ATM", icon: "🏧", types: ["atm"], legacyType: "atm", keywordHint: "ATM 현금인출기" },
-      { id: "bank", label: "은행", icon: "🏦", types: ["bank"], legacyType: "bank", keywordHint: "은행" },
-      { id: "pharmacy", label: "약국", icon: "💊", types: ["pharmacy"], legacyType: "pharmacy", keywordHint: "약국" },
-      { id: "park", label: "공원", icon: "🌳", types: ["park"], legacyType: "park", keywordHint: "공원" },
-      { id: "museum", label: "박물관", icon: "🏛️", types: ["museum"], legacyType: "museum", keywordHint: "박물관 미술관" },
-      { id: "bakery", label: "베이커리", icon: "🥐", types: ["bakery"], legacyType: "bakery", keywordHint: "베이커리 빵집" },
-      { id: "supermarket", label: "마트", icon: "🛒", types: ["supermarket"], legacyType: "supermarket", keywordHint: "슈퍼마켓 마트" },
-      { id: "shopping_mall", label: "쇼핑", icon: "🛍️", types: ["shopping_mall"], legacyType: "shopping_mall", keywordHint: "쇼핑몰 백화점" },
-      { id: "gas_station", label: "주유소", icon: "⛽", types: ["gas_station"], legacyType: "gas_station", keywordHint: "주유소" }
+      { id: "restaurant", label: "맛집", icon: "🍽️", types: ["restaurant"], keywordHint: "맛집 레스토랑" },
+      { id: "cafe", label: "카페", icon: "☕", types: ["cafe"], keywordHint: "카페 커피" },
+      { id: "tourist_attraction", label: "관광지", icon: "📸", types: ["tourist_attraction"], keywordHint: "관광명소 볼거리" },
+      { id: "convenience_store", label: "편의점", icon: "🏪", types: ["convenience_store"], keywordHint: "편의점" },
+      { id: "atm", label: "ATM", icon: "🏧", types: ["atm"], keywordHint: "ATM 현금인출기" },
+      { id: "bank", label: "은행", icon: "🏦", types: ["bank"], keywordHint: "은행" },
+      { id: "pharmacy", label: "약국", icon: "💊", types: ["pharmacy"], keywordHint: "약국" },
+      { id: "park", label: "공원", icon: "🌳", types: ["park"], keywordHint: "공원" },
+      { id: "museum", label: "박물관", icon: "🏛️", types: ["museum"], keywordHint: "박물관 미술관" },
+      { id: "bakery", label: "베이커리", icon: "🥐", types: ["bakery"], keywordHint: "베이커리 빵집" },
+      { id: "supermarket", label: "마트", icon: "🛒", types: ["supermarket"], keywordHint: "슈퍼마켓 마트" },
+      { id: "shopping_mall", label: "쇼핑", icon: "🛍️", types: ["shopping_mall"], keywordHint: "쇼핑몰 백화점" },
+      { id: "gas_station", label: "주유소", icon: "⛽", types: ["gas_station"], keywordHint: "주유소" }
     ];
 
     // 영문 primaryType -> 한국어 표시 폴백 사전
@@ -1620,24 +1730,53 @@
       supermarket: "슈퍼마켓·마트",
       shopping_mall: "쇼핑몰",
       gas_station: "주유소",
+      locality: "도시·지역",
+      sublocality: "지역·동네",
+      administrative_area_level_1: "광역 지역",
+      Country: "국가",
+      train_station: "기차역",
+      subway_station: "지하철역",
+      transit_station: "대중교통역",
+      airport: "공항",
+      lodging: "숙소·호텔",
+      hotel: "호텔",
       point_of_interest: "관심 장소",
       food: "음식점",
       store: "상점",
-      establishment: "시설"
+      establishment: "장소"
     };
+
+    // 지역/역/랜드마크 등 단일 지점 검색 시 자동으로 주변 장소를 함께 탐색할지 판별하는 유형
+    const AREA_OR_LANDMARK_TYPES = new Set([
+      "locality",
+      "sublocality",
+      "sublocality_level_1",
+      "administrative_area_level_1",
+      "administrative_area_level_2",
+      "country",
+      "postal_code",
+      "neighborhood",
+      "colloquial_area",
+      "train_station",
+      "subway_station",
+      "transit_station",
+      "light_rail_station",
+      "bus_station",
+      "airport"
+    ]);
 
     // 가격대(PriceLevel) 한국어 변환
     const PRICE_LEVEL_LABELS = {
       FREE: "무료",
+      PRICE_LEVEL_FREE: "무료",
       INEXPENSIVE: "₩ (저렴)",
+      PRICE_LEVEL_INEXPENSIVE: "₩ (저렴)",
       MODERATE: "₩₩ (보통)",
+      PRICE_LEVEL_MODERATE: "₩₩ (보통)",
       EXPENSIVE: "₩₩₩ (고급)",
+      PRICE_LEVEL_EXPENSIVE: "₩₩₩ (고급)",
       VERY_EXPENSIVE: "₩₩₩₩ (매우 고급)",
-      0: "무료",
-      1: "₩ (저렴)",
-      2: "₩₩ (보통)",
-      3: "₩₩₩ (고급)",
-      4: "₩₩₩₩ (매우 고급)"
+      PRICE_LEVEL_VERY_EXPENSIVE: "₩₩₩₩ (매우 고급)"
     };
 
     // 대중교통 수단 한국어 변환
@@ -1667,19 +1806,19 @@
       libs: {
         Map: null,
         Place: null,
-        PlacesService: null,
         SearchNearbyRankPreference: null,
         Route: null,
         RouteMatrix: null,
         RouteMatrixItemCondition: null,
-        DirectionsService: null,
-        DistanceMatrixService: null,
         AdvancedMarkerElement: null,
         PinElement: null,
         LatLngBounds: null
       },
-      currentLocation: null, // { lat, lng }
-      searchOrigin: null,    // 현재 위치 또는 텍스트 검색 기준 중심점
+      currentLocation: null, // 실제 내 GPS 위치 { lat, lng }
+      searchOrigin: null,    // 현재 주변 검색 기준 중심점 (내 위치 또는 사용자가 이동한 지도 중심/검색 위치)
+      searchOriginLabel: "현재 내 위치", // 기준점 설명
+      isMapMovedFromOrigin: false,
+      isProgrammaticPan: false,
       selectedRadius: 1000,
       selectedCategory: "all",
       keyword: "",
@@ -1690,10 +1829,10 @@
       selectedPlaceId: null,
       activeRouteMode: "WALKING", // 선택 장소 지도 경로 표시 모드: WALKING | TRANSIT
       userMarker: null,
+      searchCenterMarker: null,
       radiusCircle: null,
       placeMarkers: new Map(), // placeId -> marker
       activePolylines: [],
-      tripStopMarkers: [],
       tripList: [],          // 여행 코스에 담긴 장소 배열
       tripTravelMode: "WALKING",
       tripLegMetrics: [],    // 구간별 소요 시간/거리
@@ -1708,7 +1847,6 @@
       singleRouteCache: new Map()
     };
 
-    // DOM 참조 헬퍼
     const $ = (id) => document.getElementById(id);
 
     // =========================================================================
@@ -1771,7 +1909,6 @@
       showBanner("Google Maps API 키를 설정한 후 사용할 수 있습니다.", "info");
     }
 
-    // Google Maps 인증 실패 전역 콜백
     window.gm_authFailure = function () {
       state.mapsLoadError = "AUTH_FAILURE";
       const overlay = $("mapFallbackOverlay");
@@ -1781,16 +1918,16 @@
       if (title) title.textContent = "Google Maps API 키 인증 오류가 발생했습니다.";
       if (desc) {
         desc.innerHTML =
-          "입력된 API 키가 유효하지 않거나 Maps JavaScript API / 결제 설정 / HTTP 리퍼러 제한에 의해 차단되었습니다. 브라우저 개발자 콘솔(Console)의 오류 메시지를 확인해 주세요.";
+          "입력된 API 키가 유효하지 않거나 Maps JavaScript API / 결제 설정 / HTTP 리퍼러 제한에 의해 차단되었습니다.";
       }
       showBanner(
-        "API 키 오류가 발생했습니다. 브라우저 개발자 콘솔(Console)에서 Google Maps 오류 원인을 확인하세요.",
+        "API 키 인증 오류가 발생했습니다. 우측 [원인·해결]을 눌러 API 키 설정을 확인하세요.",
         "error",
         true
       );
     };
 
-    // 공식 Dynamic Library Import 부트스트랩 로더 (New API + Legacy 호환 폴백 모두 로드)
+    // 공식 Dynamic Library Import 로더 (Places API New 및 Routes API 사용)
     async function loadGoogleMapsLibraries(apiKey) {
       try {
         setLoading(true, "Google Maps 라이브러리를 초기화하는 중...");
@@ -1829,21 +1966,18 @@
 
         const [mapsLib, placesLib, routesLib, markerLib, coreLib] = await Promise.all([
           google.maps.importLibrary("maps"),
-          google.maps.importLibrary("places"),
+          google.maps.importLibrary("places").catch(() => ({})),
           google.maps.importLibrary("routes").catch(() => ({})),
           google.maps.importLibrary("marker").catch(() => ({})),
           google.maps.importLibrary("core")
         ]);
 
         state.libs.Map = mapsLib.Map;
-        state.libs.Place = placesLib.Place || null;
-        state.libs.PlacesService = placesLib.PlacesService || google.maps.places?.PlacesService || null;
-        state.libs.SearchNearbyRankPreference = placesLib.SearchNearbyRankPreference || null;
+        state.libs.Place = placesLib?.Place || null;
+        state.libs.SearchNearbyRankPreference = placesLib?.SearchNearbyRankPreference || null;
         state.libs.Route = routesLib?.Route || null;
         state.libs.RouteMatrix = routesLib?.RouteMatrix || null;
         state.libs.RouteMatrixItemCondition = routesLib?.RouteMatrixItemCondition || null;
-        state.libs.DirectionsService = google.maps.DirectionsService || null;
-        state.libs.DistanceMatrixService = google.maps.DistanceMatrixService || null;
         state.libs.AdvancedMarkerElement = markerLib?.AdvancedMarkerElement || null;
         state.libs.PinElement = markerLib?.PinElement || null;
         state.libs.LatLngBounds = coreLib.LatLngBounds;
@@ -1851,7 +1985,9 @@
         initMapInstance();
         state.mapsLoaded = true;
         $("mapFallbackOverlay").style.display = "none";
-        showBanner("지도가 준비되었습니다. '내 위치 찾기'를 누르거나 검색어를 입력하세요.", "info");
+
+        // 앱 시작 시 자동으로 현재 내 위치를 찾아 지도 중심에 두고 주변 검색 실행!
+        requestUserLocation({ isAutoStart: true });
       } catch (err) {
         console.error("Google Maps API 로드 실패:", err);
         state.mapsLoadError = err;
@@ -1862,7 +1998,7 @@
         if (title) title.textContent = "Google Maps API를 불러오지 못했습니다.";
         if (desc) {
           desc.textContent =
-            "네트워크 연결을 확인하거나 API 키 및 Google Cloud Console에서 Maps JavaScript API, Places API, Routes API가 활성화되어 있는지 확인하세요.";
+            "네트워크 연결을 확인하거나 API 키 및 Google Cloud Console에서 Maps JavaScript API, Places API (New), Routes API가 활성화되어 있는지 확인하세요.";
         }
         showBanner("Google Maps API 로드에 실패했습니다. 네트워크 또는 API 키 설정을 확인하세요.", "error", true);
       } finally {
@@ -1874,20 +2010,68 @@
       const mapEl = $("map");
       state.map = new state.libs.Map(mapEl, {
         center: DEFAULT_CENTER,
-        zoom: 14,
+        zoom: 15,
         mapId: "DEMO_MAP_ID",
         disableDefaultUI: true,
         zoomControl: true,
         gestureHandling: "greedy",
         clickableIcons: false
       });
+
+      // 사용자가 지도를 드래그하여 이동할 때 감지 -> "현 지도 중심에서 주변 검색" 버튼 활성화
+      state.map.addListener("dragstart", () => {
+        state.isProgrammaticPan = false;
+        $("mapCenterReticle").classList.add("visible");
+      });
+
+      state.map.addListener("idle", () => {
+        if (!state.map) return;
+        const center = extractLatLngLiteral(state.map.getCenter());
+        if (!center) return;
+
+        if (state.isProgrammaticPan) {
+          state.isProgrammaticPan = false;
+          $("mapCenterReticle").classList.remove("visible");
+          return;
+        }
+
+        const refOrigin = state.searchOrigin || state.currentLocation;
+        if (!refOrigin) {
+          state.isMapMovedFromOrigin = true;
+          $("btnSearchMapCenter").classList.add("visible");
+          $("mapCenterReticle").classList.add("visible");
+          return;
+        }
+
+        const movedDist = computeHaversineMeters(refOrigin, center);
+        if (movedDist >= 120) {
+          state.isMapMovedFromOrigin = true;
+          $("btnSearchMapCenter").classList.add("visible");
+          $("mapCenterReticle").classList.add("visible");
+        } else {
+          state.isMapMovedFromOrigin = false;
+          $("btnSearchMapCenter").classList.remove("visible");
+          $("mapCenterReticle").classList.remove("visible");
+        }
+      });
+    }
+
+    function panToProgrammatically(coords, zoomLevel = null) {
+      if (!state.map || !coords) return;
+      state.isProgrammaticPan = true;
+      $("btnSearchMapCenter").classList.remove("visible");
+      $("mapCenterReticle").classList.remove("visible");
+      state.isMapMovedFromOrigin = false;
+      state.map.panTo(coords);
+      if (typeof zoomLevel === "number") {
+        state.map.setZoom(zoomLevel);
+      }
     }
 
     // =========================================================================
     // [3] 하단 시트 숨기기/올리기/확대 제어 및 터치 스와이프 제스처
     // =========================================================================
     function setSheetState(newState) {
-      // newState: "normal" | "expanded" | "hidden"
       state.sheetState = newState;
       const sheet = $("bottomSheet");
       const toggleBtn = $("btnToggleSheet");
@@ -1950,7 +2134,6 @@
           const elapsed = Date.now() - startTime;
           startY = null;
 
-          // 아래로 스와이프 시: expanded -> normal, normal -> hidden(완전히 내려서 사라짐)
           if (deltaY > 45 || (deltaY > 25 && elapsed < 250)) {
             if (state.sheetState === "expanded") {
               setSheetState("normal");
@@ -1958,7 +2141,6 @@
               setSheetState("hidden");
             }
           } else if (deltaY < -45 || (deltaY < -25 && elapsed < 250)) {
-            // 위로 스와이프 시: hidden -> normal, normal -> expanded
             if (state.sheetState === "hidden") {
               setSheetState("normal");
             } else if (state.sheetState === "normal") {
@@ -1971,7 +2153,7 @@
     }
 
     // =========================================================================
-    // [4] 카테고리, 반경, 정렬 및 UI 이벤트 처리
+    // [4] 카테고리, 반경, 지도 중심 검색 및 UI 이벤트 처리
     // =========================================================================
     function renderCategoryButtons() {
       const bar = $("categoryBar");
@@ -1986,10 +2168,20 @@
         btn.innerHTML = `<span>${cat.icon}</span><span>${cat.label}</span>`;
         btn.addEventListener("click", () => {
           if (state.isRequestInFlight) return;
-          if (state.selectedCategory === cat.id && state.places.length > 0) return;
           state.selectedCategory = cat.id;
           updateCategorySelectionUI();
-          triggerSearchIfReady();
+
+          // 만약 사용자가 지도를 다른 곳으로 이동해 둔 상태에서 카테고리를 누르면,
+          // 이동한 현재 지도 중심을 기준으로 해당 카테고리 주변 장소를 바로 검색!
+          if (state.isMapMovedFromOrigin && state.map) {
+            searchAroundCurrentMapCenter();
+          } else {
+            // 키워드가 단순 지역명이었을 때 카테고리를 바꾸면 현재 기준점 주변 카테고리 검색으로 전환
+            $("searchInput").value = "";
+            $("btnClearSearch").style.display = "none";
+            state.keyword = "";
+            executeSearch({ mode: "nearby", force: true });
+          }
         });
         bar.appendChild(btn);
       });
@@ -2004,19 +2196,40 @@
     }
 
     function bindUIEvents() {
+      // 내 위치 버튼
       $("btnLocate").addEventListener("click", () => {
-        requestUserLocation();
+        requestUserLocation({ isAutoStart: false });
       });
 
+      // 내 위치로 돌아가기 플로팅 버튼
       $("btnRecenter").addEventListener("click", () => {
         if (state.currentLocation && state.map) {
-          state.map.panTo(state.currentLocation);
-          state.map.setZoom(15);
+          state.searchOrigin = { ...state.currentLocation };
+          state.searchOriginLabel = "현재 내 위치";
+          $("searchInput").value = "";
+          $("btnClearSearch").style.display = "none";
+          state.keyword = "";
+          panToProgrammatically(state.currentLocation, radiusToZoom(state.selectedRadius));
+          renderSearchCenterMarker(null);
+          updateOriginContextBar();
+          updateRadiusCircle();
+          executeSearch({ mode: "nearby", force: true });
         } else {
-          requestUserLocation();
+          requestUserLocation({ isAutoStart: false });
         }
       });
 
+      // "내 위치로 복귀" 작은 버튼
+      $("btnResetToMyLoc").addEventListener("click", () => {
+        $("btnRecenter").click();
+      });
+
+      // 지도를 이동했을 때 뜨는 "현 지도 중심에서 주변 검색" 버튼
+      $("btnSearchMapCenter").addEventListener("click", () => {
+        searchAroundCurrentMapCenter();
+      });
+
+      // 검색창 입력 및 지우기 버튼
       const searchInput = $("searchInput");
       const btnClearSearch = $("btnClearSearch");
       searchInput.addEventListener("input", () => {
@@ -2027,35 +2240,49 @@
         searchInput.value = "";
         btnClearSearch.style.display = "none";
         state.keyword = "";
-        if (state.currentLocation) {
-          triggerSearchIfReady(true);
+        executeSearch({ mode: "nearby", force: true });
+      });
+
+      // 상단 검색창 제출 (전 세계 어디든 검색!)
+      $("searchForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const kw = searchInput.value.trim();
+        state.keyword = kw;
+        if (state.sheetState === "hidden") setSheetState("normal");
+        if (kw) {
+          executeSearch({ mode: "worldwide_text", force: true });
+        } else {
+          executeSearch({ mode: "nearby", force: true });
         }
       });
 
-      $("searchForm").addEventListener("submit", (e) => {
-        e.preventDefault();
-        state.keyword = searchInput.value.trim();
-        if (state.sheetState === "hidden") setSheetState("normal");
-        executeSearch({ force: true });
-      });
-
+      // 반경 선택 버튼 (500m, 1km, 3km, 5km)
       document.querySelectorAll(".radius-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           if (state.isRequestInFlight) return;
           const r = Number(btn.dataset.radius);
-          if (state.selectedRadius === r && state.places.length > 0) return;
           state.selectedRadius = r;
           document.querySelectorAll(".radius-btn").forEach((b) => b.classList.toggle("active", b === btn));
-          updateRadiusCircle();
-          triggerSearchIfReady();
+
+          if (state.isMapMovedFromOrigin && state.map) {
+            searchAroundCurrentMapCenter();
+          } else {
+            updateRadiusCircle();
+            if (state.map && state.searchOrigin) {
+              panToProgrammatically(state.searchOrigin, radiusToZoom(state.selectedRadius));
+            }
+            executeSearch({ mode: "nearby", force: true });
+          }
         });
       });
 
+      // 정렬 선택
       $("sortSelect").addEventListener("change", (e) => {
         state.sortBy = e.target.value;
-        renderPlacesListAndMarkers();
+        renderPlacesListAndMarkers(false);
       });
 
+      // 탭 전환 (주변 장소 <-> 여행 코스)
       $("tabPlaces").addEventListener("click", () => switchBottomTab("places"));
       $("tabTrip").addEventListener("click", () => switchBottomTab("trip"));
 
@@ -2084,14 +2311,17 @@
         }
       });
 
+      // 지도 경로 모드 전환 (도보 <-> 대중교통)
       $("btnMapRouteWalk").addEventListener("click", () => switchSelectedPlaceRouteMode("WALKING"));
       $("btnMapRouteTransit").addEventListener("click", () => switchSelectedPlaceRouteMode("TRANSIT"));
 
+      // 여행 코스 컨트롤
       $("btnTripModeWalk").addEventListener("click", () => setTripTravelMode("WALKING"));
       $("btnTripModeTransit").addEventListener("click", () => setTripTravelMode("TRANSIT"));
       $("btnOptimizeTrip").addEventListener("click", () => optimizeTripCourse());
       $("btnDrawTripRoute").addEventListener("click", () => calculateAndRenderTripCourse(true));
 
+      // 배너 닫기 및 원인·해결 버튼
       $("statusBannerClose").addEventListener("click", () => {
         $("statusBanner").className = "status-banner";
       });
@@ -2099,6 +2329,7 @@
         $("helpModal").classList.add("open");
       });
 
+      // 도움말 모달 열기/닫기 및 런타임 API 키 적용
       $("btnOpenHelp").addEventListener("click", () => $("helpModal").classList.add("open"));
       $("btnFallbackOpenHelp").addEventListener("click", () => $("helpModal").classList.add("open"));
       $("btnCloseHelp").addEventListener("click", () => $("helpModal").classList.remove("open"));
@@ -2121,6 +2352,58 @@
       });
     }
 
+    // 사용자가 지도를 움직여 놓은 중심 좌표를 새 기준점으로 삼아 주변 장소 검색
+    function searchAroundCurrentMapCenter() {
+      if (!state.map) return;
+      const center = extractLatLngLiteral(state.map.getCenter());
+      if (!center) return;
+
+      state.searchOrigin = center;
+      state.searchOriginLabel = `선택한 지도 중심 (${center.lat.toFixed(4)}, ${center.lng.toFixed(4)})`;
+      state.isMapMovedFromOrigin = false;
+      $("btnSearchMapCenter").classList.remove("visible");
+      $("mapCenterReticle").classList.remove("visible");
+
+      // 검색창에 이전 도시 검색어가 남아있다면 비워서 순수 주변 검색이 되도록 처리
+      $("searchInput").value = "";
+      $("btnClearSearch").style.display = "none";
+      state.keyword = "";
+
+      if (isInSouthKorea(center)) {
+        state.activeRouteMode = "TRANSIT";
+      } else {
+        state.activeRouteMode = "WALKING";
+      }
+
+      renderSearchCenterMarker(center);
+      updateOriginContextBar();
+      updateRadiusCircle();
+      executeSearch({ mode: "nearby", force: true });
+    }
+
+    function updateOriginContextBar() {
+      const bar = $("originContextBar");
+      const textEl = $("originContextText");
+      const resetBtn = $("btnResetToMyLoc");
+      if (!state.searchOrigin) {
+        bar.classList.remove("visible");
+        return;
+      }
+
+      bar.classList.add("visible");
+      const isMyLoc =
+        state.currentLocation &&
+        computeHaversineMeters(state.currentLocation, state.searchOrigin) < 50;
+
+      if (isMyLoc) {
+        textEl.textContent = "📍 현재 내 위치 기준 주변 장소";
+        resetBtn.style.display = "none";
+      } else {
+        textEl.textContent = `🎯 기준 위치: ${state.searchOriginLabel}`;
+        resetBtn.style.display = state.currentLocation ? "inline-block" : "none";
+      }
+    }
+
     function switchBottomTab(tab) {
       const isPlaces = tab === "places";
       $("tabPlaces").classList.toggle("active", isPlaces);
@@ -2135,19 +2418,14 @@
     }
 
     // =========================================================================
-    // [5] 현재 위치 기능 (Geolocation API)
+    // [5] 현재 위치 자동 및 수동 감지 (Geolocation API)
     // =========================================================================
-    function requestUserLocation() {
+    function requestUserLocation({ isAutoStart = false } = {}) {
       if (!navigator.geolocation) {
-        showBanner("이 브라우저에서는 위치 정보(Geolocation) 기능을 지원하지 않습니다. 검색창으로 장소를 검색해 주세요.", "error");
+        if (!isAutoStart) {
+          showBanner("이 브라우저에서는 위치 정보 기능을 지원하지 않습니다. 지도를 이동하거나 검색창으로 검색해 주세요.", "warn");
+        }
         return;
-      }
-
-      if (!window.isSecureContext && window.location.hostname !== "localhost") {
-        showBanner(
-          "아이폰 Safari에서는 보안 연결(HTTPS)에서만 현재 위치를 가져올 수 있습니다. 검색창에 지역명을 입력하거나 HTTPS 주소로 접속해 주세요.",
-          "warn"
-        );
       }
 
       const btnLocate = $("btnLocate");
@@ -2158,45 +2436,61 @@
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           btnLocate.disabled = false;
-          locateBtnText.textContent = "위치 갱신";
+          locateBtnText.textContent = "내 위치";
 
           const coords = {
             lat: pos.coords.latitude,
             lng: pos.coords.longitude
           };
           state.currentLocation = coords;
-          state.searchOrigin = coords;
+          state.searchOrigin = { ...coords };
+          state.searchOriginLabel = "현재 내 위치";
 
           if (isInSouthKorea(coords)) {
             state.activeRouteMode = "TRANSIT";
             state.tripTravelMode = "TRANSIT";
             $("btnTripModeWalk").classList.remove("active");
             $("btnTripModeTransit").classList.add("active");
+          } else {
+            state.activeRouteMode = "WALKING";
           }
 
           if (state.map) {
-            state.map.panTo(coords);
-            state.map.setZoom(radiusToZoom(state.selectedRadius));
+            panToProgrammatically(coords, radiusToZoom(state.selectedRadius));
             renderUserLocationMarker(coords);
+            renderSearchCenterMarker(null);
             updateRadiusCircle();
           }
 
-          showBanner("현재 위치를 확인했습니다. 주변 장소를 검색합니다.", "info");
-          executeSearch({ force: true });
+          updateOriginContextBar();
+          showBanner("현재 내 위치를 중심으로 주변 장소를 검색합니다.", "info");
+          executeSearch({ mode: "nearby", force: true });
         },
         (err) => {
           btnLocate.disabled = false;
-          locateBtnText.textContent = "내 위치 찾기";
+          locateBtnText.textContent = "내 위치";
 
-          let msg = "현재 위치를 가져오지 못했습니다. 검색창에 장소나 지역명을 직접 입력해 검색할 수 있습니다.";
-          if (err.code === 1) {
-            msg = "위치 권한이 거부되었습니다. 아이폰 설정 > Safari > 위치에서 권한을 허용하거나 검색창에 지역명을 직접 입력해 검색하세요.";
-          } else if (err.code === 2) {
-            msg = "위치 신호를 확인할 수 없습니다. 잠시 후 다시 시도하거나 검색창에 주소를 직접 입력해 주세요.";
-          } else if (err.code === 3) {
-            msg = "위치 요청 시간이 초과되었습니다. 다시 시도하거나 검색창으로 직접 검색해 주세요.";
+          // 위치 권한이 거절되었거나 실패해도 현재 지도 중심을 기준으로 바로 주변 검색을 사용할 수 있게 설정!
+          if (!state.searchOrigin && state.map) {
+            const fallbackCenter = extractLatLngLiteral(state.map.getCenter()) || DEFAULT_CENTER;
+            state.searchOrigin = fallbackCenter;
+            state.searchOriginLabel = "지도 중심 위치";
+            updateOriginContextBar();
+            updateRadiusCircle();
           }
-          showBanner(msg, "error");
+
+          if (isAutoStart) {
+            showBanner(
+              "위치 권한이 허용되지 않아 기본 지도 중심을 표시합니다. 지도를 원하는 곳으로 움직이거나 상단 검색창에 전 세계 어디든 검색해 보세요.",
+              "info"
+            );
+          } else {
+            let msg = "현재 위치를 가져오지 못했습니다. 지도를 움직여 '현 지도 중심에서 주변 검색'을 누르거나 검색창을 이용해 보세요.";
+            if (err.code === 1) {
+              msg = "위치 권한이 거부되었습니다. 아이폰 설정 > Safari > 위치에서 허용하거나, 지도를 움직여 원하는 지역의 주변 정보를 바로 찾을 수 있습니다.";
+            }
+            showBanner(msg, "warn");
+          }
         },
         {
           enableHighAccuracy: true,
@@ -2253,13 +2547,52 @@
       }
     }
 
+    // 이동한 지도 중심 또는 검색한 기준점을 표시하는 마커
+    function renderSearchCenterMarker(coords) {
+      if (!state.map) return;
+      if (state.searchCenterMarker) {
+        if (state.searchCenterMarker.setMap) state.searchCenterMarker.setMap(null);
+        else state.searchCenterMarker.map = null;
+        state.searchCenterMarker = null;
+      }
+      if (!coords) return;
+
+      if (state.libs.AdvancedMarkerElement) {
+        const pin = document.createElement("div");
+        pin.style.padding = "3px 8px";
+        pin.style.borderRadius = "999px";
+        pin.style.background = "#059669";
+        pin.style.color = "#ffffff";
+        pin.style.fontSize = "11px";
+        pin.style.fontWeight = "800";
+        pin.style.border = "2px solid #ffffff";
+        pin.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
+        pin.textContent = "🎯 검색 중심";
+
+        state.searchCenterMarker = new state.libs.AdvancedMarkerElement({
+          map: state.map,
+          position: coords,
+          content: pin,
+          title: "현재 검색 중심 위치",
+          zIndex: 950
+        });
+      } else {
+        state.searchCenterMarker = new google.maps.Marker({
+          map: state.map,
+          position: coords,
+          title: "현재 검색 중심 위치",
+          zIndex: 950
+        });
+      }
+    }
+
     function updateRadiusCircle() {
       if (!state.map) return;
       if (state.radiusCircle) {
         state.radiusCircle.setMap(null);
         state.radiusCircle = null;
       }
-      const center = state.currentLocation || state.searchOrigin;
+      const center = state.searchOrigin || state.currentLocation;
       if (!center) return;
 
       state.radiusCircle = new google.maps.Circle({
@@ -2283,25 +2616,15 @@
     }
 
     // =========================================================================
-    // [6] 주변 장소 검색 (Places API New 우선 + Legacy PlacesService 자동 폴백)
+    // [6] Places API (New) 전용 검색 (주변 검색 & 전 세계 텍스트 검색)
     // =========================================================================
-    function triggerSearchIfReady(force = false) {
-      const kw = $("searchInput").value.trim();
-      state.keyword = kw;
-      if (!state.currentLocation && !kw) {
-        showBanner("먼저 '📍 내 위치 찾기'를 누르거나 검색창에 장소·지역명을 입력해 주세요.", "info");
-        return;
-      }
-      executeSearch({ force });
-    }
-
-    async function executeSearch({ force = false } = {}) {
+    async function executeSearch({ mode = "nearby", force = false } = {}) {
       if (!state.apiKey) {
         showMissingKeyNotice();
         return;
       }
       if (!state.mapsLoaded) {
-        showBanner("Google Maps 라이브러리가 아직 준비되지 않았습니다. API 키 설정을 확인해 주세요.", "warn");
+        showBanner("Google Maps가 아직 준비되지 않았습니다.", "warn");
         return;
       }
       if (state.isRequestInFlight) return;
@@ -2309,15 +2632,17 @@
       const kw = $("searchInput").value.trim();
       state.keyword = kw;
 
-      if (!state.currentLocation && !kw) {
-        showBanner("현재 위치가 확인되지 않았습니다. '내 위치 찾기'를 누르거나 검색어를 입력하세요.", "warn");
-        return;
+      // 기준 좌표가 아직 없으면 현재 지도의 중심 좌표를 기준점으로 사용
+      if (!state.searchOrigin && state.map) {
+        state.searchOrigin = extractLatLngLiteral(state.map.getCenter()) || DEFAULT_CENTER;
+        state.searchOriginLabel = "지도 중심 위치";
       }
 
-      const originKey = state.currentLocation
-        ? `${state.currentLocation.lat.toFixed(4)},${state.currentLocation.lng.toFixed(4)}`
-        : "no_loc";
-      const signature = `${originKey}|r=${state.selectedRadius}|cat=${state.selectedCategory}|kw=${kw}`;
+      const activeMode = kw ? "worldwide_text" : mode;
+      const originKey = state.searchOrigin
+        ? `${state.searchOrigin.lat.toFixed(4)},${state.searchOrigin.lng.toFixed(4)}`
+        : "global";
+      const signature = `${activeMode}|${originKey}|r=${state.selectedRadius}|cat=${state.selectedCategory}|kw=${kw}`;
 
       if (!force && signature === state.lastSearchSignature && state.places.length > 0) {
         return;
@@ -2326,44 +2651,116 @@
       state.isRequestInFlight = true;
       state.lastSearchSignature = signature;
       setButtonsDisabled(true);
-      setLoading(true, "주변 장소를 검색하는 중...");
+      setLoading(
+        true,
+        activeMode === "worldwide_text"
+          ? `'${kw}' 전 세계 장소를 검색하는 중...`
+          : "선택한 위치 주변 장소를 검색하는 중..."
+      );
 
       try {
         let rawPlaces = [];
+        let searchedCenter = state.searchOrigin;
+        let searchedLabel = state.searchOriginLabel;
+
         if (state.searchCache.has(signature)) {
-          rawPlaces = state.searchCache.get(signature);
+          const cachedBundle = state.searchCache.get(signature);
+          rawPlaces = cachedBundle.places;
+          searchedCenter = cachedBundle.center;
+          searchedLabel = cachedBundle.label;
+        } else if (activeMode === "worldwide_text") {
+          // 상단 검색창: 전 세계 어디든 검색! (현재 위치 반경으로 제한하지 않음)
+          const textResults = await searchTextWorldwideNewApi(kw);
+          if (textResults.length > 0) {
+            const firstPlace = textResults[0];
+            searchedCenter = firstPlace.location;
+            searchedLabel = `${firstPlace.name} 주변`;
+
+            // 만약 검색 결과가 도시/역/지역/단일 랜드마크(1~2개)라면,
+            // 해당 위치로 지도를 이동하고 그 주변의 카테고리 장소들을 함께 불러와 보여줌!
+            const isAreaOrSingleLandmark =
+              textResults.length <= 2 ||
+              AREA_OR_LANDMARK_TYPES.has(firstPlace.primaryType);
+
+            if (isAreaOrSingleLandmark) {
+              try {
+                const nearbyAroundTarget = await searchNearbyNewApi(
+                  searchedCenter,
+                  state.selectedRadius,
+                  state.selectedCategory
+                );
+                // 검색된 랜드마크 자체를 맨 앞에 두고 중복 제거 후 주변 장소 결합
+                const seenIds = new Set([firstPlace.id]);
+                const combined = [firstPlace];
+                for (const np of nearbyAroundTarget) {
+                  if (!seenIds.has(np.id)) {
+                    seenIds.add(np.id);
+                    combined.push(np);
+                  }
+                }
+                rawPlaces = combined.slice(0, MAX_SEARCH_RESULTS);
+              } catch (_) {
+                rawPlaces = textResults;
+              }
+            } else {
+              rawPlaces = textResults;
+            }
+          }
+          state.searchCache.set(signature, {
+            places: rawPlaces,
+            center: searchedCenter,
+            label: searchedLabel
+          });
         } else {
-          rawPlaces = await fetchPlacesWithFallback(kw);
-          state.searchCache.set(signature, rawPlaces);
+          // 현재 기준점(내 위치 또는 이동한 지도 중심) 주변 검색
+          rawPlaces = await searchNearbyNewApi(
+            state.searchOrigin,
+            state.selectedRadius,
+            state.selectedCategory
+          );
+          state.searchCache.set(signature, {
+            places: rawPlaces,
+            center: searchedCenter,
+            label: searchedLabel
+          });
         }
 
         if (!rawPlaces || rawPlaces.length === 0) {
           state.places = [];
           state.selectedPlaceId = null;
           clearMapMarkersAndPolylines();
-          renderPlacesListAndMarkers();
+          renderPlacesListAndMarkers(false);
           updateRestoreBarText();
           showBanner("조건에 맞는 검색 결과가 없습니다. 반경을 넓히거나 다른 카테고리를 선택해 보세요.", "warn");
           return;
         }
 
-        if (!state.currentLocation && rawPlaces[0]?.location) {
-          state.searchOrigin = rawPlaces[0].location;
-          state.map.panTo(state.searchOrigin);
-          state.map.setZoom(radiusToZoom(state.selectedRadius));
-          if (isInSouthKorea(state.searchOrigin)) {
+        // 기준 위치 업데이트 및 지도 이동
+        if (searchedCenter) {
+          state.searchOrigin = searchedCenter;
+          state.searchOriginLabel = searchedLabel;
+          panToProgrammatically(searchedCenter, radiusToZoom(state.selectedRadius));
+
+          const isSameAsUserLoc =
+            state.currentLocation &&
+            computeHaversineMeters(state.currentLocation, searchedCenter) < 50;
+          renderSearchCenterMarker(isSameAsUserLoc ? null : searchedCenter);
+
+          if (isInSouthKorea(searchedCenter)) {
             state.activeRouteMode = "TRANSIT";
+          } else {
+            state.activeRouteMode = "WALKING";
           }
-        } else if (state.currentLocation) {
-          state.searchOrigin = state.currentLocation;
         }
 
+        updateOriginContextBar();
         updateRadiusCircle();
 
+        // 현재 기준 위치(내 위치 또는 이동한 지도 중심)로부터의 직선거리 계산
+        const calcOrigin = state.searchOrigin || state.currentLocation;
         state.places = rawPlaces.map((p) => {
-          const straightDistM = state.currentLocation && p.location
-            ? computeHaversineMeters(state.currentLocation, p.location)
-            : null;
+          const straightDistM =
+            calcOrigin && p.location ? computeHaversineMeters(calcOrigin, p.location) : null;
           return {
             ...p,
             straightDistM,
@@ -2378,21 +2775,21 @@
           };
         });
 
-        if (state.currentLocation) {
+        if (calcOrigin) {
           state.places.sort((a, b) => (a.straightDistM ?? Infinity) - (b.straightDistM ?? Infinity));
         }
 
         renderPlacesListAndMarkers(true);
         updateRestoreBarText();
 
-        const matrixOrigin = state.currentLocation || state.searchOrigin;
-        if (matrixOrigin && state.places.length > 0) {
+        // 기준 위치에서 상위 8개 장소까지의 실제 도보/대중교통 소요 시간 계산
+        if (calcOrigin && state.places.length > 0) {
           setLoading(true, "상위 장소의 도보·대중교통 실제 소요 시간을 계산하는 중...");
-          await computeTravelTimesForTopPlaces(matrixOrigin, state.places);
+          await computeTravelTimesForTopPlaces(calcOrigin, state.places);
           renderPlacesListAndMarkers(false);
         }
       } catch (err) {
-        console.error("장소 검색 오류:", err);
+        console.error("Places API (New) 검색 오류:", err);
         handleApiError(err, "장소 검색 중 오류가 발생했습니다.");
       } finally {
         state.isRequestInFlight = false;
@@ -2401,238 +2798,198 @@
       }
     }
 
-    // 1순위: Places API (New) Place.searchNearby / Place.searchByText
-    // 2순위(자동 폴백): Google Cloud에서 기존 Places API만 활성화된 경우 PlacesService로 자동 전환하여 오류 배너 없이 정상 작동
-    async function fetchPlacesWithFallback(keyword) {
-      let newApiError = null;
+    // Places API (New): 주변 검색 (JS SDK Place.searchNearby 우선 + REST v1 places:searchNearby 자동 보완)
+    async function searchNearbyNewApi(centerCoords, radiusMeters, categoryId) {
+      const catObj = CATEGORIES.find((c) => c.id === categoryId) || CATEGORIES[0];
 
+      // 1차: Maps JavaScript API의 Place.searchNearby 시도
       if (state.libs.Place && typeof state.libs.Place.searchNearby === "function") {
         try {
-          const res = await fetchPlacesUsingNewApi(keyword);
-          return res;
-        } catch (err) {
-          newApiError = err;
-          console.warn("Places API (New) 요청 실패, 기존 PlacesService 폴백을 시도합니다:", err);
-        }
-      }
-
-      if (state.libs.PlacesService && state.map) {
-        try {
-          const legacyRes = await fetchPlacesUsingLegacyService(keyword);
-          return legacyRes;
-        } catch (legacyErr) {
-          console.warn("기존 PlacesService 폴백도 실패:", legacyErr);
-          const combinedErr = new Error(
-            `[Places API (New): ${newApiError?.message || "실패"}] / [Places API: ${legacyErr?.message || "실패"}]`
-          );
-          throw combinedErr;
-        }
-      }
-
-      if (newApiError) throw newApiError;
-      throw new Error("Places 라이브러리를 사용할 수 없습니다.");
-    }
-
-    async function fetchPlacesUsingNewApi(keyword) {
-      const Place = state.libs.Place;
-      const catObj = CATEGORIES.find((c) => c.id === state.selectedCategory) || CATEGORIES[0];
-
-      const fullFields = [
-        "id",
-        "displayName",
-        "formattedAddress",
-        "location",
-        "primaryType",
-        "primaryTypeDisplayName",
-        "rating",
-        "userRatingCount",
-        "regularOpeningHours",
-        "priceLevel",
-        "photos",
-        "googleMapsURI"
-      ];
-
-      const basicFields = [
-        "id",
-        "displayName",
-        "formattedAddress",
-        "location",
-        "primaryType",
-        "rating",
-        "userRatingCount",
-        "photos",
-        "googleMapsURI"
-      ];
-
-      let placesResult = [];
-
-      const runQuery = async (fieldsToUse) => {
-        if (keyword) {
-          const textQuery = state.selectedCategory === "all"
-            ? keyword
-            : `${keyword} ${catObj.label}`;
-
-          const request = {
-            textQuery,
-            fields: fieldsToUse,
-            maxResultCount: MAX_SEARCH_RESULTS,
-            language: "ko"
-          };
-
-          if (state.selectedCategory !== "all" && catObj.types.length === 1) {
-            request.includedType = catObj.types[0];
-          }
-
-          if (state.currentLocation) {
-            request.locationBias = {
-              center: state.currentLocation,
-              radius: state.selectedRadius
-            };
-          }
-
-          const response = await Place.searchByText(request);
-          return response?.places || [];
-        } else {
-          const request = {
-            fields: fieldsToUse,
+          const jsFields = [
+            "id",
+            "displayName",
+            "formattedAddress",
+            "location",
+            "primaryType",
+            "primaryTypeDisplayName",
+            "rating",
+            "userRatingCount",
+            "regularOpeningHours",
+            "priceLevel",
+            "photos",
+            "googleMapsURI"
+          ];
+          const req = {
+            fields: jsFields,
             locationRestriction: {
-              center: state.currentLocation,
-              radius: state.selectedRadius
+              center: centerCoords,
+              radius: radiusMeters
             },
             includedPrimaryTypes: catObj.types,
             maxResultCount: MAX_SEARCH_RESULTS,
             language: "ko"
           };
-
           if (state.libs.SearchNearbyRankPreference) {
-            request.rankPreference = state.libs.SearchNearbyRankPreference.DISTANCE;
+            req.rankPreference = state.libs.SearchNearbyRankPreference.DISTANCE;
           }
+          const { places } = await state.libs.Place.searchNearby(req);
+          if (Array.isArray(places)) {
+            return places.map(normalizeJsPlaceObject).filter((p) => p && p.location);
+          }
+        } catch (jsErr) {
+          console.warn("Place.searchNearby(JS) 예외 발생, Places API (New) REST v1 엔드포인트로 재시도합니다:", jsErr);
+        }
+      }
 
-          const response = await Place.searchNearby(request);
-          return response?.places || [];
+      // 2차: 공식 Places API (New) REST 엔드포인트 (https://places.googleapis.com/v1/places:searchNearby)
+      const fieldMask = [
+        "places.id",
+        "places.displayName",
+        "places.formattedAddress",
+        "places.location",
+        "places.primaryType",
+        "places.primaryTypeDisplayName",
+        "places.rating",
+        "places.userRatingCount",
+        "places.regularOpeningHours",
+        "places.currentOpeningHours",
+        "places.priceLevel",
+        "places.photos",
+        "places.editorialSummary",
+        "places.googleMapsUri",
+        "places.websiteUri"
+      ].join(",");
+
+      const bodyObj = {
+        languageCode: "ko",
+        maxResultCount: MAX_SEARCH_RESULTS,
+        includedPrimaryTypes: catObj.types,
+        rankPreference: "DISTANCE",
+        locationRestriction: {
+          circle: {
+            center: {
+              latitude: centerCoords.lat,
+              longitude: centerCoords.lng
+            },
+            radius: Number(radiusMeters)
+          }
         }
       };
 
-      try {
-        placesResult = await runQuery(fullFields);
-      } catch (firstErr) {
-        const msg = String(firstErr?.message || firstErr || "");
-        if (!msg.includes("PERMISSION_DENIED") && !msg.includes("REQUEST_DENIED") && !msg.includes("403")) {
-          placesResult = await runQuery(basicFields);
-        } else {
-          throw firstErr;
-        }
-      }
-
-      if (keyword && state.currentLocation && placesResult.length > 0) {
-        const withinRadius = placesResult.filter((pl) => {
-          const loc = extractLatLngLiteral(pl.location);
-          if (!loc) return false;
-          return computeHaversineMeters(state.currentLocation, loc) <= state.selectedRadius * 1.5;
-        });
-        if (withinRadius.length > 0) {
-          placesResult = withinRadius;
-        }
-      }
-
-      return placesResult.map(normalizePlaceObject).filter((p) => p && p.location);
-    }
-
-    function fetchPlacesUsingLegacyService(keyword) {
-      return new Promise((resolve, reject) => {
-        const service = new state.libs.PlacesService(state.map);
-        const catObj = CATEGORIES.find((c) => c.id === state.selectedCategory) || CATEGORIES[0];
-
-        const handleCallback = (results, status) => {
-          if (status === "OK" || status === google.maps.places?.PlacesServiceStatus?.OK) {
-            const sliced = (results || []).slice(0, MAX_SEARCH_RESULTS);
-            const normalized = sliced.map(normalizeLegacyPlaceObject).filter((p) => p && p.location);
-            resolve(normalized);
-          } else if (status === "ZERO_RESULTS" || status === google.maps.places?.PlacesServiceStatus?.ZERO_RESULTS) {
-            resolve([]);
-          } else {
-            reject(new Error(`Legacy PlacesService Error: ${status}`));
-          }
-        };
-
-        if (keyword) {
-          const req = {
-            query: state.selectedCategory === "all" ? keyword : `${keyword} ${catObj.label}`
-          };
-          if (state.currentLocation) {
-            req.location = state.currentLocation;
-            req.radius = state.selectedRadius;
-          }
-          if (state.selectedCategory !== "all" && catObj.legacyType) {
-            req.type = catObj.legacyType;
-          }
-          service.textSearch(req, handleCallback);
-        } else {
-          const req = {
-            location: state.currentLocation,
-            radius: state.selectedRadius
-          };
-          if (state.selectedCategory !== "all" && catObj.legacyType) {
-            req.type = catObj.legacyType;
-          }
-          service.nearbySearch(req, handleCallback);
-        }
+      const resp = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": state.apiKey,
+          "X-Goog-FieldMask": fieldMask
+        },
+        body: JSON.stringify(bodyObj)
       });
-    }
 
-    function normalizeLegacyPlaceObject(item) {
-      if (!item || !item.geometry?.location) return null;
-      const loc = extractLatLngLiteral(item.geometry.location);
-      if (!loc) return null;
-
-      let photoUrl = null;
-      let photoAttrHtml = "";
-      if (Array.isArray(item.photos) && item.photos.length > 0) {
-        const p0 = item.photos[0];
-        try {
-          if (typeof p0.getUrl === "function") {
-            photoUrl = p0.getUrl({ maxWidth: 360, maxHeight: 280 });
-          }
-          if (Array.isArray(p0.html_attributions) && p0.html_attributions.length > 0) {
-            photoAttrHtml = `사진: ${p0.html_attributions[0]}`;
-          }
-        } catch (_) {}
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw buildPlacesNewRestError(resp.status, errData);
       }
 
-      const primaryType = Array.isArray(item.types) && item.types.length > 0 ? item.types[0] : "";
-      let isOpenNow = null;
-      try {
-        if (item.opening_hours && typeof item.opening_hours.isOpen === "function") {
-          isOpenNow = item.opening_hours.isOpen();
-        } else if (typeof item.opening_hours?.open_now === "boolean") {
-          isOpenNow = item.opening_hours.open_now;
-        }
-      } catch (_) {}
-
-      return {
-        id: item.place_id,
-        isLegacyPlace: true,
-        rawPlace: item,
-        name: item.name || "이름 정보 없음",
-        address: item.vicinity || item.formatted_address || "",
-        location: loc,
-        primaryType,
-        categoryLabel: TYPE_KO_LABELS[primaryType] || (primaryType ? primaryType.replace(/_/g, " ") : "장소"),
-        rating: typeof item.rating === "number" ? item.rating : null,
-        userRatingCount: typeof item.user_ratings_total === "number" ? item.user_ratings_total : null,
-        isOpenNow,
-        todayHoursText: null,
-        weekdayDescriptions: [],
-        priceLevel: item.price_level !== undefined ? item.price_level : null,
-        editorialSummary: null,
-        googleMapsURI: null,
-        websiteURI: null,
-        photoUrl,
-        photoAttrHtml
-      };
+      const data = await resp.json();
+      return (data.places || []).map(normalizeRestPlaceObject).filter((p) => p && p.location);
     }
 
-    function normalizePlaceObject(placeInstance) {
+    // Places API (New): 전 세계 텍스트 검색 (JS SDK Place.searchByText 우선 + REST v1 places:searchText 자동 보완)
+    async function searchTextWorldwideNewApi(queryText) {
+      const catObj = CATEGORIES.find((c) => c.id === state.selectedCategory) || CATEGORIES[0];
+      // 사용자가 카테고리를 선택해 둔 상태라도 도시/국가/명소 검색이 막히지 않도록 검색어 그대로 전 세계 검색 수행
+      const effectiveQuery = queryText.trim();
+
+      // 1차: Maps JavaScript API의 Place.searchByText 시도 (전 세계 검색을 위해 locationRestriction/locationBias 생략)
+      if (state.libs.Place && typeof state.libs.Place.searchByText === "function") {
+        try {
+          const jsFields = [
+            "id",
+            "displayName",
+            "formattedAddress",
+            "location",
+            "primaryType",
+            "primaryTypeDisplayName",
+            "rating",
+            "userRatingCount",
+            "regularOpeningHours",
+            "priceLevel",
+            "photos",
+            "googleMapsURI"
+          ];
+          const req = {
+            textQuery: effectiveQuery,
+            fields: jsFields,
+            maxResultCount: MAX_SEARCH_RESULTS,
+            language: "ko"
+          };
+          const { places } = await state.libs.Place.searchByText(req);
+          if (Array.isArray(places)) {
+            return places.map(normalizeJsPlaceObject).filter((p) => p && p.location);
+          }
+        } catch (jsErr) {
+          console.warn("Place.searchByText(JS) 예외 발생, Places API (New) REST v1 엔드포인트로 재시도합니다:", jsErr);
+        }
+      }
+
+      // 2차: 공식 Places API (New) REST 엔드포인트 (https://places.googleapis.com/v1/places:searchText)
+      const fieldMask = [
+        "places.id",
+        "places.displayName",
+        "places.formattedAddress",
+        "places.location",
+        "places.primaryType",
+        "places.primaryTypeDisplayName",
+        "places.rating",
+        "places.userRatingCount",
+        "places.regularOpeningHours",
+        "places.currentOpeningHours",
+        "places.priceLevel",
+        "places.photos",
+        "places.editorialSummary",
+        "places.googleMapsUri",
+        "places.websiteUri"
+      ].join(",");
+
+      const bodyObj = {
+        textQuery: effectiveQuery,
+        languageCode: "ko",
+        maxResultCount: MAX_SEARCH_RESULTS
+      };
+
+      const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": state.apiKey,
+          "X-Goog-FieldMask": fieldMask
+        },
+        body: JSON.stringify(bodyObj)
+      });
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw buildPlacesNewRestError(resp.status, errData);
+      }
+
+      const data = await resp.json();
+      return (data.places || []).map(normalizeRestPlaceObject).filter((p) => p && p.location);
+    }
+
+    function buildPlacesNewRestError(httpStatus, errData) {
+      const statusStr = errData?.error?.status || `HTTP_${httpStatus}`;
+      const msgStr = errData?.error?.message || "Places API (New) 요청이 거부되었습니다.";
+      const details = errData?.error?.details || [];
+      const reason = details.find((d) => d.reason)?.reason || "";
+      const err = new Error(`[${statusStr}${reason ? " / " + reason : ""}] ${msgStr}`);
+      err.reason = reason;
+      err.httpStatus = httpStatus;
+      return err;
+    }
+
+    // JS SDK Place 객체 정규화
+    function normalizeJsPlaceObject(placeInstance) {
       if (!placeInstance) return null;
       const loc = extractLatLngLiteral(placeInstance.location);
       if (!loc) return null;
@@ -2662,7 +3019,6 @@
 
       return {
         id: placeInstance.id,
-        isLegacyPlace: false,
         rawPlace: placeInstance,
         name: placeInstance.displayName || "이름 정보 없음",
         address: placeInstance.formattedAddress || "",
@@ -2686,14 +3042,71 @@
       };
     }
 
+    // Places API (New) REST v1 응답 객체 정규화
+    function normalizeRestPlaceObject(item) {
+      if (!item || !item.location) return null;
+      const loc = {
+        lat: item.location.latitude,
+        lng: item.location.longitude
+      };
+      if (typeof loc.lat !== "number" || typeof loc.lng !== "number") return null;
+
+      let photoUrl = null;
+      let photoAttrHtml = "";
+      if (Array.isArray(item.photos) && item.photos.length > 0) {
+        const p0 = item.photos[0];
+        if (p0.name) {
+          photoUrl = `https://places.googleapis.com/v1/${p0.name}/media?maxWidthPx=360&maxHeightPx=280&key=${encodeURIComponent(
+            state.apiKey
+          )}`;
+        }
+        if (Array.isArray(p0.authorAttributions) && p0.authorAttributions.length > 0) {
+          const attr = p0.authorAttributions[0];
+          const authorName = escapeHtml(attr.displayName || "Google 사용자");
+          if (attr.uri) {
+            const safeUri = sanitizeUrl(attr.uri);
+            photoAttrHtml = `사진: <a href="${safeUri}" target="_blank" rel="noopener noreferrer">${authorName}</a>`;
+          } else {
+            photoAttrHtml = `사진: ${authorName}`;
+          }
+        }
+      }
+
+      const hoursObj = item.currentOpeningHours || item.regularOpeningHours;
+      const openingInfo = extractOpeningHoursInfo(hoursObj);
+
+      return {
+        id: item.id,
+        rawPlace: null,
+        name: item.displayName?.text || "이름 정보 없음",
+        address: item.formattedAddress || "",
+        location: loc,
+        primaryType: item.primaryType || "",
+        categoryLabel:
+          item.primaryTypeDisplayName?.text ||
+          TYPE_KO_LABELS[item.primaryType] ||
+          (item.primaryType ? item.primaryType.replace(/_/g, " ") : "장소"),
+        rating: typeof item.rating === "number" ? item.rating : null,
+        userRatingCount: typeof item.userRatingCount === "number" ? item.userRatingCount : null,
+        isOpenNow: openingInfo.isOpenNow,
+        todayHoursText: openingInfo.todayHoursText,
+        weekdayDescriptions: openingInfo.weekdayDescriptions,
+        priceLevel: item.priceLevel || null,
+        editorialSummary: item.editorialSummary?.text || null,
+        googleMapsURI: item.googleMapsUri || null,
+        websiteURI: item.websiteUri || null,
+        photoUrl,
+        photoAttrHtml,
+        detailsLoaded: true
+      };
+    }
+
     function extractOpeningHoursInfo(hoursObj) {
       if (!hoursObj) {
         return { isOpenNow: null, todayHoursText: null, weekdayDescriptions: [] };
       }
       const weekdayDescriptions = Array.isArray(hoursObj.weekdayDescriptions)
         ? hoursObj.weekdayDescriptions
-        : Array.isArray(hoursObj.weekday_text)
-        ? hoursObj.weekday_text
         : [];
 
       let todayHoursText = null;
@@ -2751,6 +3164,7 @@
       }
     }
 
+    // 상세 정보 온디맨드 조회 (Places API New)
     async function ensurePlaceDetailsLoaded(placeItem) {
       if (!placeItem || placeItem.detailsLoaded) return placeItem;
       if (state.placeDetailsCache.has(placeItem.id)) {
@@ -2759,102 +3173,60 @@
         return placeItem;
       }
 
-      if (placeItem.isLegacyPlace && state.libs.PlacesService && state.map) {
-        await new Promise((resolve) => {
-          const service = new state.libs.PlacesService(state.map);
-          service.getDetails(
-            {
-              placeId: placeItem.id,
-              fields: ["formatted_address", "opening_hours", "website", "url", "price_level", "editorial_summary"]
-            },
-            (res, status) => {
-              if (status === "OK" && res) {
-                const openingInfo = extractOpeningHoursInfo(res.opening_hours);
-                let openNow = placeItem.isOpenNow;
-                try {
-                  if (res.opening_hours && typeof res.opening_hours.isOpen === "function") {
-                    openNow = res.opening_hours.isOpen();
-                  }
-                } catch (_) {}
-                const updatedProps = {
-                  address: res.formatted_address || placeItem.address,
-                  editorialSummary: res.editorial_summary?.overview || placeItem.editorialSummary || null,
-                  websiteURI: res.website || placeItem.websiteURI || null,
-                  googleMapsURI: res.url || placeItem.googleMapsURI || null,
-                  priceLevel: res.price_level !== undefined ? res.price_level : placeItem.priceLevel,
-                  isOpenNow: openNow !== null ? openNow : openingInfo.isOpenNow,
-                  todayHoursText: openingInfo.todayHoursText || placeItem.todayHoursText,
-                  weekdayDescriptions:
-                    openingInfo.weekdayDescriptions.length > 0
-                      ? openingInfo.weekdayDescriptions
-                      : placeItem.weekdayDescriptions,
-                  detailsLoaded: true
-                };
-                Object.assign(placeItem, updatedProps);
-                state.placeDetailsCache.set(placeItem.id, updatedProps);
-              }
-              resolve();
-            }
-          );
-        });
-        return placeItem;
-      }
+      if (placeItem.rawPlace && typeof placeItem.rawPlace.fetchFields === "function") {
+        const detailFields = [
+          "editorialSummary",
+          "currentOpeningHours",
+          "regularOpeningHours",
+          "websiteURI",
+          "googleMapsURI",
+          "priceLevel"
+        ];
 
-      if (!placeItem.rawPlace || typeof placeItem.rawPlace.fetchFields !== "function") return placeItem;
-
-      const detailFields = [
-        "editorialSummary",
-        "currentOpeningHours",
-        "regularOpeningHours",
-        "websiteURI",
-        "googleMapsURI",
-        "priceLevel"
-      ];
-
-      try {
-        await placeItem.rawPlace.fetchFields({ fields: detailFields });
-      } catch (_) {
         try {
-          await placeItem.rawPlace.fetchFields({
-            fields: ["regularOpeningHours", "websiteURI", "googleMapsURI", "priceLevel"]
-          });
-        } catch (err2) {
-          console.warn("상세 정보 추가 조회 폴백 경고:", err2);
+          await placeItem.rawPlace.fetchFields({ fields: detailFields });
+        } catch (_) {
+          try {
+            await placeItem.rawPlace.fetchFields({
+              fields: ["regularOpeningHours", "websiteURI", "googleMapsURI", "priceLevel"]
+            });
+          } catch (_) {}
         }
+
+        let openState = placeItem.isOpenNow;
+        try {
+          if (typeof placeItem.rawPlace.isOpen === "function") {
+            const res = await placeItem.rawPlace.isOpen();
+            if (typeof res === "boolean") openState = res;
+          }
+        } catch (_) {}
+
+        const hoursObj = placeItem.rawPlace.currentOpeningHours || placeItem.rawPlace.regularOpeningHours;
+        const openingInfo = extractOpeningHoursInfo(hoursObj);
+
+        const updatedProps = {
+          editorialSummary: placeItem.rawPlace.editorialSummary || placeItem.editorialSummary || null,
+          websiteURI: placeItem.rawPlace.websiteURI || placeItem.websiteURI || null,
+          googleMapsURI: placeItem.rawPlace.googleMapsURI || placeItem.googleMapsURI || null,
+          priceLevel: placeItem.rawPlace.priceLevel || placeItem.priceLevel || null,
+          isOpenNow: openState !== null ? openState : openingInfo.isOpenNow,
+          todayHoursText: openingInfo.todayHoursText || placeItem.todayHoursText,
+          weekdayDescriptions:
+            openingInfo.weekdayDescriptions.length > 0
+              ? openingInfo.weekdayDescriptions
+              : placeItem.weekdayDescriptions,
+          detailsLoaded: true
+        };
+
+        Object.assign(placeItem, updatedProps);
+        state.placeDetailsCache.set(placeItem.id, updatedProps);
       }
 
-      let openState = placeItem.isOpenNow;
-      try {
-        if (typeof placeItem.rawPlace.isOpen === "function") {
-          const res = await placeItem.rawPlace.isOpen();
-          if (typeof res === "boolean") openState = res;
-        }
-      } catch (_) {}
-
-      const hoursObj = placeItem.rawPlace.currentOpeningHours || placeItem.rawPlace.regularOpeningHours;
-      const openingInfo = extractOpeningHoursInfo(hoursObj);
-
-      const updatedProps = {
-        editorialSummary: placeItem.rawPlace.editorialSummary || placeItem.editorialSummary || null,
-        websiteURI: placeItem.rawPlace.websiteURI || placeItem.websiteURI || null,
-        googleMapsURI: placeItem.rawPlace.googleMapsURI || placeItem.googleMapsURI || null,
-        priceLevel: placeItem.rawPlace.priceLevel || placeItem.priceLevel || null,
-        isOpenNow: openState !== null ? openState : openingInfo.isOpenNow,
-        todayHoursText: openingInfo.todayHoursText || placeItem.todayHoursText,
-        weekdayDescriptions:
-          openingInfo.weekdayDescriptions.length > 0
-            ? openingInfo.weekdayDescriptions
-            : placeItem.weekdayDescriptions,
-        detailsLoaded: true
-      };
-
-      Object.assign(placeItem, updatedProps);
-      state.placeDetailsCache.set(placeItem.id, updatedProps);
       return placeItem;
     }
 
     // =========================================================================
-    // [7] 도보 및 대중교통 소요 시간 계산 (Routes API 우선 + DistanceMatrix/Directions 폴백)
+    // [7] 도보 및 대중교통 소요 시간 계산 (Routes API 전용)
     // =========================================================================
     async function computeTravelTimesForTopPlaces(originCoords, placesArray) {
       if (!originCoords) return;
@@ -2879,35 +3251,39 @@
 
     async function fetchSingleModeMatrix(originCoords, targets, travelMode, cacheKey) {
       const condEnum = state.libs.RouteMatrixItemCondition;
+      const inKorea = isInSouthKorea(originCoords);
 
       try {
         let rowItems = null;
         if (state.routeMatrixCache.has(cacheKey)) {
           rowItems = state.routeMatrixCache.get(cacheKey);
         } else if (state.libs.RouteMatrix && typeof state.libs.RouteMatrix.computeRouteMatrix === "function") {
-          try {
-            const request = {
-              origins: [originCoords],
-              destinations: targets.map((t) => t.location),
-              travelMode: travelMode,
-              fields: ["durationMillis", "distanceMeters", "condition"]
-            };
-            const { matrix } = await state.libs.RouteMatrix.computeRouteMatrix(request);
-            rowItems = matrix?.rows?.[0]?.items || [];
-            state.routeMatrixCache.set(cacheKey, rowItems);
-          } catch (newMatrixErr) {
-            console.warn(`RouteMatrix (${travelMode}) 실패, DistanceMatrixService 폴백 시도:`, newMatrixErr);
-            rowItems = await fetchLegacyDistanceMatrix(originCoords, targets, travelMode);
-            state.routeMatrixCache.set(cacheKey, rowItems);
-          }
-        } else {
-          rowItems = await fetchLegacyDistanceMatrix(originCoords, targets, travelMode);
+          const request = {
+            origins: [originCoords],
+            destinations: targets.map((t) => t.location),
+            travelMode: travelMode,
+            fields: ["durationMillis", "distanceMeters", "condition"]
+          };
+          const { matrix } = await state.libs.RouteMatrix.computeRouteMatrix(request);
+          rowItems = matrix?.rows?.[0]?.items || [];
           state.routeMatrixCache.set(cacheKey, rowItems);
         }
 
-        const inKorea = isInSouthKorea(originCoords);
-
         targets.forEach((place, idx) => {
+          // 만약 기준점 바로 그 장소(거리 0m)인 경우
+          if (place.straightDistM !== null && place.straightDistM < 15) {
+            if (travelMode === "WALKING") {
+              place.walkDurationMs = 60000;
+              place.walkDistanceM = place.straightDistM;
+              place.walkStatus = "OK";
+            } else {
+              place.transitDurationMs = 60000;
+              place.transitDistanceM = place.straightDistM;
+              place.transitStatus = "OK";
+            }
+            return;
+          }
+
           const item = rowItems ? rowItems[idx] : null;
           const routeExists =
             item &&
@@ -2940,8 +3316,7 @@
           }
         });
       } catch (err) {
-        console.warn(`${travelMode} 행렬 계산 최종 실패:`, err);
-        const inKorea = isInSouthKorea(originCoords);
+        console.warn(`${travelMode} RouteMatrix 계산 실패:`, err);
         targets.forEach((place) => {
           if (travelMode === "WALKING") place.walkStatus = inKorea ? "KR_UNSUPPORTED" : "NO_ROUTE";
           if (travelMode === "TRANSIT") place.transitStatus = "NO_ROUTE";
@@ -2949,42 +3324,8 @@
       }
     }
 
-    function fetchLegacyDistanceMatrix(originCoords, targets, travelMode) {
-      return new Promise((resolve, reject) => {
-        if (!state.libs.DistanceMatrixService) {
-          resolve([]);
-          return;
-        }
-        const service = new state.libs.DistanceMatrixService();
-        service.getDistanceMatrix(
-          {
-            origins: [originCoords],
-            destinations: targets.map((t) => t.location),
-            travelMode: travelMode
-          },
-          (response, status) => {
-            if (status === "OK" && response?.rows?.[0]?.elements) {
-              const items = response.rows[0].elements.map((el) => {
-                if (el.status === "OK" && el.duration) {
-                  return {
-                    condition: "ROUTE_EXISTS",
-                    durationMillis: el.duration.value * 1000,
-                    distanceMeters: el.distance ? el.distance.value : null
-                  };
-                }
-                return { condition: "ROUTE_NOT_FOUND", durationMillis: null, distanceMeters: null };
-              });
-              resolve(items);
-            } else {
-              reject(new Error(`DistanceMatrixService Error: ${status}`));
-            }
-          }
-        );
-      });
-    }
-
     async function computeAndDisplaySingleRoute(placeItem, travelMode = state.activeRouteMode) {
-      const origin = state.currentLocation || state.searchOrigin;
+      const origin = state.searchOrigin || state.currentLocation;
       if (!origin || !placeItem) return;
 
       const cacheKey = `${origin.lat.toFixed(4)},${origin.lng.toFixed(4)}->${placeItem.id}|${travelMode}`;
@@ -2995,7 +3336,7 @@
         if (state.singleRouteCache.has(cacheKey)) {
           routeData = state.singleRouteCache.get(cacheKey);
         } else {
-          routeData = await fetchSingleRouteWithFallback(origin, placeItem.location, travelMode);
+          routeData = await fetchSingleRouteNewApi(origin, placeItem.location, travelMode);
           state.singleRouteCache.set(cacheKey, routeData);
         }
 
@@ -3055,94 +3396,26 @@
       }
     }
 
-    async function fetchSingleRouteWithFallback(origin, destination, travelMode) {
+    async function fetchSingleRouteNewApi(origin, destination, travelMode) {
       if (state.libs.Route && typeof state.libs.Route.computeRoutes === "function") {
-        try {
-          const { routes } = await state.libs.Route.computeRoutes({
-            origin,
-            destination,
-            travelMode,
-            fields: ["durationMillis", "distanceMeters", "path", "legs"]
-          });
-          const r = routes && routes[0];
-          if (r) {
-            return {
-              isNewRoute: true,
-              rawRoute: r,
-              durationMillis: r.durationMillis,
-              distanceMeters: r.distanceMeters,
-              path: r.path || r.legs?.flatMap((l) => l.path || []) || [],
-              transitSteps: travelMode === "TRANSIT" ? parseTransitStepsFromRoute(r) : null
-            };
-          }
-        } catch (err) {
-          console.warn(`Route.computeRoutes (${travelMode}) 실패, DirectionsService 폴백 시도:`, err);
-        }
-      }
-
-      if (state.libs.DirectionsService) {
-        return await new Promise((resolve) => {
-          const dirService = new state.libs.DirectionsService();
-          dirService.route(
-            {
-              origin,
-              destination,
-              travelMode: travelMode
-            },
-            (result, status) => {
-              if (status === "OK" && result?.routes?.[0]?.legs?.[0]) {
-                const leg = result.routes[0].legs[0];
-                const path = result.routes[0].overview_path || [];
-                const tSteps = travelMode === "TRANSIT" ? parseLegacyTransitSteps(leg.steps || []) : null;
-                resolve({
-                  isNewRoute: false,
-                  rawRoute: result.routes[0],
-                  durationMillis: leg.duration ? leg.duration.value * 1000 : null,
-                  distanceMeters: leg.distance ? leg.distance.value : null,
-                  path,
-                  transitSteps: tSteps
-                });
-              } else {
-                resolve(null);
-              }
-            }
-          );
+        const { routes } = await state.libs.Route.computeRoutes({
+          origin,
+          destination,
+          travelMode,
+          fields: ["durationMillis", "distanceMeters", "path", "legs"]
         });
-      }
-
-      return null;
-    }
-
-    function parseLegacyTransitSteps(steps) {
-      const summary = [];
-      steps.forEach((st) => {
-        if (st.travel_mode === "TRANSIT" && st.transit) {
-          const tr = st.transit;
-          const vType = tr.line?.vehicle?.type || "";
-          const vName = tr.line?.vehicle?.name || VEHICLE_KO_LABELS[vType] || "대중교통";
-          const lineName = tr.line?.short_name || tr.line?.name || vName;
-          const dep = tr.departure_stop?.name || "출발역";
-          const arr = tr.arrival_stop?.name || "도착역";
-          const numStops = tr.num_stops ? `${tr.num_stops}개 역/정류장 이동` : "";
-          summary.push({
-            type: "TRANSIT",
-            badge: `${vName} ${lineName}`.trim(),
-            text: `${dep} → ${arr}`,
-            sub: [numStops, st.duration?.text || ""].filter(Boolean).join(" · ")
-          });
-        } else if (st.travel_mode === "WALKING") {
-          const dist = st.distance?.value || 0;
-          if (dist >= 20) {
-            summary.push({
-              type: "WALKING",
-              badge: "도보 구간",
-              text: `도보 이동 (${st.distance?.text || formatDistance(dist)})`,
-              sub: st.duration?.text || ""
-            });
-          }
+        const r = routes && routes[0];
+        if (r) {
+          return {
+            rawRoute: r,
+            durationMillis: r.durationMillis,
+            distanceMeters: r.distanceMeters,
+            path: r.path || r.legs?.flatMap((l) => l.path || []) || [],
+            transitSteps: travelMode === "TRANSIT" ? parseTransitStepsFromRoute(r) : null
+          };
         }
-      });
-      return summary;
+      }
+      return null;
     }
 
     function parseTransitStepsFromRoute(routeObj) {
@@ -3206,7 +3479,7 @@
       clearActivePolylines();
 
       try {
-        if (routeData.isNewRoute && routeData.rawRoute && typeof routeData.rawRoute.createPolylines === "function") {
+        if (routeData.rawRoute && typeof routeData.rawRoute.createPolylines === "function") {
           const polylines = routeData.rawRoute.createPolylines();
           if (Array.isArray(polylines) && polylines.length > 0) {
             polylines.forEach((pl) => {
@@ -3359,10 +3632,10 @@
       const straightText =
         place.straightDistM !== null
           ? `직선거리 ${formatDistance(place.straightDistM)}`
-          : "직선거리 확인 불가(내 위치 필요)";
+          : "직선거리 정보 없음";
 
       let walkText = "도보 정보 없음";
-      if (place.walkStatus === "PENDING" && state.currentLocation) {
+      if (place.walkStatus === "PENDING") {
         walkText = "도보 계산 중...";
       } else if (place.walkStatus === "OK" && place.walkDurationMs !== null) {
         const wDur = formatDuration(place.walkDurationMs);
@@ -3375,7 +3648,7 @@
       }
 
       let transitText = "대중교통 경로를 찾을 수 없습니다";
-      if (place.transitStatus === "PENDING" && state.currentLocation) {
+      if (place.transitStatus === "PENDING") {
         transitText = "대중교통 계산 중...";
       } else if (place.transitStatus === "OK" && place.transitDurationMs !== null) {
         transitText = `대중교통 ${formatDuration(place.transitDurationMs)}`;
@@ -3523,7 +3796,6 @@
       const wasSelected = state.selectedPlaceId === place.id;
       state.selectedPlaceId = place.id;
 
-      // 마커 클릭 시 하단 시트가 숨겨져 있었다면 다시 올림
       if (scrollToCard && state.sheetState === "hidden") {
         setSheetState("normal");
       }
@@ -3535,7 +3807,7 @@
       }
 
       if (state.map && place.location) {
-        state.map.panTo(place.location);
+        panToProgrammatically(place.location);
       }
 
       updateMarkerHighlight();
@@ -3555,10 +3827,10 @@
         computeAndDisplaySingleRoute(place, state.activeRouteMode)
       ]);
 
-      if (place.drawerOpen && place.transitSteps === null && (state.currentLocation || state.searchOrigin)) {
+      if (place.drawerOpen && place.transitSteps === null && (state.searchOrigin || state.currentLocation)) {
         try {
-          const origin = state.currentLocation || state.searchOrigin;
-          const tData = await fetchSingleRouteWithFallback(origin, place.location, "TRANSIT");
+          const origin = state.searchOrigin || state.currentLocation;
+          const tData = await fetchSingleRouteNewApi(origin, place.location, "TRANSIT");
           if (tData) {
             place.transitDurationMs = tData.durationMillis ?? place.transitDurationMs;
             place.transitStatus = "OK";
@@ -3584,8 +3856,8 @@
       state.placeMarkers.clear();
 
       const bounds = state.libs.LatLngBounds ? new state.libs.LatLngBounds() : null;
-      if (bounds && state.currentLocation) {
-        bounds.extend(state.currentLocation);
+      if (bounds && state.searchOrigin) {
+        bounds.extend(state.searchOrigin);
       }
 
       placesList.forEach((place, idx) => {
@@ -3633,6 +3905,7 @@
       });
 
       if (fitBounds && bounds && placesList.length > 0) {
+        state.isProgrammaticPan = true;
         state.map.fitBounds(bounds, 48);
       }
     }
@@ -3734,12 +4007,13 @@
         return;
       }
 
+      const startOrigin = state.searchOrigin || state.currentLocation;
       const nodes = [];
-      if (state.currentLocation) {
+      if (startOrigin) {
         nodes.push({
           id: "__USER_ORIGIN__",
-          name: "현재 내 위치",
-          location: state.currentLocation,
+          name: state.searchOriginLabel || "출발 기준 위치",
+          location: startOrigin,
           isOrigin: true
         });
       }
@@ -3764,7 +4038,7 @@
         const fromNode = nodes[i];
         const toNode = nodes[i + 1];
         try {
-          const rData = await fetchSingleRouteWithFallback(fromNode.location, toNode.location, state.tripTravelMode);
+          const rData = await fetchSingleRouteNewApi(fromNode.location, toNode.location, state.tripTravelMode);
           if (rData && typeof rData.durationMillis === "number") {
             legMetrics.push({
               fromName: fromNode.name,
@@ -3824,11 +4098,12 @@
 
       setLoading(true, "여행 코스의 추천 방문 순서를 계산하는 중...");
       try {
-        const hasOrigin = Boolean(state.currentLocation);
-        const startPoint = state.currentLocation || state.tripList[0].location;
+        const refOrigin = state.searchOrigin || state.currentLocation;
+        const hasOrigin = Boolean(refOrigin);
+        const startPoint = refOrigin || state.tripList[0].location;
 
         if (state.tripTravelMode === "WALKING" && state.libs.Route && state.tripList.length >= 2) {
-          const originLoc = hasOrigin ? state.currentLocation : state.tripList[0].location;
+          const originLoc = hasOrigin ? refOrigin : state.tripList[0].location;
           const destPlace = state.tripList[state.tripList.length - 1];
           const intermediatePlaces = hasOrigin
             ? state.tripList.slice(0, state.tripList.length - 1)
@@ -3961,6 +4236,7 @@
         return;
       }
 
+      const startOrigin = state.searchOrigin || state.currentLocation;
       const modeLabel = state.tripTravelMode === "TRANSIT" ? "🚌 대중교통" : "🚶 도보";
       if (state.tripTotalDurationMs !== null && state.tripList.length >= 1) {
         const totalDurText =
@@ -3972,7 +4248,7 @@
           : "";
         metricsBox.innerHTML = `
           <div><strong>${modeLabel} 전체 예상 이동 시간: ${totalDurText}</strong>${totalDistText}${incompleteWarn}</div>
-          <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">총 ${state.tripList.length}개 방문 장소${state.currentLocation ? " (현재 내 위치에서 출발 기준)" : ""}</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">총 ${state.tripList.length}개 방문 장소${startOrigin ? ` (${state.searchOriginLabel} 출발 기준)` : ""}</div>
         `;
       } else {
         metricsBox.innerHTML = `<div><strong>총 ${state.tripList.length}개 방문 장소</strong>가 저장되었습니다.</div>`;
@@ -3981,7 +4257,7 @@
       optNoteEl.textContent = state.tripOptimizationLabel || "";
 
       stopsListEl.innerHTML = "";
-      const hasOrigin = Boolean(state.currentLocation);
+      const hasOrigin = Boolean(startOrigin);
 
       if (hasOrigin && state.tripLegMetrics[0]) {
         const firstLeg = state.tripLegMetrics[0];
@@ -3989,10 +4265,10 @@
         legDiv.className = "trip-leg-connector";
         legDiv.textContent =
           firstLeg.status === "OK"
-            ? `📍 내 위치 → 1번째 장소: ${modeLabel} ${formatDuration(firstLeg.durationMs)}${
+            ? `📍 기준 위치 → 1번째 장소: ${modeLabel} ${formatDuration(firstLeg.durationMs)}${
                 firstLeg.distanceM ? " (" + formatDistance(firstLeg.distanceM) + ")" : ""
               }`
-            : `📍 내 위치 → 1번째 장소: ${state.tripTravelMode === "TRANSIT" ? "대중교통 경로를 찾을 수 없습니다" : "경로 정보 없음"}`;
+            : `📍 기준 위치 → 1번째 장소: ${state.tripTravelMode === "TRANSIT" ? "대중교통 경로를 찾을 수 없습니다" : "경로 정보 없음"}`;
         stopsListEl.appendChild(legDiv);
       }
 
@@ -4060,8 +4336,9 @@
       const travelmode = mode === "transit" ? "transit" : "walking";
       const dest = `${place.location.lat},${place.location.lng}`;
       const pid = place.id ? `&destination_place_id=${encodeURIComponent(place.id)}` : "";
-      const originParam = state.currentLocation
-        ? `&origin=${state.currentLocation.lat},${state.currentLocation.lng}`
+      const refOrigin = state.searchOrigin || state.currentLocation;
+      const originParam = refOrigin
+        ? `&origin=${refOrigin.lat},${refOrigin.lng}`
         : "";
       return `https://www.google.com/maps/dir/?api=1${originParam}&destination=${encodeURIComponent(dest)}${pid}&travelmode=${travelmode}`;
     }
@@ -4075,9 +4352,10 @@
         return buildGoogleMapsDirectionsUrl(state.tripList[0], state.tripTravelMode);
       }
 
+      const refOrigin = state.searchOrigin || state.currentLocation;
       const lastStop = state.tripList[state.tripList.length - 1];
-      const originCoord = state.currentLocation
-        ? `${state.currentLocation.lat},${state.currentLocation.lng}`
+      const originCoord = refOrigin
+        ? `${refOrigin.lat},${refOrigin.lng}`
         : `${state.tripList[0].location.lat},${state.tripList[0].location.lng}`;
 
       if (mode === "transit") {
@@ -4085,7 +4363,7 @@
         return buildGoogleMapsDirectionsUrl(firstStop, "TRANSIT");
       }
 
-      const waypointStops = state.currentLocation
+      const waypointStops = refOrigin
         ? state.tripList.slice(0, -1)
         : state.tripList.slice(1, -1);
 
@@ -4103,7 +4381,7 @@
     }
 
     // =========================================================================
-    // [11] 유틸리티 및 오류 처리 함수
+    // [11] 유틸리티 및 정밀 오류 진단 함수
     // =========================================================================
     function extractLatLngLiteral(loc) {
       if (!loc) return null;
@@ -4169,24 +4447,43 @@
 
     function handleApiError(err, fallbackMsg) {
       const rawMsg = String(err?.message || err || "");
+      const reason = err?.reason || "";
       const diagBox = $("lastDiagnosticErrorBox");
       if (diagBox) {
         diagBox.style.display = "block";
-        diagBox.textContent = `상세 오류 응답: ${rawMsg}`;
+        diagBox.textContent = `Google 서버 응답: ${rawMsg}`;
       }
 
-      if (rawMsg.includes("OVER_QUERY_LIMIT") || rawMsg.includes("RESOURCE_EXHAUSTED") || rawMsg.includes("429")) {
-        showBanner("API 요청 할당량이 초과되었습니다. 잠시 후 다시 시도하거나 Google Cloud 할당량 설정을 확인하세요.", "error", true);
+      if (reason === "API_KEY_SERVICE_BLOCKED" || rawMsg.includes("API_KEY_SERVICE_BLOCKED") || rawMsg.includes("are blocked")) {
+        showBanner(
+          "현재 API 키의 'API 제한사항' 설정에서 'Places API (New)'가 허용 체크되어 있지 않습니다. 우측 [원인·해결]을 눌러 확인하세요.",
+          "error",
+          true
+        );
+      } else if (reason === "SERVICE_DISABLED" || rawMsg.includes("has not been used in project") || rawMsg.includes("is disabled")) {
+        showBanner(
+          "Google Cloud 프로젝트에서 'Places API (New)'가 아직 [사용(Enable)] 상태가 아닙니다. 우측 [원인·해결]을 눌러 확인하세요.",
+          "error",
+          true
+        );
+      } else if (reason === "API_KEY_HTTP_REFERRER_BLOCKED" || rawMsg.includes("referer")) {
+        showBanner(
+          "API 키의 '웹사이트(HTTP 리퍼러) 제한사항'에 현재 접속 주소가 허용되어 있지 않습니다.",
+          "error",
+          true
+        );
+      } else if (rawMsg.includes("OVER_QUERY_LIMIT") || rawMsg.includes("RESOURCE_EXHAUSTED") || rawMsg.includes("429")) {
+        showBanner("API 요청 할당량이 초과되었습니다. 잠시 후 다시 시도해 주세요.", "error", true);
       } else if (rawMsg.includes("REQUEST_DENIED") || rawMsg.includes("PERMISSION_DENIED") || rawMsg.includes("403")) {
         showBanner(
-          "Google Cloud에서 Places API 권한이 꺼져 있거나 API 키 제한에 막혀 있습니다. 우측 [해결 방법]을 눌러 설정을 확인하세요.",
+          "Places API (New) 호출 권한이 거부되었습니다. API 키의 'API 제한사항'에 'Places API (New)'가 체크되어 있는지 [원인·해결]에서 확인하세요.",
           "error",
           true
         );
       } else if (!navigator.onLine) {
         showBanner("네트워크 연결이 끊어졌습니다. 인터넷 연결 상태를 확인해 주세요.", "error", false);
       } else {
-        showBanner(`${fallbackMsg} 우측 [해결 방법]을 눌러 API 설정을 확인하세요.`, "error", true);
+        showBanner(`${fallbackMsg} 우측 [원인·해결]을 눌러 상세 원인을 확인하세요.`, "error", true);
       }
     }
 
