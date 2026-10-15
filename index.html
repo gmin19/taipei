@@ -1956,6 +1956,25 @@
     ];
 
     // 영문 primaryType -> 한국어 표시 사전
+        // 거리 최우선 카테고리 (편의점, ATM, 은행, 약국, 주유소 등은 평점보다 거리가 중요하므로 가까운 순서대로 표시!)
+    const DISTANCE_PRIORITY_CATEGORIES = new Set([
+      "convenience_store",
+      "atm",
+      "bank",
+      "pharmacy",
+      "gas_station"
+    ]);
+
+    function isDistancePriorityCategory(catId) {
+      return catId ? DISTANCE_PRIORITY_CATEGORIES.has(catId) : false;
+    }
+
+    function formatShortDist(distM) {
+      if (typeof distM !== "number" || !isFinite(distM)) return "";
+      if (distM < 1000) return `${Math.round(distM)}m`;
+      return `${(distM / 1000).toFixed(1)}km`;
+    }
+
     const TYPE_KO_LABELS = {
       restaurant: "음식점·맛집",
       cafe: "카페",
@@ -2783,6 +2802,30 @@
     // =========================================================================
     // [4] 상단 '❤️ 내 장소' 버튼 + 카테고리 버튼 렌더링 및 이벤트 처리
     // =========================================================================
+        function updateSortSelectOptions() {
+      const select = $("sortSelect");
+      if (!select) return;
+      const isDist = isDistancePriorityCategory(state.selectedCategory);
+      if (isDist) {
+        select.innerHTML = `
+          <option value="dist" ${state.sortBy === "dist" ? "selected" : ""}>📍 가장 가까운 순 (기본)</option>
+          <option value="walk" ${state.sortBy === "walk" ? "selected" : ""}>🚶 도보 빠른 순</option>
+          <option value="transit" ${state.sortBy === "transit" ? "selected" : ""}>🚌 대중교통 순</option>
+          <option value="rating" ${state.sortBy === "rating" ? "selected" : ""}>★ 평점 높은 순</option>
+          <option value="open" ${state.sortBy === "open" ? "selected" : ""}>🟢 영업 중 우선</option>
+        `;
+      } else {
+        select.innerHTML = `
+          <option value="rating" ${state.sortBy === "rating" ? "selected" : ""}>★ 구글 평점 높은 순 (기본)</option>
+          <option value="dist" ${state.sortBy === "dist" ? "selected" : ""}>📍 가장 가까운 순</option>
+          <option value="walk" ${state.sortBy === "walk" ? "selected" : ""}>🚶 도보 빠른 순</option>
+          <option value="transit" ${state.sortBy === "transit" ? "selected" : ""}>🚌 대중교통 순</option>
+          <option value="open" ${state.sortBy === "open" ? "selected" : ""}>🟢 영업 중 우선</option>
+        `;
+      }
+    }
+
+
     function renderCategoryButtons() {
       const bar = $("categoryBar");
       bar.innerHTML = "";
@@ -2811,6 +2854,8 @@
         btn.addEventListener("click", () => {
           if (state.isMyPlacesOpen) toggleMyPlacesDropdown(false);
           state.selectedCategory = cat.id;
+          state.sortBy = isDistancePriorityCategory(cat.id) ? "dist" : "rating";
+          updateSortSelectOptions();
           updateCategorySelectionUI();
           if (state.sheetState === "hidden") setSheetState("normal");
 
@@ -3098,13 +3143,15 @@
       }
 
       if (isMyLoc) {
-        textEl.textContent = "📍 내 위치 기준 (구글 평점순 상위 10곳)";
+        const priorityDesc = isDistancePriorityCategory(state.selectedCategory) ? "가까운 거리순" : "구글 평점순";
+        textEl.textContent = `📍 내 위치 기준 (${priorityDesc} 상위 10곳)`;
         if (resetBtn) resetBtn.style.display = "none";
       } else {
         const originDesc = state.routeOriginMode === "my_location"
           ? "현재 내 위치 (GPS)"
           : state.searchOriginLabel;
-        textEl.textContent = `📌 출발: ${originDesc}`;
+        const priorityDesc = isDistancePriorityCategory(state.selectedCategory) ? "가까운 순" : "평점순";
+        textEl.textContent = `📌 출발: ${originDesc} (${priorityDesc})`;
         if (resetBtn) resetBtn.style.display = state.currentLocation ? "inline-block" : "none";
       }
     }
@@ -3525,17 +3572,30 @@
           };
         });
 
-        // 1순위: 구글 평점 높은 순 (동점 시 리뷰 개수 많은 순, 평점 있는 장소 우선)
+        // 카테고리 특성에 맞춘 스마트 정렬:
+        // 편의점, ATM, 은행, 약국, 주유소 등은 거리가 최우선이므로 가까운 순서대로 상위 10곳 선정!
+        // 맛집, 카페, 관광지 등은 구글 평점 높은 순으로 상위 10곳 선정!
+        const isDistCat = isDistancePriorityCategory(state.selectedCategory);
         placesWithDist.forEach(ensurePlaceRating);
-        placesWithDist.sort((a, b) => {
-          const ra = typeof a.rating === "number" ? a.rating : -1;
-          const rb = typeof b.rating === "number" ? b.rating : -1;
-          if (rb !== ra) return rb - ra;
-          const ca = typeof a.userRatingCount === "number" ? a.userRatingCount : 0;
-          const cb = typeof b.userRatingCount === "number" ? b.userRatingCount : 0;
-          if (cb !== ca) return cb - ca;
-          return (a.straightDistM ?? Infinity) - (b.straightDistM ?? Infinity);
-        });
+
+        if (isDistCat) {
+          placesWithDist.sort((a, b) => {
+            const da = a.straightDistM ?? Infinity;
+            const db = b.straightDistM ?? Infinity;
+            if (da !== db) return da - db;
+            return (b.rating ?? 0) - (a.rating ?? 0);
+          });
+        } else {
+          placesWithDist.sort((a, b) => {
+            const ra = typeof a.rating === "number" ? a.rating : -1;
+            const rb = typeof b.rating === "number" ? b.rating : -1;
+            if (rb !== ra) return rb - ra;
+            const ca = typeof a.userRatingCount === "number" ? a.userRatingCount : 0;
+            const cb = typeof b.userRatingCount === "number" ? b.userRatingCount : 0;
+            if (cb !== ca) return cb - ca;
+            return (a.straightDistM ?? Infinity) - (b.straightDistM ?? Infinity);
+          });
+        }
 
         state.places = placesWithDist.slice(0, MAX_SEARCH_RESULTS);
         state.places = getSortedPlaces();
@@ -5257,6 +5317,7 @@
     // =========================================================================
     function getSortedPlaces() {
       let list = [...state.places];
+      const isDistCat = isDistancePriorityCategory(state.selectedCategory);
       const sortBy = state.sortBy;
 
       list.sort((a, b) => {
@@ -5279,7 +5340,14 @@
           if (oa !== ob) return oa - ob;
           return (b.rating ?? -1) - (a.rating ?? -1);
         }
-        // 기본값: 구글 평점 높은 순 (동점 시 리뷰 개수 많은 순, 가까운 순)
+        // 거리 최우선 카테고리(편의점·ATM·은행·약국·주유소) 또는 사용자가 'dist' 선택 시: 가까운 순서대로 정렬!
+        if (sortBy === "dist" || (sortBy === "default" && isDistCat) || (isDistCat && sortBy !== "rating")) {
+          const da = a.walkDistanceM ?? a.straightDistM ?? Infinity;
+          const db = b.walkDistanceM ?? b.straightDistM ?? Infinity;
+          if (da !== db) return da - db;
+          return (b.rating ?? -1) - (a.rating ?? -1);
+        }
+        // 맛집·카페·관광지 등: 구글 평점 높은 순 (동점 시 리뷰 개수 많은 순, 가까운 순)
         const ra = typeof a.rating === "number" ? a.rating : -1;
         const rb = typeof b.rating === "number" ? b.rating : -1;
         if (rb !== ra) return rb - ra;
@@ -5292,7 +5360,7 @@
       return list;
     }
 
-        // =========================================================================
+    // =========================================================================
     // 장소 평점 보장 함수: Google 공식 평점을 우선 사용하되,
     // Google 서버에서 평점이 제공되지 않거나 백업 POI(OSM 등)인 경우에도
     // 절대 '★-'나 '평점 정보 없음'으로 남지 않고 신뢰할 수 있는 엄선 평점을 자동 계산하여 표시!
@@ -5360,10 +5428,15 @@
       card.className = "place-card" + (isSelected ? " selected" : "");
       card.id = `place-card-${place.id}`;
 
+      const isDistCat = isDistancePriorityCategory(state.selectedCategory);
       ensurePlaceRating(place);
       const ratingScore = typeof place.rating === "number" ? place.rating.toFixed(1) : "4.5";
       const reviewCountText = place.userRatingCount ? `${place.userRatingCount.toLocaleString()}개 리뷰` : "320개 리뷰";
-      const ratingHtml = `<span class="rating-text">★ ${ratingScore}</span> <span>(${reviewCountText})</span>`;
+
+      // 거리 우선 카테고리(편의점·ATM·은행·약국·주유소)는 거리순임을 강조하고 평점은 보조로 표시
+      const ratingHtml = isDistCat
+        ? `<span style="color:#047857; font-weight:800;">📍 거리 우선 (가장 가까움 #${indexNum})</span> · <span class="rating-text">★ ${ratingScore}</span>`
+        : `<span class="rating-text">★ ${ratingScore}</span> <span>(${reviewCountText})</span>`;
 
       let openBadgeHtml = `<span class="status-unknown">영업 상태 정보 없음</span>`;
       if (place.isOpenNow === true) {
@@ -5471,7 +5544,7 @@
         <div class="card-top">
           <div class="card-main-info">
             <div class="card-title-row">
-              <span class="place-index-badge">${indexNum}</span>
+              <span class="place-index-badge" style="${isDistCat ? 'background:#059669;' : ''}">${indexNum}</span>
               <h3 class="place-name">${escapeHtml(place.name)}</h3>
               <span class="place-category-badge">${escapeHtml(place.categoryLabel)}</span>
             </div>
@@ -5720,13 +5793,24 @@
     // 모든 기기와 브라우저에서 잘림 없이 [번호]와 [★평점]을 선명하게 표시하는 SVG 캡슐 아이콘
     function createMarkerSvgIcon(place, num, isSelected) {
       ensurePlaceRating(place);
-      const ratingScore = typeof place?.rating === "number" ? place.rating.toFixed(1) : "4.5";
-      const ratingStr = `★ ${ratingScore}`;
-      const bg = isSelected ? "#2563eb" : "#ffffff";
-      const border = isSelected ? "#1d4ed8" : "#cbd5e1";
-      const circleBg = isSelected ? "#ffffff" : "#2563eb";
-      const circleText = isSelected ? "#2563eb" : "#ffffff";
-      const starColor = isSelected ? "#fde047" : "#b45309";
+      const isDistCat = isDistancePriorityCategory(state.selectedCategory);
+
+      let badgeLabel = "";
+      let labelColor = isSelected ? "#fde047" : "#b45309";
+      let circleBg = isSelected ? "#ffffff" : (isDistCat ? "#059669" : "#2563eb");
+      let circleText = isSelected ? (isDistCat ? "#059669" : "#2563eb") : "#ffffff";
+      let bg = isSelected ? (isDistCat ? "#059669" : "#2563eb") : "#ffffff";
+      let border = isSelected ? "#ffffff" : (isDistCat ? "#a7f3d0" : "#cbd5e1");
+
+      if (isDistCat) {
+        const dStr = formatShortDist(place.straightDistM);
+        badgeLabel = dStr || "근처";
+        labelColor = isSelected ? "#ffffff" : "#047857";
+      } else {
+        const ratingScore = typeof place?.rating === "number" ? place.rating.toFixed(1) : "4.5";
+        badgeLabel = `★ ${ratingScore}`;
+        labelColor = isSelected ? "#fde047" : "#b45309";
+      }
 
       const svg = `
         <svg xmlns="http://www.w3.org/2000/svg" width="76" height="30" viewBox="0 0 76 30">
@@ -5736,7 +5820,7 @@
           <rect x="2" y="2" width="72" height="26" rx="13" fill="${bg}" stroke="${border}" stroke-width="${isSelected ? '2' : '1.5'}" filter="url(#shadow)"/>
           <circle cx="15" cy="15" r="9.5" fill="${circleBg}"/>
           <text x="15" y="18.5" font-size="11" font-weight="900" font-family="-apple-system, BlinkMacSystemFont, sans-serif" text-anchor="middle" fill="${circleText}">${num}</text>
-          <text x="47" y="19" font-size="12" font-weight="800" font-family="-apple-system, BlinkMacSystemFont, sans-serif" text-anchor="middle" fill="${starColor}">${ratingStr}</text>
+          <text x="47" y="19" font-size="11.5" font-weight="800" font-family="-apple-system, BlinkMacSystemFont, sans-serif" text-anchor="middle" fill="${labelColor}">${badgeLabel}</text>
         </svg>
       `.trim();
 
@@ -5805,8 +5889,22 @@
 
     function styleMarkerElement(el, place, num, isSelected) {
       ensurePlaceRating(place);
-      const ratingScore = typeof place?.rating === "number" ? place.rating.toFixed(1) : "4.5";
-      const ratingText = `★ ${ratingScore}`;
+      const isDistCat = isDistancePriorityCategory(state.selectedCategory);
+
+      let badgeLabel = "";
+      let labelColor = isSelected ? "#fde047" : "#b45309";
+      let circleBg = isSelected ? "#ffffff" : (isDistCat ? "#059669" : "#2563eb");
+      let circleText = isSelected ? (isDistCat ? "#059669" : "#2563eb") : "#ffffff";
+
+      if (isDistCat) {
+        const dStr = formatShortDist(place.straightDistM);
+        badgeLabel = dStr ? `📍${dStr}` : "근처";
+        labelColor = isSelected ? "#ffffff" : "#047857";
+      } else {
+        const ratingScore = typeof place?.rating === "number" ? place.rating.toFixed(1) : "4.5";
+        badgeLabel = `★ ${ratingScore}`;
+        labelColor = isSelected ? "#fde047" : "#b45309";
+      }
 
       el.innerHTML = `
         <span style="
@@ -5817,20 +5915,20 @@
           height:21px;
           padding:0 4px;
           border-radius:999px;
-          background:${isSelected ? "#ffffff" : "#2563eb"};
-          color:${isSelected ? "#2563eb" : "#ffffff"};
-          font-size:11.5px;
+          background:${circleBg};
+          color:${circleText};
+          font-size:11px;
           font-weight:900;
           line-height:1;
         ">${num}</span>
         <span style="
-          font-size:${isSelected ? "12.5px" : "12px"};
+          font-size:${isSelected ? "12px" : "11.5px"};
           font-weight:800;
-          color:${isSelected ? "#fde047" : "#b45309"};
+          color:${labelColor};
           white-space:nowrap;
           letter-spacing:-0.01em;
           line-height:1;
-        ">${ratingText}</span>
+        ">${badgeLabel}</span>
       `;
 
       el.style.display = "inline-flex";
@@ -5838,10 +5936,10 @@
       el.style.gap = "5px";
       el.style.padding = "3px 9px 3px 4px";
       el.style.borderRadius = "999px";
-      el.style.background = isSelected ? "#2563eb" : "rgba(255, 255, 255, 0.98)";
-      el.style.border = isSelected ? "2px solid #ffffff" : "1.5px solid #cbd5e1";
+      el.style.background = isSelected ? (isDistCat ? "#059669" : "#2563eb") : "rgba(255, 255, 255, 0.98)";
+      el.style.border = isSelected ? "2px solid #ffffff" : (isDistCat ? "1.5px solid #a7f3d0" : "1.5px solid #cbd5e1");
       el.style.boxShadow = isSelected
-        ? "0 0 0 3px rgba(37, 99, 235, 0.35), 0 4px 12px rgba(15, 23, 42, 0.35)"
+        ? `0 0 0 3px ${isDistCat ? "rgba(5, 150, 105, 0.35)" : "rgba(37, 99, 235, 0.35)"}, 0 4px 12px rgba(15, 23, 42, 0.35)`
         : "0 2px 6px rgba(15, 23, 42, 0.22)";
       el.style.transform = isSelected ? "scale(1.08)" : "scale(1)";
       el.style.transition = "all 0.15s ease";
