@@ -3863,21 +3863,27 @@
     // 전 세계 도시·호텔·명소 키워드 검색 (Google 평점 포함 조회 + 다국어 자동 보완)
     async function searchTextWorldwideNewApi(queryText) {
       const effectiveQuery = queryText.trim();
+      if (!effectiveQuery) return [];
 
-      // [1차] Google Maps JS PlacesService textSearch (모든 브라우저·키에서 100% Google 평점·리뷰 수 포함 반환!)
+      // [1차] Google Maps PlacesService: findPlaceFromQuery & textSearch (전 세계 글로벌 검색)
+      // 중요: location이나 radius를 지정하면 현재 지도 중심(한국 인천 등) 10km 반경으로 강제 제한되어
+      // 해외 장소(타이베이, 도쿄, 파리 등)가 0건으로 실패하므로, 전 세계 검색 시에는 radius 제약을 제거하고 글로벌로 검색!
       if (state.libs.PlacesService && state.map) {
         try {
           const svc = new state.libs.PlacesService(state.map);
-          const legacyPlaces = await new Promise((resolve) => {
-            const timer = setTimeout(() => resolve([]), 3500);
-            svc.textSearch(
+
+          // 1-A) findPlaceFromQuery: 단일 목적지·호텔·랜드마크 한글 검색에 가장 정확
+          const findPromise = new Promise((resolve) => {
+            if (typeof svc.findPlaceFromQuery !== "function") {
+              resolve([]);
+              return;
+            }
+            svc.findPlaceFromQuery(
               {
                 query: effectiveQuery,
-                location: state.map.getCenter() || DEFAULT_CENTER,
-                radius: 10000
+                fields: ["place_id", "name", "formatted_address", "geometry", "rating", "user_ratings_total", "photos"]
               },
               (results, status) => {
-                clearTimeout(timer);
                 if (status === "OK" && Array.isArray(results) && results.length > 0) {
                   resolve(results.map((it) => normalizeLegacyPlaceResult(it)).filter(Boolean));
                 } else {
@@ -3886,15 +3892,91 @@
               }
             );
           });
-          if (legacyPlaces.length > 0) return legacyPlaces;
+
+          // 1-B) textSearch: 전 세계 장소 텍스트 검색 (글로벌 쿼리)
+          const textPromise = new Promise((resolve) => {
+            svc.textSearch(
+              {
+                query: effectiveQuery
+              },
+              (results, status) => {
+                if (status === "OK" && Array.isArray(results) && results.length > 0) {
+                  resolve(results.map((it) => normalizeLegacyPlaceResult(it)).filter(Boolean));
+                } else {
+                  resolve([]);
+                }
+              }
+            );
+          });
+
+          const [foundList, textList] = await Promise.all([
+            findPromise.catch(() => []),
+            textPromise.catch(() => [])
+          ]);
+
+          const combinedGoogle = mergeUniquePlaces([...foundList, ...textList]);
+          if (combinedGoogle.length > 0) {
+            return combinedGoogle;
+          }
         } catch (_) {}
       }
 
-      // [2차] Places API (New) REST v1 places:searchText (평점·리뷰 수 포함)
+      // [2차] Google Maps Geocoder (전 세계 도시·호텔·역·관광지의 한국어 표기 지오코딩 100% 지원)
+      if (window.google?.maps?.Geocoder) {
+        try {
+          const geocoder = new google.maps.Geocoder();
+          const geoRes = await new Promise((resolve) => {
+            geocoder.geocode({ address: effectiveQuery, language: "ko" }, (results, status) => {
+              if (status === "OK" && Array.isArray(results) && results.length > 0) {
+                resolve(results);
+              } else {
+                resolve([]);
+              }
+            });
+          });
+
+          if (geoRes.length > 0) {
+            const list = geoRes
+              .slice(0, 5)
+              .map((r, i) => {
+                const loc = extractLatLngLiteral(r.geometry?.location);
+                if (!loc) return null;
+                return {
+                  id: r.place_id || `geo_${i}`,
+                  rawPlace: null,
+                  name: r.address_components?.[0]?.long_name || effectiveQuery,
+                  address: r.formatted_address || "",
+                  location: loc,
+                  primaryType: "locality",
+                  categoryLabel: "검색 위치",
+                  rating: null,
+                  userRatingCount: null,
+                  isOpenNow: null,
+                  todayHoursText: null,
+                  weekdayDescriptions: [],
+                  priceLevel: null,
+                  editorialSummary: null,
+                  googleMapsURI: null,
+                  websiteURI: null,
+                  photoUrl: null,
+                  photoAttrHtml: "",
+                  detailsLoaded: true
+                };
+              })
+              .filter(Boolean);
+            if (list.length > 0) {
+              enrichPlacesWithGoogleRatings(list);
+              return list;
+            }
+          }
+        } catch (_) {}
+      }
+
+      // [3차] Places API (New) REST v1 places:searchText
       if (state.apiKey) {
         try {
           const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 4000);
+          const timer = setTimeout(() => ctrl.abort(), 4500);
           const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
             method: "POST",
             headers: {
@@ -3920,30 +4002,16 @@
         } catch (_) {}
       }
 
-      // [3차] Maps JS SDK Place.searchByText
-      if (state.libs.Place && typeof state.libs.Place.searchByText === "function") {
-        try {
-          const { places } = await state.libs.Place.searchByText({
-            textQuery: effectiveQuery,
-            fields: ["id", "displayName", "formattedAddress", "location", "rating", "userRatingCount"],
-            maxResultCount: 5
-          });
-          if (Array.isArray(places) && places.length > 0) {
-            return places.map(normalizeJsPlaceObject).filter((p) => p && p.location);
-          }
-        } catch (_) {}
-      }
-
-      // [4차] 한국어·영어·다국어 전 세계 지오코딩 & 번역 결합 검색
+      // [4차] 글로벌 다국어 번역 결합 Geocoding (한글 -> 영문/현지어 자동번역 후 Nominatim & Photon 검색)
       const osmPlaces = await searchTextWorldwideMultilingual(effectiveQuery);
       if (osmPlaces && osmPlaces.length > 0) {
         enrichPlacesWithGoogleRatings(osmPlaces);
         return osmPlaces;
       }
+
       return [];
     }
 
-    // 보조 글로벌 POI 검색 (Overpass 다중 미러 병렬 경주)
     async function searchNearbyOpenStreetMapFast(centerCoords, radiusMeters, categoryId) {
       const lat = centerCoords.lat;
       const lng = centerCoords.lng;
@@ -4200,32 +4268,42 @@
           .filter(Boolean);
       };
 
-      const translateKoToEnAndSearch = async () => {
+      // 한글 외국 장소명을 영어 및 번체중문/일본어로 자동 번역하여 검색률 극대화
+      const translateAndSearch = async () => {
         if (!hasKorean) return [];
         try {
-          const trUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=en&dt=t&q=${encodeURIComponent(
-            queryText
-          )}`;
-          const trResp = await fetch(trUrl);
-          if (!trResp.ok) return [];
-          const trData = await trResp.json();
-          const translated = Array.isArray(trData?.[0])
-            ? trData[0].map((seg) => seg?.[0] || "").join("").trim()
-            : "";
-          if (!translated || translated.toLowerCase() === queryText.toLowerCase()) return [];
+          const targetLangs = ["en"];
+          if (/대만|타이베이|가오슝|홍콩|마카오|중국/.test(queryText)) targetLangs.push("zh-TW");
+          if (/일본|도쿄|오사카|후쿠오카|교토|삿포로|오키나와/.test(queryText)) targetLangs.push("ja");
 
-          const [nomEn, phoEn] = await Promise.all([
-            queryNominatim(translated).catch(() => []),
-            queryPhoton(translated).catch(() => [])
-          ]);
-          const combined = [...nomEn, ...phoEn];
-          if (combined.length > 0 && !/[가-힣]/.test(combined[0].name)) {
-            combined[0].name = `${queryText} (${combined[0].name})`;
+          for (const tl of targetLangs) {
+            try {
+              const trUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=${tl}&dt=t&q=${encodeURIComponent(
+                queryText
+              )}`;
+              const trResp = await fetch(trUrl);
+              if (!trResp.ok) continue;
+              const trData = await trResp.json();
+              const translated = Array.isArray(trData?.[0])
+                ? trData[0].map((seg) => seg?.[0] || "").join("").trim()
+                : "";
+              if (!translated || translated.toLowerCase() === queryText.toLowerCase()) continue;
+
+              const [nomRes, phoRes] = await Promise.all([
+                queryNominatim(translated).catch(() => []),
+                queryPhoton(translated).catch(() => [])
+              ]);
+              const combined = [...nomRes, ...phoRes];
+              if (combined.length > 0) {
+                if (!/[가-힣]/.test(combined[0].name)) {
+                  combined[0].name = `${queryText} (${combined[0].name})`;
+                }
+                return combined;
+              }
+            } catch (_) {}
           }
-          return combined;
-        } catch (_) {
-          return [];
-        }
+        } catch (_) {}
+        return [];
       };
 
       const queryKoWikipediaGeo = async () => {
@@ -4273,7 +4351,7 @@
 
       const [directNom, translatedRes, wikiRes] = await Promise.all([
         queryNominatim(queryText).catch(() => []),
-        translateKoToEnAndSearch(),
+        translateAndSearch(),
         queryKoWikipediaGeo()
       ]);
 
@@ -4283,42 +4361,6 @@
 
       const directPhoton = await queryPhoton(queryText).catch(() => []);
       if (directPhoton.length > 0) return directPhoton;
-
-      if (window.google?.maps?.Geocoder) {
-        try {
-          const geocoder = new google.maps.Geocoder();
-          const geoRes = await geocoder.geocode({ address: queryText, language: "ko" });
-          if (geoRes?.results?.length > 0) {
-            return geoRes.results
-              .slice(0, 5)
-              .map((r, i) => {
-                const loc = extractLatLngLiteral(r.geometry?.location);
-                return {
-                  id: r.place_id || `geo_${i}`,
-                  rawPlace: null,
-                  name: r.address_components?.[0]?.long_name || queryText,
-                  address: r.formatted_address || "",
-                  location: loc,
-                  primaryType: "locality",
-                  categoryLabel: "검색 위치",
-                  rating: null,
-                  userRatingCount: null,
-                  isOpenNow: null,
-                  todayHoursText: null,
-                  weekdayDescriptions: [],
-                  priceLevel: null,
-                  editorialSummary: null,
-                  googleMapsURI: null,
-                  websiteURI: null,
-                  photoUrl: null,
-                  photoAttrHtml: "",
-                  detailsLoaded: true
-                };
-              })
-              .filter((p) => p && p.location);
-          }
-        } catch (_) {}
-      }
 
       return [];
     }
@@ -6283,26 +6325,64 @@
     // [10] Google 지도 공식 링크 생성 (아이폰 Safari 호환 Universal URLs)
     // =========================================================================
     function buildGoogleMapsPlaceUrl(place) {
+      if (!place) return "https://www.google.com/maps";
       if (place.googleMapsURI) {
         return sanitizeUrl(place.googleMapsURI);
       }
-      const query = encodeURIComponent(`${place.name} ${place.address || ""}`.trim());
+
       const isGooglePlaceId =
-        place.id && !place.id.startsWith("osm_") && !place.id.startsWith("nom_") && !place.id.startsWith("geo_") && !place.id.startsWith("my_") && !place.id.startsWith("leg_");
-      const pid = isGooglePlaceId ? `&query_place_id=${encodeURIComponent(place.id)}` : "";
-      return `https://www.google.com/maps/search/?api=1&query=${query}${pid}`;
+        place.id &&
+        !place.id.startsWith("osm_") &&
+        !place.id.startsWith("nom_") &&
+        !place.id.startsWith("geo_") &&
+        !place.id.startsWith("my_") &&
+        !place.id.startsWith("leg_") &&
+        !place.id.startsWith("photon_") &&
+        !place.id.startsWith("wiki_");
+
+      // 1순위: Google Place ID가 있으면 공식 Google Search URL로 바로 해당 장소 카드 열기
+      if (isGooglePlaceId) {
+        return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${encodeURIComponent(place.id)}`;
+      }
+
+      // 2순위: 위도·경도 좌표와 장소명으로 정확한 핀 열기 (검색 실패나 엉뚱한 장소 표시 원천 방지)
+      if (place.location && typeof place.location.lat === "number" && typeof place.location.lng === "number") {
+        return `https://www.google.com/maps?q=${place.location.lat},${place.location.lng}+(${encodeURIComponent(place.name)})`;
+      }
+
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name || "장소")}`;
     }
 
     function buildGoogleMapsDirectionsUrl(place, modeOverride = null, originOverride = null) {
+      if (!place || !place.location) return "https://www.google.com/maps";
       const mode = (modeOverride || state.activeRouteMode || "TRANSIT").toLowerCase();
       const travelmode = mode === "walking" ? "walking" : "transit";
-      const dest = `${place.location.lat},${place.location.lng}`;
-      const isGooglePlaceId =
-        place.id && !place.id.startsWith("osm_") && !place.id.startsWith("nom_") && !place.id.startsWith("geo_") && !place.id.startsWith("my_") && !place.id.startsWith("leg_");
-      const pid = isGooglePlaceId ? `&destination_place_id=${encodeURIComponent(place.id)}` : "";
 
-      // 핵심 버그 수정: 사용자가 설정한 기준점(state.searchOrigin)이 있으면 무조건 기준점(호텔/검색장소)에서 출발!
-      // 사용자가 [출발: 📍내위치]를 명시적으로 선택한 경우에만 내 GPS 위치를 출발지로 사용!
+      const isGooglePlaceId =
+        place.id &&
+        !place.id.startsWith("osm_") &&
+        !place.id.startsWith("nom_") &&
+        !place.id.startsWith("geo_") &&
+        !place.id.startsWith("my_") &&
+        !place.id.startsWith("leg_") &&
+        !place.id.startsWith("photon_") &&
+        !place.id.startsWith("wiki_");
+
+      // 목적지(destination) 파라미터 핵심 수정:
+      // 구글 공식 규격: destination_place_id를 넘길 때는 destination에 장소명을 넘겨야 하며,
+      // 좌표로 길을 찾을 때는 comma(,)를 절대 %2C로 인코딩하지 않고 순수 comma(lat,lng)로 전달해야
+      // 구글 지도 앱에서 엉뚱한 주소나 다른 장소로 튀는 문제를 100% 방지함!
+      let destParam = "";
+      if (isGooglePlaceId) {
+        destParam = `destination=${encodeURIComponent(place.name)}&destination_place_id=${encodeURIComponent(place.id)}`;
+      } else {
+        destParam = `destination=${place.location.lat},${place.location.lng}`;
+      }
+
+      // 출발지(origin) 결정:
+      // 1) 명시적 originOverride가 있는 경우 우선 적용
+      // 2) 사용자가 [출발: 📍내위치]를 선택한 경우 state.currentLocation 적용
+      // 3) 기본값은 현재 설정된 기준점 (호텔 / 지도 중심 / 검색 장소)
       let refOrigin = state.searchOrigin || state.currentLocation;
       if (originOverride) {
         refOrigin = originOverride;
@@ -6310,10 +6390,17 @@
         refOrigin = state.currentLocation;
       }
 
+      // 만약 출발지와 목적지가 30m 이내로 사실상 동일한 경우(예: 숙소 카드에서 길찾기 누를 때),
+      // 내 현재 위치(GPS)를 출발지로 자동 전환하여 숙소까지 찾아가는 길 안내!
+      if (refOrigin && computeHaversineMeters(refOrigin, place.location) < 30 && state.currentLocation) {
+        refOrigin = state.currentLocation;
+      }
+
       const originParam = refOrigin
-        ? `&origin=${refOrigin.lat},${refOrigin.lng}`
+        ? `origin=${refOrigin.lat},${refOrigin.lng}&`
         : "";
-      return `https://www.google.com/maps/dir/?api=1${originParam}&destination=${encodeURIComponent(dest)}${pid}&travelmode=${travelmode}`;
+
+      return `https://www.google.com/maps/dir/?api=1&${originParam}${destParam}&travelmode=${travelmode}`;
     }
 
     function buildNaverDirectionsUrl(place, originOverride = null) {
@@ -6357,15 +6444,11 @@
 
       const waypointsParam =
         waypointStops.length > 0
-          ? `&waypoints=${encodeURIComponent(
-              waypointStops.map((s) => `${s.location.lat},${s.location.lng}`).join("|")
-            )}`
+          ? `&waypoints=${waypointStops.map((s) => `${s.location.lat},${s.location.lng}`).join("|")}`
           : "";
 
       const destCoord = `${lastStop.location.lat},${lastStop.location.lng}`;
-      return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
-        originCoord
-      )}&destination=${encodeURIComponent(destCoord)}${waypointsParam}&travelmode=${mode}`;
+      return `https://www.google.com/maps/dir/?api=1&origin=${originCoord}&destination=${destCoord}${waypointsParam}&travelmode=${mode}`;
     }
 
     // =========================================================================
