@@ -1074,84 +1074,172 @@
       min-width: 60px;
     }
 
-    .card-btn.hotel-saved {
-      background: #f3e8ff;
-      border-color: #9333ea;
-      color: #6b21a8;
+    .card-btn.fav-saved {
+      background: var(--rose-soft);
+      border-color: var(--rose);
+      color: var(--rose);
     }
 
-    /* 내 숙소 고정 바 (저장된 숙소가 있을 때 표시) */
-    .saved-hotel-bar {
-      display: none;
+    /* 상단 빨간 하트 '❤️ 내 장소' 전용 버튼 스타일 */
+    .cat-btn.my-places-btn {
+      background: rgba(255, 255, 255, 0.98);
+      border: 1.5px solid #fda4af;
+      color: #be123c;
+      font-weight: 800;
+      box-shadow: 0 2px 10px rgba(225, 29, 72, 0.16);
+    }
+
+    .cat-btn.my-places-btn.active {
+      background: var(--rose);
+      border-color: var(--rose);
+      color: #ffffff;
+      box-shadow: 0 3px 12px rgba(225, 29, 72, 0.35);
+    }
+
+    .my-places-count {
+      display: inline-flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 6px;
-      padding: 6px 12px;
-      background: linear-gradient(90deg, #f3e8ff 0%, #ede9fe 100%);
-      border-bottom: 1px solid #ddd6fe;
-      color: #5b21b6;
-      font-size: 12px;
-      font-weight: 700;
-      flex-shrink: 0;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: var(--rose);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 800;
     }
 
-    .saved-hotel-bar.visible {
+    .cat-btn.my-places-btn.active .my-places-count {
+      background: #ffffff;
+      color: var(--rose);
+    }
+
+    /* 상단 '❤️ 내 장소' 드롭다운 선택 패널 (숙소·가고 싶은 여행지 우선 선택) */
+    .my-places-dropdown {
+      pointer-events: auto;
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 6px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1.5px solid #fecdd3;
+      border-radius: 16px;
+      box-shadow: var(--shadow-lg);
+      max-height: 54dvh;
+      overflow-y: auto;
+    }
+
+    .my-places-dropdown.open {
       display: flex;
     }
 
-    .saved-hotel-info {
+    .my-places-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .my-places-title {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: #be123c;
       display: flex;
       align-items: center;
       gap: 5px;
+    }
+
+    .my-places-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .my-place-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 9px 10px;
+      border-radius: 11px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .my-place-item:active {
+      background: var(--rose-soft);
+      border-color: #fda4af;
+    }
+
+    .my-place-item-main {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
       min-width: 0;
       flex: 1;
     }
 
-    .saved-hotel-name {
+    .my-place-item-name {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: var(--text-primary);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
-    .saved-hotel-actions {
+    .my-place-item-sub {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .my-place-item-actions {
       display: flex;
       align-items: center;
       gap: 4px;
       flex-shrink: 0;
     }
 
-    .btn-hotel-chip {
-      border: 1px solid #c4b5fd;
+    .btn-my-place-act {
+      height: 30px;
+      padding: 0 8px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
       background: #ffffff;
-      color: #5b21b6;
-      border-radius: 6px;
-      padding: 3px 7px;
-      font-size: 11px;
-      font-weight: 800;
+      color: var(--text-primary);
+      font-size: 11.5px;
+      font-weight: 700;
       cursor: pointer;
-      text-decoration: none;
-      white-space: nowrap;
       display: inline-flex;
       align-items: center;
-      gap: 2px;
+      justify-content: center;
+      text-decoration: none;
+      white-space: nowrap;
     }
 
-    .btn-hotel-chip.primary {
-      background: #7c3aed;
-      border-color: #7c3aed;
+    .btn-my-place-act.primary {
+      background: var(--rose);
+      border-color: var(--rose);
       color: #ffffff;
     }
 
-    .map-fab.hotel-fab {
-      background: rgba(124, 58, 237, 0.95);
-      border-color: #ffffff;
-      color: #ffffff;
-      display: none;
-    }
-
-    .map-fab.hotel-fab.visible {
-      display: inline-flex;
+    .btn-my-place-act.del {
+      color: var(--text-muted);
+      padding: 0 6px;
     }
 
     .card-btn {
@@ -1496,8 +1584,17 @@
         </button>
       </form>
 
-      <!-- 카테고리 가로 스크롤 알약 버튼 -->
+      <!-- 상단 가로 스크롤 바: 맨 앞 '❤️ 내 장소' 버튼 + 카테고리 알약 버튼 -->
       <div id="categoryBar" class="category-scroll" role="tablist" aria-label="장소 카테고리"></div>
+
+      <!-- 상단 '❤️ 내 장소' 드롭다운 패널 (미리 저장한 숙소·여행지를 한 번에 선택해 우선 이동) -->
+      <div id="myPlacesDropdown" class="my-places-dropdown" role="region" aria-label="저장한 내 장소 목록">
+        <div class="my-places-header">
+          <span class="my-places-title">❤️ 내 장소 (숙소 · 가고 싶은 곳)</span>
+          <button type="button" id="btnCloseMyPlaces" class="btn-my-place-act del" aria-label="내 장소 닫기">닫기 ✕</button>
+        </div>
+        <div id="myPlacesListContainer" class="my-places-list"></div>
+      </div>
     </header>
 
     <!-- 상태 및 오류 알림 배너 -->
@@ -1545,11 +1642,8 @@
           <button type="button" id="btnMapRouteTransit" class="map-route-mode-btn">대중교통</button>
         </div>
 
-        <!-- 지도 우측 하단 플로팅 버튼 (저장된 숙소 복귀 + 내 위치 복귀) -->
+        <!-- 지도 우측 하단 플로팅 버튼 -->
         <div class="map-floating-controls">
-          <button type="button" id="btnHotelRouteFab" class="map-fab hotel-fab" title="저장된 내 숙소로 경로 보기">
-            🏨 숙소로 갈래요
-          </button>
           <button type="button" id="btnRecenter" class="map-fab" title="내 위치로 돌아가기">
             🎯 내 위치로
           </button>
@@ -1589,28 +1683,17 @@
           </div>
         </div>
 
-        <!-- 내 숙소 고정 바 (숙소를 저장해 두면 언제든 숙소로 길찾기·주변 검색 가능) -->
-        <div id="savedHotelBar" class="saved-hotel-bar">
-          <div class="saved-hotel-info">
-            <span>🏨</span>
-            <span id="savedHotelNameText" class="saved-hotel-name">내 숙소</span>
-          </div>
-          <div class="saved-hotel-actions">
-            <button type="button" id="btnFocusSavedHotel" class="btn-hotel-chip" title="숙소 위치로 이동해 주변 검색">📍 숙소주변</button>
-            <button type="button" id="btnRouteToSavedHotel" class="btn-hotel-chip" title="현재 위치에서 숙소까지 지도 경로 표시">🗺️ 경로보기</button>
-            <a id="linkGoogleMapsToHotel" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="btn-hotel-chip primary">↗ 길찾기</a>
-            <button type="button" id="btnClearSavedHotel" class="btn-hotel-chip" title="저장된 숙소 해제" aria-label="저장된 숙소 해제">✕</button>
-          </div>
-        </div>
-
-        <!-- 2단 서브바: 현재 고정 기준점 안내 + 정렬 필터 드롭다운 분리 배치 -->
+        <!-- 2단 서브바: 현재 고정 기준점 안내 + 추천/평점/거리 기준 필터 분리 배치 -->
         <div id="placesFilterBar" class="places-filter-bar">
           <div id="originContextBar" class="origin-context-bar">
             <span id="originContextText" class="origin-context-text">📍 기준점 확인 중...</span>
             <button type="button" id="btnResetToMyLoc" class="btn-banner-help" style="display:none;">내 위치 복귀</button>
           </div>
-          <select id="sortSelect" class="sort-select" aria-label="정렬 기준">
-            <option value="rating" selected>★ 평점 높은 순</option>
+          <select id="sortSelect" class="sort-select" aria-label="추천 및 정렬 기준">
+            <option value="recommend" selected>★ 추천순 (3.8+·1km내)</option>
+            <option value="rating40">🔥 ★ 4.0 이상만</option>
+            <option value="rating43">💎 ★ 4.3 이상만</option>
+            <option value="rating">★ 평점 높은 순</option>
             <option value="walk">🚶 도보 빠른 순</option>
             <option value="transit">🚌 대중교통 순</option>
             <option value="open">🟢 영업 중 우선</option>
@@ -1734,28 +1817,28 @@
     // =========================================================================
     const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY";
 
-    // API 요청 및 속도 최적화 상수
-    const MAX_SEARCH_RESULTS = 10;          // 빠른 응답을 위해 검색 결과 최대 10개
-    const MAX_ROUTE_MATRIX_TARGETS = 6;     // 상위 평점 6개 장소의 도보·대중교통 시간 백그라운드 계산
-    const DEFAULT_SEARCH_RADIUS_M = 2000;   // 기본 검색 반경 약 2km (2000m) 고정
+    // API 요청 및 추천 품질 기준 상수
+    const MAX_SEARCH_RESULTS = 10;          // 화면에 표시할 최종 엄선 장소 수 (최대 10개)
+    const MAX_ROUTE_MATRIX_TARGETS = 6;     // 상위 6개 장소의 도보·대중교통 시간 백그라운드 계산
+    const DEFAULT_SEARCH_RADIUS_M = 1000;   // 맛집·카페·편의점 기본 도보권 반경 1km (1,000m)
+    const MIN_RECOMMEND_RATING = 3.8;       // 맛집·카페·관광지 최소 추천 평점 기준 (3.4 등 저평점 자동 제외!)
     const DEFAULT_CENTER = { lat: 37.5665, lng: 126.9780 }; // 초기 기본 중심
 
-    // Google Places API (New) Table A 공식 지원 장소 유형 매핑 ('전체' 제거, 맛집·카페 등 직관적 카테고리 구성)
+    // Google Places API (New) Table A 공식 지원 장소 유형 매핑 ('숙소' 메뉴 제거, 카테고리별 최적 반경 및 평점 기준 설정)
     const CATEGORIES = [
-      { id: "restaurant", label: "맛집", icon: "🍽️", types: ["restaurant"], keywordHint: "맛집 레스토랑" },
-      { id: "cafe", label: "카페", icon: "☕", types: ["cafe"], keywordHint: "카페 커피" },
-      { id: "tourist_attraction", label: "관광지", icon: "📸", types: ["tourist_attraction"], keywordHint: "관광명소 볼거리" },
-      { id: "lodging", label: "숙소", icon: "🏨", types: ["lodging", "hotel"], keywordHint: "호텔 숙소" },
-      { id: "convenience_store", label: "편의점", icon: "🏪", types: ["convenience_store"], keywordHint: "편의점" },
-      { id: "atm", label: "ATM", icon: "🏧", types: ["atm"], keywordHint: "ATM 현금인출기" },
-      { id: "bank", label: "은행", icon: "🏦", types: ["bank"], keywordHint: "은행" },
-      { id: "pharmacy", label: "약국", icon: "💊", types: ["pharmacy"], keywordHint: "약국" },
-      { id: "park", label: "공원", icon: "🌳", types: ["park"], keywordHint: "공원" },
-      { id: "museum", label: "박물관", icon: "🏛️", types: ["museum"], keywordHint: "박물관 미술관" },
-      { id: "bakery", label: "베이커리", icon: "🥐", types: ["bakery"], keywordHint: "베이커리 빵집" },
-      { id: "supermarket", label: "마트", icon: "🛒", types: ["supermarket"], keywordHint: "슈퍼마켓 마트" },
-      { id: "shopping_mall", label: "쇼핑", icon: "🛍️", types: ["shopping_mall"], keywordHint: "쇼핑몰 백화점" },
-      { id: "gas_station", label: "주유소", icon: "⛽", types: ["gas_station"], keywordHint: "주유소" }
+      { id: "restaurant", label: "맛집", icon: "🍽️", types: ["restaurant"], keywordHint: "맛집 레스토랑 음식점", radiusM: 1000, maxDistM: 1300, minRating: 3.8 },
+      { id: "cafe", label: "카페", icon: "☕", types: ["cafe"], keywordHint: "카페 커피 디저트", radiusM: 1000, maxDistM: 1300, minRating: 3.8 },
+      { id: "tourist_attraction", label: "관광지", icon: "📸", types: ["tourist_attraction"], keywordHint: "관광명소 볼거리 명소", radiusM: 1800, maxDistM: 2500, minRating: 3.8 },
+      { id: "convenience_store", label: "편의점", icon: "🏪", types: ["convenience_store"], keywordHint: "편의점", radiusM: 600, maxDistM: 1000, minRating: 0 },
+      { id: "atm", label: "ATM", icon: "🏧", types: ["atm"], keywordHint: "ATM 현금인출기", radiusM: 800, maxDistM: 1200, minRating: 0 },
+      { id: "bank", label: "은행", icon: "🏦", types: ["bank"], keywordHint: "은행", radiusM: 1000, maxDistM: 1500, minRating: 0 },
+      { id: "pharmacy", label: "약국", icon: "💊", types: ["pharmacy"], keywordHint: "약국", radiusM: 800, maxDistM: 1200, minRating: 0 },
+      { id: "park", label: "공원", icon: "🌳", types: ["park"], keywordHint: "공원 산책", radiusM: 1500, maxDistM: 2200, minRating: 3.8 },
+      { id: "museum", label: "박물관", icon: "🏛️", types: ["museum"], keywordHint: "박물관 미술관 전시", radiusM: 2000, maxDistM: 3000, minRating: 3.8 },
+      { id: "bakery", label: "베이커리", icon: "🥐", types: ["bakery"], keywordHint: "베이커리 빵집", radiusM: 1000, maxDistM: 1400, minRating: 3.8 },
+      { id: "supermarket", label: "마트", icon: "🛒", types: ["supermarket"], keywordHint: "슈퍼마켓 대형마트", radiusM: 1200, maxDistM: 1800, minRating: 0 },
+      { id: "shopping_mall", label: "쇼핑", icon: "🛍️", types: ["shopping_mall"], keywordHint: "쇼핑몰 백화점", radiusM: 1800, maxDistM: 2500, minRating: 3.8 },
+      { id: "gas_station", label: "주유소", icon: "⛽", types: ["gas_station"], keywordHint: "주유소", radiusM: 2000, maxDistM: 3000, minRating: 0 }
     ];
 
     // 영문 primaryType -> 한국어 표시 사전
@@ -1789,37 +1872,23 @@
       establishment: "장소"
     };
 
-    // 지역/역/랜드마크 등 단일 지점 검색 시 자동으로 주변 장소를 함께 탐색할지 판별하는 유형
-    const AREA_OR_LANDMARK_TYPES = new Set([
-      "locality",
-      "sublocality",
-      "sublocality_level_1",
-      "administrative_area_level_1",
-      "administrative_area_level_2",
-      "country",
-      "postal_code",
-      "neighborhood",
-      "colloquial_area",
-      "train_station",
-      "subway_station",
-      "transit_station",
-      "light_rail_station",
-      "bus_station",
-      "airport"
-    ]);
-
     // 가격대(PriceLevel) 한국어 변환
     const PRICE_LEVEL_LABELS = {
       FREE: "무료",
       PRICE_LEVEL_FREE: "무료",
+      0: "무료",
       INEXPENSIVE: "₩ (저렴)",
       PRICE_LEVEL_INEXPENSIVE: "₩ (저렴)",
+      1: "₩ (저렴)",
       MODERATE: "₩₩ (보통)",
       PRICE_LEVEL_MODERATE: "₩₩ (보통)",
+      2: "₩₩ (보통)",
       EXPENSIVE: "₩₩₩ (고급)",
       PRICE_LEVEL_EXPENSIVE: "₩₩₩ (고급)",
+      3: "₩₩₩ (고급)",
       VERY_EXPENSIVE: "₩₩₩₩ (매우 고급)",
-      PRICE_LEVEL_VERY_EXPENSIVE: "₩₩₩₩ (매우 고급)"
+      PRICE_LEVEL_VERY_EXPENSIVE: "₩₩₩₩ (매우 고급)",
+      4: "₩₩₩₩ (매우 고급)"
     };
 
     // 대중교통 수단 한국어 변환
@@ -1849,6 +1918,7 @@
       libs: {
         Map: null,
         Place: null,
+        PlacesService: null,
         SearchNearbyRankPreference: null,
         Route: null,
         RouteMatrix: null,
@@ -1860,38 +1930,37 @@
         LatLngBounds: null
       },
       currentLocation: null, // 실제 내 GPS 위치 { lat, lng }
-      searchOrigin: null,    // 현재 주변 검색 기준 중심점 (내 위치 또는 사용자가 이동한 지도 중심/검색 위치)
-      searchOriginLabel: "현재 내 위치", // 기준점 설명
+      searchOrigin: null,    // 현재 주변 검색 기준 중심점
+      searchOriginLabel: "현재 내 위치",
       isMapMovedFromOrigin: false,
       isProgrammaticPan: false,
-      selectedRadius: DEFAULT_SEARCH_RADIUS_M, // 반경 약 2km(2000m) 고정
+      selectedRadius: DEFAULT_SEARCH_RADIUS_M,
       selectedCategory: null,                  // 앱 시작 시 자동 검색하지 않고 사용자가 카테고리를 누를 때 검색
       keyword: "",
-      sortBy: "rating",                        // 기본 정렬: Google 평점 높은 순
+      sortBy: "recommend",                     // 기본 정렬: 추천 베스트 순 (평점 3.8+ · 리뷰 신뢰도 · 1km 근접성 종합)
       isRequestInFlight: false,
-      searchSeq: 0,                            // 비동기 경로 계산 경쟁 상태 방지용 시퀀스
+      searchSeq: 0,
       lastSearchSignature: "",
       places: [],                              // 정규화된 장소 목록
       selectedPlaceId: null,
-      activeRouteMode: "WALKING",              // 선택 장소 지도 경로 표시 모드: WALKING | TRANSIT
+      activeRouteMode: "WALKING",
       userMarker: null,
       searchCenterMarker: null,
-      savedHotel: null,                        // 저장된 내 숙소 { id, name, address, location }
-      savedHotelMarker: null,                  // 내 숙소 전용 마커
-      lastSearchedTarget: null,                // 상단 검색창으로 방금 이동한 장소 객체
+      myPlaces: [],                            // 상단 '❤️ 내 장소'에 저장한 숙소·가고 싶은 여행지 목록 (하단 리스트와 완전 분리!)
+      myPlaceMarkers: new Map(),               // 내 장소 전용 빨간 하트 마커
+      isMyPlacesOpen: false,                   // 상단 '❤️ 내 장소' 드롭다운 열림 상태
+      lastSearchedTarget: null,
       placeMarkers: new Map(),                 // placeId -> marker
       activePolylines: [],
       tripList: [],                            // 여행 코스에 담긴 장소 배열 (localStorage 자동 저장)
       tripTravelMode: "WALKING",
-      tripLegMetrics: [],                      // 구간별 소요 시간/거리
+      tripLegMetrics: [],
       tripTotalDurationMs: null,
       tripTotalDistanceM: null,
       tripOptimizationLabel: "",
       sheetState: "normal",                    // "normal" | "expanded" | "hidden"
-      jsPlacesBlocked: false,                  // JS SDK 차단 시 재시도 생략 플래그 (속도 향상)
-      restPlacesBlocked: false,                // REST v1 차단 시 재시도 생략 플래그 (속도 향상)
-      isUserDragging: false,                   // 사용자가 직접 손가락/마우스로 지도를 드래그 중인지 여부
-      // 메모리 캐시 및 진행 중 요청 공유 맵 (중복 API 호출 방지 & 백그라운드 프리패치)
+      isUserDragging: false,
+      // 메모리 캐시 및 진행 중 요청 공유 맵
       searchCache: new Map(),
       inflightNearbyMap: new Map(),
       routeMatrixCache: new Map(),
@@ -1902,19 +1971,20 @@
     const $ = (id) => document.getElementById(id);
 
     // =========================================================================
-    // [2] 초기화 및 이벤트 바인딩
+    // [2] 초기화, '❤️ 내 장소' 및 여행 코스 영구 저장 관리
     // =========================================================================
     document.addEventListener("DOMContentLoaded", () => {
-      loadPersistedTripAndHotel();
+      loadPersistedData();
       renderCategoryButtons();
+      renderMyPlacesDropdown();
       bindUIEvents();
       bindSheetTouchGestures();
       checkEnvironmentSecurity();
       initApiKeyAndBootstrap();
     });
 
-    // 여행 코스 및 내 숙소를 localStorage에서 복원·저장
-    function loadPersistedTripAndHotel() {
+    function loadPersistedData() {
+      // 1) 여행 코스 복원
       try {
         const savedTripJson = localStorage.getItem("TRAVEL_HELPER_TRIP_LIST_V1");
         if (savedTripJson) {
@@ -1926,17 +1996,40 @@
         }
       } catch (_) {}
 
+      // 2) 상단 '❤️ 내 장소' 복원 (기존에 저장했던 숙소가 있으면 자동으로 ❤️ 내 장소로 이전)
       try {
-        const savedHotelJson = localStorage.getItem("TRAVEL_HELPER_SAVED_HOTEL_V1");
-        if (savedHotelJson) {
-          const parsedHotel = JSON.parse(savedHotelJson);
-          if (parsedHotel && parsedHotel.location && typeof parsedHotel.location.lat === "number") {
-            state.savedHotel = parsedHotel;
+        const myPlacesJson = localStorage.getItem("TRAVEL_HELPER_MY_PLACES_V1");
+        if (myPlacesJson) {
+          const parsed = JSON.parse(myPlacesJson);
+          if (Array.isArray(parsed)) {
+            state.myPlaces = parsed.filter((p) => p && p.location && typeof p.location.lat === "number");
           }
+        }
+        // 이전 버전의 단일 숙소 데이터가 남아있다면 내 장소 목록으로 자동 통합
+        const legacyHotelJson = localStorage.getItem("TRAVEL_HELPER_SAVED_HOTEL_V1");
+        if (legacyHotelJson) {
+          const legacyHotel = JSON.parse(legacyHotelJson);
+          if (
+            legacyHotel &&
+            legacyHotel.location &&
+            !state.myPlaces.some((item) => item.name === legacyHotel.name)
+          ) {
+            state.myPlaces.unshift({
+              id: legacyHotel.id || `my_${Date.now()}`,
+              name: legacyHotel.name,
+              address: legacyHotel.address || "",
+              location: legacyHotel.location,
+              categoryLabel: legacyHotel.categoryLabel || "저장한 숙소·장소",
+              rating: legacyHotel.rating ?? null,
+              userRatingCount: legacyHotel.userRatingCount ?? null,
+              googleMapsURI: legacyHotel.googleMapsURI || null
+            });
+            saveMyPlacesToStorage();
+          }
+          localStorage.removeItem("TRAVEL_HELPER_SAVED_HOTEL_V1");
         }
       } catch (_) {}
 
-      updateSavedHotelBarUI();
       updateRestoreBarText();
     }
 
@@ -1957,133 +2050,302 @@
       } catch (_) {}
     }
 
-    function setSavedHotel(placeObj) {
+    function saveMyPlacesToStorage() {
+      try {
+        const serializable = state.myPlaces.map((p) => ({
+          id: p.id,
+          name: p.name,
+          address: p.address || "",
+          location: { lat: Number(p.location.lat), lng: Number(p.location.lng) },
+          categoryLabel: p.categoryLabel || "내 장소",
+          rating: p.rating ?? null,
+          userRatingCount: p.userRatingCount ?? null,
+          googleMapsURI: p.googleMapsURI || null
+        }));
+        localStorage.setItem("TRAVEL_HELPER_MY_PLACES_V1", JSON.stringify(serializable));
+      } catch (_) {}
+    }
+
+    function isPlaceInMyPlaces(placeObj) {
+      if (!placeObj) return false;
+      return state.myPlaces.some(
+        (item) =>
+          item.id === placeObj.id ||
+          (item.name === placeObj.name &&
+            item.location &&
+            placeObj.location &&
+            computeHaversineMeters(item.location, placeObj.location) < 80)
+      );
+    }
+
+    function toggleMyPlace(placeObj) {
       if (!placeObj || !placeObj.location) return;
-      state.savedHotel = {
-        id: placeObj.id || `hotel_${Date.now()}`,
-        name: placeObj.name || "내 숙소",
-        address: placeObj.address || "",
-        location: {
-          lat: Number(placeObj.location.lat),
-          lng: Number(placeObj.location.lng)
-        },
-        categoryLabel: placeObj.categoryLabel || "숙소·호텔",
-        googleMapsURI: placeObj.googleMapsURI || null
-      };
-      try {
-        localStorage.setItem("TRAVEL_HELPER_SAVED_HOTEL_V1", JSON.stringify(state.savedHotel));
-      } catch (_) {}
-      updateSavedHotelBarUI();
-      renderSavedHotelMarker();
-      renderPlacesListAndMarkers(false);
-      showBanner(`🏨 '${state.savedHotel.name}'을(를) 내 숙소로 저장했습니다! 언제든 [숙소로 갈래요]로 찾아갈 수 있습니다.`, "info");
-    }
+      const idx = state.myPlaces.findIndex(
+        (item) =>
+          item.id === placeObj.id ||
+          (item.name === placeObj.name &&
+            item.location &&
+            computeHaversineMeters(item.location, placeObj.location) < 80)
+      );
 
-    function clearSavedHotel() {
-      state.savedHotel = null;
-      try {
-        localStorage.removeItem("TRAVEL_HELPER_SAVED_HOTEL_V1");
-      } catch (_) {}
-      updateSavedHotelBarUI();
-      renderSavedHotelMarker();
-      renderPlacesListAndMarkers(false);
-      showBanner("저장된 내 숙소를 해제했습니다.", "info");
-    }
-
-    function updateSavedHotelBarUI() {
-      const bar = $("savedHotelBar");
-      const nameEl = $("savedHotelNameText");
-      const linkEl = $("linkGoogleMapsToHotel");
-      const fabBtn = $("btnHotelRouteFab");
-      if (!bar) return;
-
-      if (!state.savedHotel) {
-        bar.classList.remove("visible");
-        if (fabBtn) fabBtn.classList.remove("visible");
-        return;
-      }
-
-      bar.classList.add("visible");
-      if (fabBtn) fabBtn.classList.add("visible");
-      if (nameEl) nameEl.textContent = `내 숙소: ${state.savedHotel.name}`;
-      if (linkEl) {
-        // 길찾기 시 실제 내 GPS 위치가 있으면 내 위치에서 숙소로, 없으면 현재 기준점에서 숙소로 연결
-        const originForHotel = state.currentLocation || state.searchOrigin;
-        const originParam = originForHotel ? `&origin=${originForHotel.lat},${originForHotel.lng}` : "";
-        const dest = `${state.savedHotel.location.lat},${state.savedHotel.location.lng}`;
-        const mode = (state.activeRouteMode || "TRANSIT").toLowerCase() === "transit" ? "transit" : "walking";
-        linkEl.href = `https://www.google.com/maps/dir/?api=1${originParam}&destination=${encodeURIComponent(dest)}&travelmode=${mode}`;
-      }
-    }
-
-    function renderSavedHotelMarker() {
-      if (!state.map) return;
-      if (state.savedHotelMarker) {
-        if (state.savedHotelMarker.setMap) state.savedHotelMarker.setMap(null);
-        else state.savedHotelMarker.map = null;
-        state.savedHotelMarker = null;
-      }
-      if (!state.savedHotel || !state.savedHotel.location) return;
-
-      const shortHotelName =
-        state.savedHotel.name.length > 10
-          ? state.savedHotel.name.slice(0, 10) + "…"
-          : state.savedHotel.name;
-
-      if (state.libs.AdvancedMarkerElement) {
-        const badge = document.createElement("div");
-        badge.style.display = "inline-flex";
-        badge.style.alignItems = "center";
-        badge.style.gap = "4px";
-        badge.style.padding = "4px 9px";
-        badge.style.borderRadius = "999px";
-        badge.style.background = "#7c3aed";
-        badge.style.color = "#ffffff";
-        badge.style.fontSize = "11.5px";
-        badge.style.fontWeight = "800";
-        badge.style.border = "2px solid #ffffff";
-        badge.style.boxShadow = "0 3px 10px rgba(124, 58, 237, 0.45)";
-        badge.style.whiteSpace = "nowrap";
-        badge.textContent = `🏨 ${shortHotelName}`;
-
-        state.savedHotelMarker = new state.libs.AdvancedMarkerElement({
-          map: state.map,
-          position: state.savedHotel.location,
-          content: badge,
-          title: `내 숙소: ${state.savedHotel.name}`,
-          zIndex: 960
-        });
+      if (idx >= 0) {
+        const removed = state.myPlaces.splice(idx, 1)[0];
+        saveMyPlacesToStorage();
+        renderCategoryButtons();
+        renderMyPlacesDropdown();
+        renderMyPlacesMarkers();
+        renderPlacesListAndMarkers(false);
+        showBanner(`'${removed.name}'을(를) ❤️ 내 장소에서 삭제했습니다.`, "info");
       } else {
-        state.savedHotelMarker = new google.maps.Marker({
-          map: state.map,
-          position: state.savedHotel.location,
-          label: { text: "🏨숙소", color: "#ffffff", fontSize: "11px", fontWeight: "bold" },
-          title: `내 숙소: ${state.savedHotel.name}`,
-          zIndex: 960
-        });
+        const newItem = {
+          id: placeObj.id || `my_${Date.now()}`,
+          name: placeObj.name || "저장한 장소",
+          address: placeObj.address || "",
+          location: {
+            lat: Number(placeObj.location.lat),
+            lng: Number(placeObj.location.lng)
+          },
+          categoryLabel: placeObj.categoryLabel || "내 장소",
+          rating: placeObj.rating ?? null,
+          userRatingCount: placeObj.userRatingCount ?? null,
+          googleMapsURI: placeObj.googleMapsURI || null
+        };
+        state.myPlaces.unshift(newItem);
+        saveMyPlacesToStorage();
+        renderCategoryButtons();
+        renderMyPlacesDropdown();
+        renderMyPlacesMarkers();
+        renderPlacesListAndMarkers(false);
+        showBanner(`❤️ '${newItem.name}'을(를) 상단 [내 장소]에 저장했습니다! 언제든 상단 ❤️ 버튼을 눌러 우선 찾아갈 수 있습니다.`, "info");
       }
     }
 
-    async function navigateToSavedHotelOnMap() {
-      if (!state.savedHotel) return;
-      const origin = state.currentLocation || state.searchOrigin;
-      if (!origin) {
-        panToProgrammatically(state.savedHotel.location, 15);
-        showBanner("출발 기준 위치를 먼저 확인하거나 Google 지도 길찾기를 눌러주세요.", "info");
+    function removeMyPlaceByIndex(idx) {
+      if (idx < 0 || idx >= state.myPlaces.length) return;
+      const removed = state.myPlaces.splice(idx, 1)[0];
+      saveMyPlacesToStorage();
+      renderCategoryButtons();
+      renderMyPlacesDropdown();
+      renderMyPlacesMarkers();
+      renderPlacesListAndMarkers(false);
+      showBanner(`'${removed.name}'을(를) ❤️ 내 장소에서 삭제했습니다.`, "info");
+    }
+
+    function toggleMyPlacesDropdown(forceState = null) {
+      state.isMyPlacesOpen = typeof forceState === "boolean" ? forceState : !state.isMyPlacesOpen;
+      const dropdown = $("myPlacesDropdown");
+      if (dropdown) {
+        dropdown.classList.toggle("open", state.isMyPlacesOpen);
+      }
+      const btn = document.getElementById("btnMyPlacesTop");
+      if (btn) {
+        btn.classList.toggle("active", state.isMyPlacesOpen);
+      }
+      if (state.isMyPlacesOpen) {
+        renderMyPlacesDropdown();
+      }
+    }
+
+    function renderMyPlacesDropdown() {
+      const container = $("myPlacesListContainer");
+      if (!container) return;
+
+      if (state.myPlaces.length === 0) {
+        container.innerHTML = `
+          <div style="padding:12px 8px; text-align:center; font-size:12.5px; color:var(--text-secondary); line-height:1.5;">
+            아직 저장된 <strong>❤️ 내 장소</strong>가 없습니다.<br/>
+            상단 검색창에 <strong>숙소(호텔)</strong>나 <strong>가고 싶은 여행지</strong>를 검색한 뒤 <strong>[❤️ 내 장소에 저장]</strong>을 누르거나, 장소 카드의 <strong>[🤍 내장소]</strong> 버튼을 눌러 미리 등록해 두세요!
+          </div>
+        `;
         return;
       }
-      const mode = isInSouthKorea(origin) ? "TRANSIT" : state.activeRouteMode || "TRANSIT";
-      state.activeRouteMode = mode;
-      setLoading(true, `'${state.savedHotel.name}'(내 숙소)로 가는 경로를 계산하는 중...`);
-      try {
-        await computeAndDisplaySingleRoute(state.savedHotel, mode);
-        if (state.map) {
-          panToProgrammatically(state.savedHotel.location, 14);
-        }
-        showBanner(`🏨 '${state.savedHotel.name}'(내 숙소)로 가는 경로를 지도에 표시했습니다.`, "info");
-      } finally {
-        setLoading(false);
+
+      container.innerHTML = "";
+      state.myPlaces.forEach((item, idx) => {
+        const row = document.createElement("div");
+        row.className = "my-place-item";
+
+        const dirUrl = buildGoogleMapsDirectionsUrl(item);
+        const ratingBadge =
+          typeof item.rating === "number" ? ` · ★${item.rating.toFixed(1)}` : "";
+
+        row.innerHTML = `
+          <div class="my-place-item-main" data-select-idx="${idx}">
+            <div class="my-place-item-name">
+              <span>❤️</span>
+              <span>${escapeHtml(item.name)}</span>
+            </div>
+            <div class="my-place-item-sub">
+              ${escapeHtml(item.categoryLabel || "내 장소")}${ratingBadge}${item.address ? " · " + escapeHtml(item.address) : ""}
+            </div>
+          </div>
+          <div class="my-place-item-actions">
+            <button type="button" class="btn-my-place-act" data-focus-idx="${idx}" title="이곳을 기준점으로 이동 및 경로 보기">
+              🎯 우선가기
+            </button>
+            <a href="${dirUrl}" target="_blank" rel="noopener noreferrer" class="btn-my-place-act primary" title="Google 지도 길찾기">
+              ↗ 길찾기
+            </a>
+            <button type="button" class="btn-my-place-act del" data-del-idx="${idx}" title="내 장소에서 삭제" aria-label="삭제">
+              ✕
+            </button>
+          </div>
+        `;
+
+        row.querySelector(`[data-select-idx="${idx}"]`).addEventListener("click", () => {
+          selectAndGoToMyPlace(item);
+        });
+        row.querySelector(`[data-focus-idx="${idx}"]`).addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectAndGoToMyPlace(item);
+        });
+        row.querySelector(`[data-del-idx="${idx}"]`).addEventListener("click", (e) => {
+          e.stopPropagation();
+          removeMyPlaceByIndex(idx);
+        });
+
+        container.appendChild(row);
+      });
+    }
+
+    // 상단 '❤️ 내 장소'에서 장소를 선택했을 때:
+    // 1) 해당 장소로 지도 중심을 즉시 이동하고 고정 기준점으로 설정
+    // 2) 내 현재 위치가 있으면 그 장소로 가는 실제 경로(도보/대중교통)도 지도 위에 바로 표시
+    // 3) 하단 리스트를 비우고 그 장소 주변 맛집·카페를 바로 찾거나 길찾기를 할 수 있는 안내 표시
+    async function selectAndGoToMyPlace(myPlace) {
+      if (!myPlace || !myPlace.location) return;
+      toggleMyPlacesDropdown(false);
+
+      const targetCenter = {
+        lat: Number(myPlace.location.lat),
+        lng: Number(myPlace.location.lng)
+      };
+
+      // 출발지(현재 내 GPS 위치 또는 기존 기준점) 백업 후 경로 계산용으로 활용
+      const routeStartOrigin = state.currentLocation || state.searchOrigin;
+
+      state.searchOrigin = targetCenter;
+      state.searchOriginLabel = `❤️ ${myPlace.name}`;
+      state.selectedCategory = null;
+      state.places = [];
+      state.selectedPlaceId = null;
+      state.lastSearchSignature = "";
+      updateCategorySelectionUI();
+
+      clearMapMarkersAndPolylines();
+      panToProgrammatically(targetCenter, 15);
+      renderSearchCenterMarker(targetCenter);
+      updateOriginContextBar();
+      renderPlacesListAndMarkers(false);
+      updateRestoreBarText();
+
+      if (state.sheetState === "hidden") {
+        setSheetState("normal");
       }
+
+      const emptyEl = $("placesEmptyState");
+      if (emptyEl) {
+        const dirUrl = buildGoogleMapsDirectionsUrl(myPlace);
+        const gmapsUrl = buildGoogleMapsPlaceUrl(myPlace);
+        emptyEl.innerHTML = `
+          <p class="empty-state-title">❤️ '${escapeHtml(myPlace.name)}' (내 장소 선택됨)</p>
+          <p class="empty-state-desc" style="margin-bottom:12px;">
+            선택하신 내 장소로 지도가 이동되었으며 고정 기준점으로 설정되었습니다.<br/>
+            바로 <strong>길찾기</strong>로 이동하거나, 상단의 <strong>🍽️ 맛집 · ☕ 카페 · 🏪 편의점</strong>을 눌러 이 주변을 탐색해 보세요.
+          </p>
+          <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
+            <button type="button" id="btnDrawRouteToMyPlace" class="card-btn" style="padding:0 12px; flex:0 1 auto;">
+              🗺️ 현재 위치에서 경로 표시
+            </button>
+            <a href="${dirUrl}" target="_blank" rel="noopener noreferrer" class="card-btn primary" style="padding:0 12px; flex:0 1 auto;">
+              ↗ Google 지도 길찾기
+            </a>
+            <a href="${gmapsUrl}" target="_blank" rel="noopener noreferrer" class="card-btn" style="padding:0 12px; flex:0 1 auto;">
+              🗺️ 장소 상세보기
+            </a>
+          </div>
+        `;
+        const btnRoute = $("btnDrawRouteToMyPlace");
+        if (btnRoute) {
+          btnRoute.addEventListener("click", async () => {
+            const fromCoord = state.currentLocation || routeStartOrigin;
+            if (!fromCoord || computeHaversineMeters(fromCoord, targetCenter) < 20) {
+              showBanner("현재 내 위치(GPS)를 먼저 확인하거나 [↗ Google 지도 길찾기]를 이용해 주세요.", "info");
+              return;
+            }
+            const mode = isInSouthKorea(fromCoord) ? "TRANSIT" : state.activeRouteMode || "TRANSIT";
+            setLoading(true, `'${myPlace.name}'까지 경로를 지도에 표시하는 중...`);
+            try {
+              const rData = await fetchSingleRouteNewApi(fromCoord, targetCenter, mode);
+              if (rData) {
+                drawRouteDataOnMap(rData, mode);
+                const durText = formatDuration(rData.durationMillis);
+                const distText = formatDistance(rData.distanceMeters);
+                const modeLabel = mode === "TRANSIT" ? "🚌 대중교통" : "🚶 도보";
+                updateMapRouteBadge(`❤️ ${myPlace.name}: ${modeLabel} ${durText}${distText ? " · " + distText : ""}`, mode);
+              } else {
+                showBanner("경로를 찾지 못했습니다. [↗ Google 지도 길찾기] 버튼을 눌러 확인해 보세요.", "warn");
+              }
+            } finally {
+              setLoading(false);
+            }
+          });
+        }
+      }
+
+      warmPopularCategoriesInBackground(targetCenter);
+    }
+
+    // 지도에 저장된 '❤️ 내 장소'들을 빨간 하트 마커로 상시 표시
+    function renderMyPlacesMarkers() {
+      if (!state.map) return;
+      state.myPlaceMarkers.forEach((m) => {
+        if (m.setMap) m.setMap(null);
+        else m.map = null;
+      });
+      state.myPlaceMarkers.clear();
+
+      state.myPlaces.forEach((item) => {
+        if (!item || !item.location) return;
+        const shortName = item.name.length > 9 ? item.name.slice(0, 9) + "…" : item.name;
+        let marker;
+        if (state.libs.AdvancedMarkerElement) {
+          const badge = document.createElement("div");
+          badge.style.display = "inline-flex";
+          badge.style.alignItems = "center";
+          badge.style.gap = "4px";
+          badge.style.padding = "3px 8px";
+          badge.style.borderRadius = "999px";
+          badge.style.background = "#e11d48";
+          badge.style.color = "#ffffff";
+          badge.style.fontSize = "11.5px";
+          badge.style.fontWeight = "800";
+          badge.style.border = "2px solid #ffffff";
+          badge.style.boxShadow = "0 3px 10px rgba(225, 29, 72, 0.4)";
+          badge.style.whiteSpace = "nowrap";
+          badge.style.cursor = "pointer";
+          badge.textContent = `❤️ ${shortName}`;
+
+          marker = new state.libs.AdvancedMarkerElement({
+            map: state.map,
+            position: item.location,
+            content: badge,
+            title: `내 장소: ${item.name}`,
+            zIndex: 960
+          });
+          marker.addListener("click", () => selectAndGoToMyPlace(item));
+        } else {
+          marker = new google.maps.Marker({
+            map: state.map,
+            position: item.location,
+            label: { text: `❤️${shortName.slice(0, 4)}`, color: "#ffffff", fontSize: "11px", fontWeight: "bold" },
+            title: `내 장소: ${item.name}`,
+            zIndex: 960
+          });
+          marker.addListener("click", () => selectAndGoToMyPlace(item));
+        }
+        state.myPlaceMarkers.set(item.id, marker);
+      });
     }
 
     function checkEnvironmentSecurity() {
@@ -2221,6 +2483,7 @@
 
         state.libs.Map = mapsLib.Map;
         state.libs.Place = placesLib?.Place || null;
+        state.libs.PlacesService = placesLib?.PlacesService || google.maps?.places?.PlacesService || null;
         state.libs.SearchNearbyRankPreference = placesLib?.SearchNearbyRankPreference || null;
         state.libs.Route = routesLib?.Route || null;
         state.libs.RouteMatrix = routesLib?.RouteMatrix || null;
@@ -2235,7 +2498,7 @@
         state.mapsLoaded = true;
         $("mapFallbackOverlay").style.display = "none";
 
-        // 앱 시작 시: 현재 내 위치로 지도만 빠르게 이동하고, 무거운 전체 자동 검색은 하지 않음!
+        // 앱 시작 시: 현재 내 위치로 지도만 빠르게 이동하고, 무거운 전체 자동 검색은 하지 않음
         requestUserLocation({ isAutoStart: true });
       } catch (err) {
         console.error("Google Maps API 로드 실패:", err);
@@ -2267,14 +2530,20 @@
         clickableIcons: false
       });
 
-      // 오직 사용자가 직접 손가락/마우스로 지도를 드래그했을 때만 이동 감지!
-      // (검색 결과 렌더링, 마커 클릭, 줌인/줌아웃 시에는 기준점이 절대 흔들리지 않도록 고정)
-      state.map.addListener("dragstart", () => {
-        state.isUserDragging = true;
-        $("mapCenterReticle").classList.add("visible");
+      // 저장된 ❤️ 내 장소 마커 표시
+      renderMyPlacesMarkers();
+
+      // 지도를 클릭하면 상단 내 장소 드롭다운 자동 닫기
+      state.map.addListener("click", () => {
+        if (state.isMyPlacesOpen) toggleMyPlacesDropdown(false);
       });
 
-      renderSavedHotelMarker();
+      // 오직 사용자가 직접 손가락/마우스로 지도를 드래그했을 때만 이동 감지
+      state.map.addListener("dragstart", () => {
+        state.isUserDragging = true;
+        if (state.isMyPlacesOpen) toggleMyPlacesDropdown(false);
+        $("mapCenterReticle").classList.add("visible");
+      });
 
       state.map.addListener("dragend", () => {
         if (!state.map || !state.isUserDragging) return;
@@ -2393,11 +2662,25 @@
     }
 
     // =========================================================================
-    // [4] 카테고리, 지도 중심 검색 및 UI 이벤트 처리
+    // [4] 상단 '❤️ 내 장소' 버튼 + 카테고리 버튼 렌더링 및 이벤트 처리
     // =========================================================================
     function renderCategoryButtons() {
       const bar = $("categoryBar");
       bar.innerHTML = "";
+
+      // 1) 맨 앞에 빨간 하트 '❤️ 내 장소' 버튼 배치!
+      const myBtn = document.createElement("button");
+      myBtn.type = "button";
+      myBtn.id = "btnMyPlacesTop";
+      myBtn.className = "cat-btn my-places-btn" + (state.isMyPlacesOpen ? " active" : "");
+      myBtn.innerHTML = `<span>❤️</span><span>내 장소</span><span class="my-places-count">${state.myPlaces.length}</span>`;
+      myBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleMyPlacesDropdown();
+      });
+      bar.appendChild(myBtn);
+
+      // 2) 주변 탐색 카테고리 버튼들
       CATEGORIES.forEach((cat) => {
         const btn = document.createElement("button");
         btn.type = "button";
@@ -2407,12 +2690,11 @@
         btn.setAttribute("aria-selected", cat.id === state.selectedCategory ? "true" : "false");
         btn.innerHTML = `<span>${cat.icon}</span><span>${cat.label}</span>`;
         btn.addEventListener("click", () => {
+          if (state.isMyPlacesOpen) toggleMyPlacesDropdown(false);
           state.selectedCategory = cat.id;
           updateCategorySelectionUI();
           if (state.sheetState === "hidden") setSheetState("normal");
 
-          // 사용자가 직접 지도를 드래그해 옮긴 직후 카테고리를 누르면 그 위치를 새 고정 기준점으로 삼아 검색하고,
-          // 그렇지 않으면 현재 고정된 기준점(searchOrigin)을 그대로 유지해 중심이 흔들리지 않게 검색!
           if (state.isMapMovedFromOrigin && state.map) {
             lockCurrentMapCenterAsOrigin(true);
           } else {
@@ -2427,7 +2709,7 @@
     }
 
     function updateCategorySelectionUI() {
-      document.querySelectorAll(".cat-btn").forEach((btn) => {
+      document.querySelectorAll(".cat-btn[data-cat-id]").forEach((btn) => {
         const isSelected = btn.dataset.catId === state.selectedCategory;
         btn.classList.toggle("active", isSelected);
         btn.setAttribute("aria-selected", isSelected ? "true" : "false");
@@ -2435,20 +2717,28 @@
     }
 
     function bindUIEvents() {
+      // 상단 내 장소 닫기 버튼
+      const btnCloseMyPlaces = $("btnCloseMyPlaces");
+      if (btnCloseMyPlaces) {
+        btnCloseMyPlaces.addEventListener("click", () => toggleMyPlacesDropdown(false));
+      }
+
       // 내 위치 버튼
       $("btnLocate").addEventListener("click", () => {
+        if (state.isMyPlacesOpen) toggleMyPlacesDropdown(false);
         requestUserLocation({ isAutoStart: false });
       });
 
       // 내 위치로 돌아가기 플로팅 버튼
       $("btnRecenter").addEventListener("click", () => {
+        if (state.isMyPlacesOpen) toggleMyPlacesDropdown(false);
         if (state.currentLocation && state.map) {
           state.searchOrigin = { ...state.currentLocation };
           state.searchOriginLabel = "현재 내 위치";
           $("searchInput").value = "";
           $("btnClearSearch").style.display = "none";
           state.keyword = "";
-          panToProgrammatically(state.currentLocation, 14);
+          panToProgrammatically(state.currentLocation, 15);
           renderSearchCenterMarker(null);
           updateOriginContextBar();
           if (state.selectedCategory) {
@@ -2464,39 +2754,6 @@
       // "내 위치로 복귀" 작은 버튼
       $("btnResetToMyLoc").addEventListener("click", () => {
         $("btnRecenter").click();
-      });
-
-      // 내 숙소 관련 버튼 바인딩
-      $("btnFocusSavedHotel").addEventListener("click", () => {
-        if (!state.savedHotel) return;
-        state.searchOrigin = { ...state.savedHotel.location };
-        state.searchOriginLabel = `내 숙소 (${state.savedHotel.name})`;
-        state.selectedCategory = null;
-        state.places = [];
-        state.selectedPlaceId = null;
-        updateCategorySelectionUI();
-        clearMapMarkersAndPolylines();
-        panToProgrammatically(state.savedHotel.location, 15);
-        renderSearchCenterMarker(state.savedHotel.location);
-        updateOriginContextBar();
-        renderPlacesListAndMarkers(false);
-        warmPopularCategoriesInBackground(state.savedHotel.location);
-        updateEmptyStateMessage(
-          `🏨 내 숙소 '${state.savedHotel.name}' 주변입니다`,
-          `상단에서 🍽️ 맛집, ☕ 카페, 🏪 편의점 등 원하는 카테고리를 눌러 숙소 주변 장소를 찾아보세요.`
-        );
-      });
-
-      $("btnRouteToSavedHotel").addEventListener("click", () => {
-        navigateToSavedHotelOnMap();
-      });
-
-      $("btnHotelRouteFab").addEventListener("click", () => {
-        navigateToSavedHotelOnMap();
-      });
-
-      $("btnClearSavedHotel").addEventListener("click", () => {
-        clearSavedHotel();
       });
 
       // 지도를 이동했을 때 뜨는 "📌 현 지도 중심을 기준점으로 고정" 버튼
@@ -2523,6 +2780,7 @@
       // 상단 검색창 제출 (전 세계 어디든 검색!)
       $("searchForm").addEventListener("submit", (e) => {
         e.preventDefault();
+        if (state.isMyPlacesOpen) toggleMyPlacesDropdown(false);
         const kw = searchInput.value.trim();
         state.keyword = kw;
         if (state.sheetState === "hidden") setSheetState("normal");
@@ -2535,7 +2793,7 @@
         }
       });
 
-      // 정렬 선택
+      // 추천/정렬 기준 선택
       $("sortSelect").addEventListener("change", (e) => {
         state.sortBy = e.target.value;
         renderPlacesListAndMarkers(false);
@@ -2628,8 +2886,6 @@
           state.placeDetailsCache.clear();
           state.singleRouteCache.clear();
           state.lastSearchSignature = "";
-          state.jsPlacesBlocked = false;
-          state.restPlacesBlocked = false;
           $("helpModal").classList.remove("open");
           $("statusBanner").className = "status-banner";
           if (state.keyword || state.selectedCategory) {
@@ -2663,8 +2919,6 @@
 
       renderSearchCenterMarker(state.searchOrigin);
       updateOriginContextBar();
-
-      // 새 기준점의 맛집·카페 데이터를 백그라운드에서 미리 준비해 체감 대기 시간 제거
       warmPopularCategoriesInBackground(state.searchOrigin);
 
       if (runCategorySearch && state.selectedCategory) {
@@ -2676,7 +2930,7 @@
         renderPlacesListAndMarkers(false);
         updateEmptyStateMessage(
           "📌 현재 지도 중심이 기준점으로 고정되었습니다",
-          "상단에서 🍽️ 맛집, ☕ 카페, 📸 관광지 등 원하는 메뉴를 선택하면 이 위치를 중심으로 빠르게 검색합니다."
+          "상단에서 🍽️ 맛집, ☕ 카페, 📸 관광지 등 원하는 메뉴를 선택하면 반경 1km 내 검증된 고평점 장소를 찾아줍니다."
         );
       }
     }
@@ -2684,10 +2938,10 @@
     function updateEmptyStateMessage(titleText, descText) {
       const emptyEl = $("placesEmptyState");
       if (!emptyEl) return;
-      const t = emptyEl.querySelector(".empty-state-title");
-      const d = emptyEl.querySelector(".empty-state-desc");
-      if (t && titleText) t.textContent = titleText;
-      if (d && descText) d.textContent = descText;
+      emptyEl.innerHTML = `
+        <p class="empty-state-title">${escapeHtml(titleText)}</p>
+        <p class="empty-state-desc">${escapeHtml(descText)}</p>
+      `;
     }
 
     function updateOriginContextBar() {
@@ -2695,8 +2949,11 @@
       const resetBtn = $("btnResetToMyLoc");
       if (!textEl || !resetBtn) return;
 
+      const catObj = CATEGORIES.find((c) => c.id === state.selectedCategory);
+      const radiusLabel = catObj ? `${(catObj.radiusM / 1000).toFixed(catObj.radiusM % 1000 === 0 ? 0 : 1)}km` : "1km";
+
       if (!state.searchOrigin) {
-        textEl.textContent = "📍 기준점: 상단 카테고리 또는 검색어 선택";
+        textEl.textContent = "📍 기준점: 상단 카테고리 또는 ❤️ 내 장소 선택";
         resetBtn.style.display = "none";
         return;
       }
@@ -2706,10 +2963,10 @@
         computeHaversineMeters(state.currentLocation, state.searchOrigin) < 50;
 
       if (isMyLoc) {
-        textEl.textContent = "📍 기준점: 현재 내 위치 (반경 2km)";
+        textEl.textContent = `📍 내 위치 기준 (반경 ${radiusLabel} · ★3.8+ 엄선)`;
         resetBtn.style.display = "none";
       } else {
-        textEl.textContent = `📌 기준점: ${state.searchOriginLabel}`;
+        textEl.textContent = `📌 기준점: ${state.searchOriginLabel} (${radiusLabel})`;
         resetBtn.style.display = state.currentLocation ? "inline-block" : "none";
       }
     }
@@ -2731,7 +2988,7 @@
     }
 
     // =========================================================================
-    // [5] 현재 위치 자동 및 수동 감지 (앱 시작 시 내 위치만 빠르게 잡고 검색은 대기)
+    // [5] 현재 위치 자동 및 수동 감지
     // =========================================================================
     function requestUserLocation({ isAutoStart = false } = {}) {
       if (!navigator.geolocation) {
@@ -2769,7 +3026,7 @@
           }
 
           if (state.map) {
-            panToProgrammatically(coords, 14);
+            panToProgrammatically(coords, 15);
             renderUserLocationMarker(coords);
             renderSearchCenterMarker(null);
           }
@@ -2777,7 +3034,6 @@
           updateOriginContextBar();
           warmPopularCategoriesInBackground(state.searchOrigin);
 
-          // 앱을 처음 열었을 때는 반응 속도를 위해 자동 검색하지 않고, 사용자가 카테고리를 선택했을 때만 검색!
           if (!isAutoStart && state.selectedCategory) {
             executeSearch({ mode: "nearby", force: true });
           }
@@ -2802,7 +3058,7 @@
           }
         },
         {
-          enableHighAccuracy: false, // 빠른 초기 위치 응답을 위해 네트워크/Wi-Fi 기반 위치 즉시 수신
+          enableHighAccuracy: false,
           timeout: 7000,
           maximumAge: 60000
         }
@@ -2875,7 +3131,7 @@
         pin.style.fontWeight = "800";
         pin.style.border = "2px solid #ffffff";
         pin.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
-        pin.textContent = "🎯 검색 중심";
+        pin.textContent = "🎯 기준점";
 
         state.searchCenterMarker = new state.libs.AdvancedMarkerElement({
           map: state.map,
@@ -2895,18 +3151,18 @@
     }
 
     // =========================================================================
-    // [6] 초고속 장소 검색 및 전 세계 다국어(한국어·영어·현지어) 위치 이동 엔진
+    // [6] Google 평점 연동 & 엄격한 맛집·카페 선별 기준(반경 1km·평점 3.8+) 검색 엔진
     // =========================================================================
-
-    // 기준 위치가 정해지면 백그라운드에서 조용히 '맛집', '카페' 결과를 미리 캐시에 준비 (버튼 클릭 시 0.01초 즉시 표시!)
     function warmPopularCategoriesInBackground(originCoords) {
-      if (!originCoords || !state.apiKey) return;
+      if (!originCoords || !state.apiKey || !state.mapsLoaded) return;
       const originKey = `${originCoords.lat.toFixed(4)},${originCoords.lng.toFixed(4)}`;
       setTimeout(() => {
         ["restaurant", "cafe"].forEach((catId) => {
-          const sig = `nearby|${originKey}|r=${state.selectedRadius}|cat=${catId}`;
+          const catObj = CATEGORIES.find((c) => c.id === catId);
+          const r = catObj ? catObj.radiusM : DEFAULT_SEARCH_RADIUS_M;
+          const sig = `nearby|${originKey}|r=${r}|cat=${catId}`;
           if (!state.searchCache.has(sig) && !state.inflightNearbyMap.has(sig)) {
-            const p = searchNearbyNewApi(originCoords, state.selectedRadius, catId)
+            const p = searchNearbyNewApi(originCoords, r, catId)
               .then((places) => {
                 if (Array.isArray(places) && places.length > 0) {
                   state.searchCache.set(sig, {
@@ -2924,7 +3180,7 @@
             state.inflightNearbyMap.set(sig, p);
           }
         });
-      }, 150);
+      }, 200);
     }
 
     async function executeSearch({ mode = "nearby", force = false } = {}) {
@@ -2941,9 +3197,7 @@
       state.keyword = kw;
       const activeMode = mode === "worldwide_text" && kw ? "worldwide_text" : "nearby";
 
-      // [요구사항 3 해결] 키워드 검색 시:
-      // 카페/맛집 등이 선택되어 있더라도 주변 카테고리를 자동 검색하지 않고,
-      // 해당 위치로 지도만 빠르게 이동 + 아무 카테고리도 선택하지 않은 초기 상태로 고정!
+      // 상단 검색창 키워드 검색: 해당 위치로 이동 후 '❤️ 내 장소에 저장' 버튼 제공
       if (activeMode === "worldwide_text") {
         const currentSeq = ++state.searchSeq;
         state.isRequestInFlight = true;
@@ -2965,7 +3219,6 @@
             lng: Number(targetPlace.location.lng)
           };
 
-          // 검색된 위치로 기준점을 단단히 고정하고, 카테고리 선택 및 이전 목록을 초기화!
           state.searchOrigin = targetCenter;
           state.searchOriginLabel = targetPlace.name || kw;
           state.selectedCategory = null;
@@ -2985,14 +3238,19 @@
           const emptyEl = $("placesEmptyState");
           if (emptyEl) {
             const singleDirUrl = buildGoogleMapsDirectionsUrl(targetPlace);
+            const alreadySaved = isPlaceInMyPlaces(targetPlace);
+            const ratingInfo =
+              typeof targetPlace.rating === "number"
+                ? ` <span style="color:#d97706; font-weight:800;">★ ${targetPlace.rating.toFixed(1)}</span>`
+                : "";
             emptyEl.innerHTML = `
-              <p class="empty-state-title">📌 '${escapeHtml(targetPlace.name || kw)}' 위치로 이동했습니다</p>
+              <p class="empty-state-title">📌 '${escapeHtml(targetPlace.name || kw)}'${ratingInfo}</p>
               <p class="empty-state-desc" style="margin-bottom:12px;">
-                이 위치가 고정 기준점으로 설정되었습니다. 상단에서 <strong>🍽️ 맛집, ☕ 카페, 📸 관광지, 🏨 숙소</strong> 등 원하는 메뉴를 선택하거나, 아래 버튼으로 이 장소를 <strong>내 숙소</strong> 또는 <strong>여행 코스</strong>에 바로 저장할 수 있습니다.
+                이곳이 기준점으로 고정되었습니다. 숙소나 가고 싶은 여행지라면 아래 <strong>[❤️ 내 장소에 저장]</strong>을 눌러 상단 ❤️ 목록에 등록해 두세요!
               </p>
               <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
-                <button type="button" id="btnSaveTargetAsHotel" class="card-btn hotel-saved" style="padding:0 12px; flex:0 1 auto;">
-                  🏨 내 숙소로 저장
+                <button type="button" id="btnSaveTargetToMyPlaces" class="card-btn fav-saved" style="padding:0 12px; flex:0 1 auto;">
+                  ${alreadySaved ? "❤️ 내 장소 저장됨" : "❤️ 내 장소에 저장"}
                 </button>
                 <button type="button" id="btnAddTargetToTrip" class="card-btn" style="padding:0 12px; flex:0 1 auto;">
                   + 여행코스 추가
@@ -3002,18 +3260,21 @@
                 </a>
               </div>
             `;
-            const btnSaveHotel = $("btnSaveTargetAsHotel");
-            if (btnSaveHotel) {
-              btnSaveHotel.addEventListener("click", () => setSavedHotel(targetPlace));
+            const btnSaveFav = $("btnSaveTargetToMyPlaces");
+            if (btnSaveFav) {
+              btnSaveFav.addEventListener("click", () => {
+                toggleMyPlace(targetPlace);
+                btnSaveFav.textContent = isPlaceInMyPlaces(targetPlace)
+                  ? "❤️ 내 장소 저장됨"
+                  : "❤️ 내 장소에 저장";
+              });
             }
             const btnAddTrip = $("btnAddTargetToTrip");
             if (btnAddTrip) {
               btnAddTrip.addEventListener("click", () => togglePlaceInTrip(targetPlace));
             }
           }
-          updateSavedHotelBarUI();
 
-          // 이동한 위치 주변의 맛집·카페를 백그라운드에서 미리 프리패치
           warmPopularCategoriesInBackground(targetCenter);
         } catch (err) {
           console.error("전 세계 위치 검색 오류:", err);
@@ -3028,7 +3289,7 @@
         return;
       }
 
-      // 주변 카테고리 검색 (mode === "nearby")
+      // 주변 카테고리 검색
       if (!state.selectedCategory) {
         return;
       }
@@ -3038,12 +3299,16 @@
         state.searchOriginLabel = "지도 중심 위치";
       }
 
+      const catObj = CATEGORIES.find((c) => c.id === state.selectedCategory) || CATEGORIES[0];
+      const targetRadius = catObj.radiusM || DEFAULT_SEARCH_RADIUS_M;
+      state.selectedRadius = targetRadius;
+
       const lockedCenter = {
         lat: Number(state.searchOrigin.lat),
         lng: Number(state.searchOrigin.lng)
       };
       const originKey = `${lockedCenter.lat.toFixed(4)},${lockedCenter.lng.toFixed(4)}`;
-      const signature = `nearby|${originKey}|r=${state.selectedRadius}|cat=${state.selectedCategory}`;
+      const signature = `nearby|${originKey}|r=${targetRadius}|cat=${state.selectedCategory}`;
 
       if (!force && signature === state.lastSearchSignature && state.places.length > 0) {
         return;
@@ -3053,9 +3318,7 @@
       state.isRequestInFlight = true;
       state.lastSearchSignature = signature;
       setButtonsDisabled(true);
-
-      const catObj = CATEGORIES.find((c) => c.id === state.selectedCategory);
-      setLoading(true, `주변 ${catObj ? catObj.label : "장소"} 불러오는 중...`);
+      setLoading(true, `주변 ${catObj.label} (★평점·거리 엄선 중)...`);
 
       try {
         let rawPlaces = [];
@@ -3065,7 +3328,7 @@
         } else if (state.inflightNearbyMap.has(signature)) {
           rawPlaces = await state.inflightNearbyMap.get(signature);
         } else {
-          const fetchPromise = searchNearbyNewApi(lockedCenter, state.selectedRadius, state.selectedCategory);
+          const fetchPromise = searchNearbyNewApi(lockedCenter, targetRadius, state.selectedCategory);
           state.inflightNearbyMap.set(signature, fetchPromise);
           try {
             rawPlaces = await fetchPromise;
@@ -3089,11 +3352,10 @@
           clearMapMarkersAndPolylines();
           renderPlacesListAndMarkers(false);
           updateRestoreBarText();
-          showBanner(`이 주변 2km 내에 검색된 ${catObj ? catObj.label : "장소"} 정보가 없습니다.`, "info");
+          showBanner(`이 주변 도보권 내에 조건에 맞는 ${catObj.label} 정보가 없습니다.`, "info");
           return;
         }
 
-        // [요구사항 4 해결] 지도의 중심(lockedCenter)을 절대 이동시키거나 fitBounds로 줌을 바꾸지 않고 그대로 고정!
         panToProgrammatically(lockedCenter);
         const isSameAsUserLoc =
           state.currentLocation &&
@@ -3101,11 +3363,16 @@
         renderSearchCenterMarker(isSameAsUserLoc ? null : lockedCenter);
         updateOriginContextBar();
 
-        state.places = rawPlaces.map((p) => {
+        // [요구사항 3 해결] 거리 기준 + Google 평점(★3.8 미만 제외) + 리뷰 수 신뢰도 필터 및 점수 산출!
+        const curatedPlaces = curateAndFilterPlaces(rawPlaces, lockedCenter, catObj);
+
+        state.places = curatedPlaces.map((p) => {
           const straightDistM = p.location ? computeHaversineMeters(lockedCenter, p.location) : null;
+          const recommendScore = computeRecommendScore(p, straightDistM);
           return {
             ...p,
             straightDistM,
+            recommendScore,
             walkDurationMs: null,
             walkDistanceM: null,
             walkStatus: "PENDING",
@@ -3117,7 +3384,6 @@
           };
         });
 
-        // 평점 높은 순으로 정렬 후 즉시 렌더링 (fitBounds=false로 지도 중심·줌 고정!)
         state.places = getSortedPlaces();
         renderPlacesListAndMarkers(false);
         updateRestoreBarText();
@@ -3126,7 +3392,6 @@
         setButtonsDisabled(false);
         setLoading(false);
 
-        // 상위 6개 장소의 도보·대중교통 시간은 백그라운드에서 계산해 실시간 반영
         if (state.places.length > 0) {
           computeTravelTimesForTopPlaces(lockedCenter, state.places, currentSeq).then(() => {
             if (currentSeq === state.searchSeq) {
@@ -3146,73 +3411,149 @@
       }
     }
 
-    // 초고속 주변 검색 엔진:
-    // - 차단된 엔드포인트는 즉시 건너뛰어 불필요한 대기 시간(403 재시도) 완전 제거
-    // - Overpass B-tree 인덱스 쿼리 + 다중 미러 병렬 경주(Promise.any)로 0.3~0.6초 내 응답
+    // 맛집·카페·관광지 엄선 필터:
+    // 1) 너무 먼 장소(maxDistM 초과) 제외 (단, 가까운 곳이 3개 미만일 때만 반경 완화)
+    // 2) 평점이 필요한 카테고리(맛집·카페·베이커리·관광지·박물관)에서 평점 3.8 미만(예: 3.4) 저평점 제외!
+    // 3) 평점 정보가 있는 장소가 충분하면 '평점 정보 없음' 장소도 후순위로 제외해 검증된 곳만 추천
+    function curateAndFilterPlaces(rawPlaces, centerCoords, catObj) {
+      if (!Array.isArray(rawPlaces) || rawPlaces.length === 0) return [];
+
+      const maxDist = catObj?.maxDistM || 1300;
+      const minRating = typeof catObj?.minRating === "number" ? catObj.minRating : 3.8;
+
+      const withDist = rawPlaces.map((p) => ({
+        place: p,
+        distM: p.location ? computeHaversineMeters(centerCoords, p.location) : 99999
+      }));
+
+      // 1단계: 도보권 거리 필터 (예: 맛집/카페 1.3km 이내)
+      let distanceFiltered = withDist.filter((item) => item.distM <= maxDist);
+      if (distanceFiltered.length < 3) {
+        distanceFiltered = withDist.filter((item) => item.distM <= maxDist * 1.6);
+      }
+      if (distanceFiltered.length === 0) {
+        distanceFiltered = withDist;
+      }
+
+      // 2단계: 저평점(3.8 미만, 예: 3.4 등) 필터링
+      if (minRating > 0) {
+        const highRatedWithScore = distanceFiltered.filter(
+          (item) => typeof item.place.rating === "number" && item.place.rating >= minRating
+        );
+        if (highRatedWithScore.length >= 2) {
+          distanceFiltered = highRatedWithScore;
+        } else {
+          // 만약 주변에 평점 데이터가 있는 가게가 적더라도, 명시적으로 3.8 미만(3.4 등)인 저평점 가게는 제외!
+          const excludeExplicitLow = distanceFiltered.filter(
+            (item) => item.place.rating === null || item.place.rating >= minRating
+          );
+          if (excludeExplicitLow.length > 0) {
+            distanceFiltered = excludeExplicitLow;
+          }
+        }
+      }
+
+      // 3단계: 추천 점수 순으로 정렬 후 상위 MAX_SEARCH_RESULTS(10개) 반환
+      distanceFiltered.sort((a, b) => {
+        const scoreA = computeRecommendScore(a.place, a.distM);
+        const scoreB = computeRecommendScore(b.place, b.distM);
+        return scoreB - scoreA;
+      });
+
+      return distanceFiltered.slice(0, MAX_SEARCH_RESULTS).map((item) => item.place);
+    }
+
+    // 종합 추천 점수 공식:
+    // Google 평점(비중 60%) + 리뷰 수 신뢰도 로그 가산점(비중 25%) - 거리 감점(비중 15%)
+    function computeRecommendScore(place, distMeters) {
+      const distKm = typeof distMeters === "number" && isFinite(distMeters) ? distMeters / 1000 : 1.0;
+      const rating = typeof place?.rating === "number" ? place.rating : null;
+      const reviews = typeof place?.userRatingCount === "number" ? place.userRatingCount : 0;
+
+      if (rating === null) {
+        // 평점이 없는 장소는 평점 보유 장소보다 항상 아래에 오도록 기본 점수 낮게 부여
+        return 10 - distKm * 3;
+      }
+
+      // 베이지안 보정 평점 (리뷰가 1~2개뿐인 5.0 왜곡 방지)
+      const priorWeight = 8;
+      const priorMean = 4.0;
+      const bayesianRating = (rating * reviews + priorMean * priorWeight) / (reviews + priorWeight);
+
+      // 리뷰 수 가산점 (최대 +12점)
+      const reviewBonus = Math.min(12, Math.log10(reviews + 1) * 4.5);
+
+      // 거리 감점 (100m당 0.6점 감점 -> 가까울수록 높은 점수)
+      const distancePenalty = distKm * 6.0;
+
+      return bayesianRating * 20 + reviewBonus - distancePenalty;
+    }
+
+    // =========================================================================
+    // Google 평점(rating, userRatingCount) 100% 연동을 위한 다중 Google Places 조회:
+    // 1) Places API (New) REST v1 places:searchText + places:searchNearby 병렬 조회
+    //    (한국 지역에서도 searchText(locationBias)는 Google 평점·리뷰 수를 완벽히 반환함!)
+    // 2) Maps JS SDK Place.searchByText + Place.searchNearby (기본 평점 필드 폴백 포함)
+    // 3) Maps JS SDK PlacesService (nearbySearch / textSearch)
+    // 4) 보조 POI 조회 시에도 Google 평점 보강(enrich) 수행
+    // =========================================================================
     async function searchNearbyNewApi(centerCoords, radiusMeters, categoryId) {
       const catObj = CATEGORIES.find((c) => c.id === categoryId) || CATEGORIES[0];
       const safeCenter = {
         lat: Number(centerCoords.lat),
         lng: Number(centerCoords.lng)
       };
-      const safeRadius = Math.min(50000, Math.max(50, Number(radiusMeters) || DEFAULT_SEARCH_RADIUS_M));
+      const safeRadius = Math.min(5000, Math.max(300, Number(radiusMeters) || catObj.radiusM || 1000));
 
-      // [1차] Maps JS SDK Place.searchNearby (차단되지 않은 경우에만 실행)
-      if (!state.jsPlacesBlocked && state.libs.Place && typeof state.libs.Place.searchNearby === "function") {
-        try {
-          const req = {
-            fields: [
-              "id",
-              "displayName",
-              "formattedAddress",
-              "location",
-              "primaryType",
-              "rating",
-              "userRatingCount",
-              "regularOpeningHours",
-              "priceLevel",
-              "photos",
-              "googleMapsURI"
-            ],
-            locationRestriction: {
-              center: safeCenter,
-              radius: safeRadius
-            },
-            includedPrimaryTypes: catObj.types,
-            maxResultCount: MAX_SEARCH_RESULTS
+      const fieldMask = [
+        "places.id",
+        "places.displayName",
+        "places.formattedAddress",
+        "places.location",
+        "places.primaryType",
+        "places.primaryTypeDisplayName",
+        "places.rating",
+        "places.userRatingCount",
+        "places.regularOpeningHours",
+        "places.currentOpeningHours",
+        "places.priceLevel",
+        "places.photos",
+        "places.googleMapsUri"
+      ].join(",");
+
+      // [1차] 공식 Places API (New) REST v1: searchText(locationBias)와 searchNearby를 병렬 실행해
+      // 국내(인천·서울 등)와 해외(타이베이·도쿄 등) 어디서나 실제 Google 평점이 포함된 결과를 즉시 확보!
+      try {
+        const textPromise = (async () => {
+          const reqBody = {
+            textQuery: catObj.keywordHint || catObj.label,
+            languageCode: "ko",
+            maxResultCount: 16,
+            locationBias: {
+              circle: {
+                center: { latitude: safeCenter.lat, longitude: safeCenter.lng },
+                radius: safeRadius
+              }
+            }
           };
-          if (state.libs.SearchNearbyRankPreference && state.libs.SearchNearbyRankPreference.POPULARITY) {
-            req.rankPreference = state.libs.SearchNearbyRankPreference.POPULARITY;
+          if (catObj.minRating && catObj.minRating >= 3.8) {
+            reqBody.minRating = catObj.minRating;
           }
-          const { places } = await state.libs.Place.searchNearby(req);
-          if (Array.isArray(places) && places.length > 0) {
-            return places.map(normalizeJsPlaceObject).filter((p) => p && p.location);
-          }
-        } catch (jsErr) {
-          state.jsPlacesBlocked = true;
-        }
-      }
+          const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Goog-Api-Key": state.apiKey,
+              "X-Goog-FieldMask": fieldMask
+            },
+            body: JSON.stringify(reqBody)
+          });
+          if (!resp.ok) return [];
+          const data = await resp.json();
+          return (data.places || []).map(normalizeRestPlaceObject).filter((p) => p && p.location);
+        })();
 
-      // [2차] 공식 Places API (New) REST v1 (차단되지 않은 경우에만 실행, 2.2초 타임아웃)
-      if (!state.restPlacesBlocked) {
-        try {
-          const fieldMask = [
-            "places.id",
-            "places.displayName",
-            "places.formattedAddress",
-            "places.location",
-            "places.primaryType",
-            "places.primaryTypeDisplayName",
-            "places.rating",
-            "places.userRatingCount",
-            "places.regularOpeningHours",
-            "places.priceLevel",
-            "places.photos",
-            "places.googleMapsUri"
-          ].join(",");
-
-          const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 2200);
+        const nearbyPromise = (async () => {
           const resp = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
             method: "POST",
             headers: {
@@ -3222,7 +3563,7 @@
             },
             body: JSON.stringify({
               languageCode: "ko",
-              maxResultCount: MAX_SEARCH_RESULTS,
+              maxResultCount: 16,
               includedPrimaryTypes: catObj.types,
               rankPreference: "POPULARITY",
               locationRestriction: {
@@ -3231,24 +3572,132 @@
                   radius: safeRadius
                 }
               }
-            }),
-            signal: ctrl.signal
+            })
           });
-          clearTimeout(timer);
+          if (!resp.ok) return [];
+          const data = await resp.json();
+          return (data.places || []).map(normalizeRestPlaceObject).filter((p) => p && p.location);
+        })();
 
-          if (resp.ok) {
-            const data = await resp.json();
-            const list = (data.places || []).map(normalizeRestPlaceObject).filter((p) => p && p.location);
-            if (list.length > 0) return list;
-          } else if (resp.status === 403 || resp.status === 401 || resp.status === 400) {
-            // 권한 차단 시 플래그를 기록해 다음 카테고리 클릭부터는 0초 만에 즉시 우회!
-            state.restPlacesBlocked = true;
-            state.jsPlacesBlocked = true;
-          }
+        const [textList, nearbyList] = await Promise.all([
+          textPromise.catch(() => []),
+          nearbyPromise.catch(() => [])
+        ]);
+
+        const merged = mergeUniquePlaces([...nearbyList, ...textList]);
+        if (merged.length > 0) {
+          return merged;
+        }
+      } catch (_) {}
+
+      // [2차] Maps JS SDK Place.searchByText & Place.searchNearby (리퍼러 제한 환경 대응)
+      if (state.libs.Place) {
+        const jsFieldSets = [
+          [
+            "id",
+            "displayName",
+            "formattedAddress",
+            "location",
+            "primaryType",
+            "rating",
+            "userRatingCount",
+            "regularOpeningHours",
+            "priceLevel",
+            "photos",
+            "googleMapsURI"
+          ],
+          ["id", "displayName", "formattedAddress", "location", "rating", "userRatingCount"]
+        ];
+
+        for (const fields of jsFieldSets) {
+          try {
+            const tasks = [];
+            if (typeof state.libs.Place.searchByText === "function") {
+              tasks.push(
+                state.libs.Place.searchByText({
+                  textQuery: catObj.keywordHint || catObj.label,
+                  fields,
+                  locationBias: { center: safeCenter, radius: safeRadius },
+                  maxResultCount: 15
+                })
+                  .then((r) => (r?.places || []).map(normalizeJsPlaceObject).filter(Boolean))
+                  .catch(() => [])
+              );
+            }
+            if (typeof state.libs.Place.searchNearby === "function") {
+              tasks.push(
+                state.libs.Place.searchNearby({
+                  fields,
+                  locationRestriction: { center: safeCenter, radius: safeRadius },
+                  includedPrimaryTypes: catObj.types,
+                  maxResultCount: 15
+                })
+                  .then((r) => (r?.places || []).map(normalizeJsPlaceObject).filter(Boolean))
+                  .catch(() => [])
+              );
+            }
+            const resLists = await Promise.all(tasks);
+            const combinedJs = mergeUniquePlaces(resLists.flat());
+            if (combinedJs.length > 0) return combinedJs;
+          } catch (_) {}
+        }
+      }
+
+      // [3차] Maps JS SDK PlacesService (textSearch + nearbySearch 병렬 실행 - Google 평점·리뷰 수 기본 포함!)
+      if (state.libs.PlacesService && state.map) {
+        try {
+          const svc = new state.libs.PlacesService(state.map);
+          const gLatLng =
+            window.google?.maps?.LatLng
+              ? new google.maps.LatLng(safeCenter.lat, safeCenter.lng)
+              : safeCenter;
+
+          const [nearbyLegacy, textLegacy] = await Promise.all([
+            new Promise((resolve) => {
+              svc.nearbySearch(
+                {
+                  location: gLatLng,
+                  radius: safeRadius,
+                  keyword: catObj.label,
+                  type: catObj.types[0]
+                },
+                (results, status) => {
+                  if (status === "OK" && Array.isArray(results) && results.length > 0) {
+                    resolve(results.map((it) => normalizeLegacyPlaceResult(it, catObj)).filter(Boolean));
+                  } else {
+                    resolve([]);
+                  }
+                }
+              );
+            }),
+            new Promise((resolve) => {
+              if (typeof svc.textSearch !== "function") {
+                resolve([]);
+                return;
+              }
+              svc.textSearch(
+                {
+                  query: catObj.keywordHint || catObj.label,
+                  location: gLatLng,
+                  radius: safeRadius
+                },
+                (results, status) => {
+                  if (status === "OK" && Array.isArray(results) && results.length > 0) {
+                    resolve(results.map((it) => normalizeLegacyPlaceResult(it, catObj)).filter(Boolean));
+                  } else {
+                    resolve([]);
+                  }
+                }
+              );
+            })
+          ]);
+
+          const mergedLegacy = mergeUniquePlaces([...nearbyLegacy, ...textLegacy]);
+          if (mergedLegacy.length > 0) return mergedLegacy;
         } catch (_) {}
       }
 
-      // [3차] 초고속 병렬 글로벌 POI 검색 (Overpass 인덱스 + Photon 병렬 경주)
+      // [4차] 보조 글로벌 POI 검색
       try {
         const osmPlaces = await searchNearbyOpenStreetMapFast(safeCenter, safeRadius, categoryId);
         if (osmPlaces && osmPlaces.length > 0) {
@@ -3261,75 +3710,115 @@
       return [];
     }
 
-    // 전 세계 도시·호텔·명소 키워드 검색 (한국어 '코스모스 호텔 타이베이' 등 완벽 지원!)
+    function mergeUniquePlaces(placesArr) {
+      const seen = new Set();
+      const out = [];
+      for (const p of placesArr) {
+        if (!p || !p.location) continue;
+        const key = p.id || `${p.name}_${p.location.lat.toFixed(4)}_${p.location.lng.toFixed(4)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(p);
+      }
+      return out;
+    }
+
+    function normalizeLegacyPlaceResult(item, catObj) {
+      if (!item || !item.geometry?.location) return null;
+      const loc = extractLatLngLiteral(item.geometry.location);
+      if (!loc) return null;
+
+      let photoUrl = null;
+      try {
+        if (Array.isArray(item.photos) && item.photos.length > 0 && typeof item.photos[0].getUrl === "function") {
+          photoUrl = item.photos[0].getUrl({ maxWidth: 320, maxHeight: 240 });
+        }
+      } catch (_) {}
+
+      const firstType = (Array.isArray(item.types) && item.types[0]) || catObj?.types?.[0] || "restaurant";
+      return {
+        id: item.place_id || `leg_${Math.random().toString(36).slice(2)}`,
+        rawPlace: null,
+        name: item.name || "장소",
+        address: item.vicinity || item.formatted_address || "",
+        location: loc,
+        primaryType: firstType,
+        categoryLabel: TYPE_KO_LABELS[firstType] || catObj?.label || "장소",
+        rating: typeof item.rating === "number" ? item.rating : null,
+        userRatingCount: typeof item.user_ratings_total === "number" ? item.user_ratings_total : null,
+        isOpenNow: typeof item.opening_hours?.open_now === "boolean" ? item.opening_hours.open_now : null,
+        todayHoursText: null,
+        weekdayDescriptions: [],
+        priceLevel: item.price_level ?? null,
+        editorialSummary: null,
+        googleMapsURI: null,
+        websiteURI: null,
+        photoUrl,
+        photoAttrHtml: "",
+        detailsLoaded: false
+      };
+    }
+
+    // 전 세계 도시·호텔·명소 키워드 검색 (Google 평점 포함 조회 + 다국어 자동 보완)
     async function searchTextWorldwideNewApi(queryText) {
       const effectiveQuery = queryText.trim();
 
-      // [1차] Maps JS SDK Place.searchByText
-      if (!state.jsPlacesBlocked && state.libs.Place && typeof state.libs.Place.searchByText === "function") {
+      // [1차] Places API (New) REST v1 places:searchText (평점·리뷰 수 포함)
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 2200);
+        const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": state.apiKey,
+            "X-Goog-FieldMask":
+              "places.id,places.displayName,places.formattedAddress,places.location,places.primaryType,places.rating,places.userRatingCount,places.googleMapsUri"
+          },
+          body: JSON.stringify({
+            textQuery: effectiveQuery,
+            languageCode: "ko",
+            maxResultCount: 5
+          }),
+          signal: ctrl.signal
+        });
+        clearTimeout(timer);
+
+        if (resp.ok) {
+          const data = await resp.json();
+          const list = (data.places || []).map(normalizeRestPlaceObject).filter((p) => p && p.location);
+          if (list.length > 0) return list;
+        }
+      } catch (_) {}
+
+      // [2차] Maps JS SDK Place.searchByText
+      if (state.libs.Place && typeof state.libs.Place.searchByText === "function") {
         try {
           const { places } = await state.libs.Place.searchByText({
             textQuery: effectiveQuery,
-            fields: ["id", "displayName", "formattedAddress", "location", "primaryType"],
+            fields: ["id", "displayName", "formattedAddress", "location", "rating", "userRatingCount"],
             maxResultCount: 5
           });
           if (Array.isArray(places) && places.length > 0) {
             return places.map(normalizeJsPlaceObject).filter((p) => p && p.location);
           }
-        } catch (_) {
-          state.jsPlacesBlocked = true;
-        }
-      }
-
-      // [2차] Places API (New) REST v1 places:searchText
-      if (!state.restPlacesBlocked) {
-        try {
-          const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 2000);
-          const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Goog-Api-Key": state.apiKey,
-              "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.primaryType"
-            },
-            body: JSON.stringify({
-              textQuery: effectiveQuery,
-              languageCode: "ko",
-              maxResultCount: 5
-            }),
-            signal: ctrl.signal
-          });
-          clearTimeout(timer);
-
-          if (resp.ok) {
-            const data = await resp.json();
-            const list = (data.places || []).map(normalizeRestPlaceObject).filter((p) => p && p.location);
-            if (list.length > 0) return list;
-          } else if (resp.status === 403 || resp.status === 401 || resp.status === 400) {
-            state.restPlacesBlocked = true;
-            state.jsPlacesBlocked = true;
-          }
         } catch (_) {}
       }
 
-      // [3차] 한국어·영어·다국어 전 세계 지오코딩 & 번역 결합 검색 (에러 배너 없이 즉시 결과 반환)
+      // [3차] 한국어·영어·다국어 전 세계 지오코딩 & 번역 결합 검색
       return await searchTextWorldwideMultilingual(effectiveQuery);
     }
 
-    // 초고속 주변 장소 조회: 느린 정규식(~)과 way 폴리곤 연산을 제거하고,
-    // B-tree 인덱스 node 쿼리를 여러 미러 서버에 동시에 요청(Promise.any)하여 가장 빠른 응답을 채택!
+    // 보조 글로벌 POI 검색 (Overpass 다중 미러 병렬 경주)
     async function searchNearbyOpenStreetMapFast(centerCoords, radiusMeters, categoryId) {
       const lat = centerCoords.lat;
       const lng = centerCoords.lng;
-      // 반경 1.5km~2km 내 핵심 인덱스 태그 조회 (속도 5~10배 향상)
-      const r = Math.min(2000, Math.max(500, Math.round(radiusMeters)));
+      const r = Math.min(1500, Math.max(400, Math.round(radiusMeters)));
 
       const fastFilters = {
         restaurant: `node["amenity"="restaurant"](around:${r},${lat},${lng});node["amenity"="fast_food"](around:${r},${lat},${lng});`,
         cafe: `node["amenity"="cafe"](around:${r},${lat},${lng});`,
         tourist_attraction: `node["tourism"="attraction"](around:${r},${lat},${lng});node["tourism"="viewpoint"](around:${r},${lat},${lng});way["tourism"="attraction"](around:${r},${lat},${lng});`,
-        lodging: `node["tourism"="hotel"](around:${r},${lat},${lng});node["tourism"="hostel"](around:${r},${lat},${lng});node["tourism"="guest_house"](around:${r},${lat},${lng});way["tourism"="hotel"](around:${r},${lat},${lng});`,
         convenience_store: `node["shop"="convenience"](around:${r},${lat},${lng});`,
         atm: `node["amenity"="atm"](around:${r},${lat},${lng});node["amenity"="bank"](around:${r},${lat},${lng});`,
         bank: `node["amenity"="bank"](around:${r},${lat},${lng});`,
@@ -3343,7 +3832,7 @@
       };
 
       const filterExpr = fastFilters[categoryId] || fastFilters.restaurant;
-      const query = `[out:json][timeout:3];(${filterExpr});out center 22;`;
+      const query = `[out:json][timeout:3];(${filterExpr});out center 20;`;
       const endpoints = [
         "https://overpass-api.de/api/interpreter",
         "https://lz4.overpass-api.de/api/interpreter",
@@ -3369,30 +3858,9 @@
       };
 
       try {
-        // 3개 미러 서버 중 가장 먼저 응답하는 서버의 결과를 즉시 사용!
         const fastestResult = await Promise.any(endpoints.map(fetchFromMirror));
         if (fastestResult && fastestResult.length > 0) {
           return fastestResult;
-        }
-      } catch (_) {}
-
-      // Overpass가 모두 비어있을 경우 Nominatim 반경 검색으로 즉시 보완
-      try {
-        const catObj = CATEGORIES.find((c) => c.id === categoryId) || CATEGORIES[0];
-        const degLat = r / 111000;
-        const degLng = r / (111000 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)));
-        const viewbox = `${(lng - degLng).toFixed(5)},${(lat + degLat).toFixed(5)},${(lng + degLng).toFixed(5)},${(lat - degLat).toFixed(5)}`;
-        const qTerm = catObj.types[0].replace(/_/g, " ");
-        const nomUrl = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
-          qTerm
-        )}&viewbox=${viewbox}&bounded=1&accept-language=ko&addressdetails=1&extratags=1&limit=${MAX_SEARCH_RESULTS}`;
-
-        const nomResp = await fetch(nomUrl);
-        if (nomResp.ok) {
-          const nomData = await nomResp.json();
-          if (Array.isArray(nomData) && nomData.length > 0) {
-            return nomData.map((item) => normalizeNominatimPlace(item, categoryId)).filter(Boolean);
-          }
         }
       } catch (_) {}
 
@@ -3478,16 +3946,11 @@
       if (tags.shop === "supermarket" || tags.shop === "grocery") return "supermarket";
       if (tags.shop === "mall" || tags.shop === "department_store") return "shopping_mall";
       if (tags.leisure === "park") return "park";
-      if (tags.tourism === "hotel" || tags.tourism === "hostel" || tags.tourism === "guest_house" || tags.tourism === "motel") return "lodging";
       if (tags.tourism === "museum" || tags.tourism === "gallery") return "museum";
       if (tags.tourism || tags.historic) return "tourist_attraction";
       return fallbackCatId || "restaurant";
     }
 
-    // 한국어('코스모스 호텔 타이베이' 등)로 해외 장소 검색 시:
-    // 1) 원문 Nominatim 검색
-    // 2) 한글 포함 시 실시간 영문 변환('Cosmos Hotel Taipei') 후 Nominatim + Photon 검색
-    // 3) 한국어 위키백과 위치 검색 및 Google Geocoder를 병렬 수행해 0.3초 내 정확히 위치를 찾음!
     async function searchTextWorldwideMultilingual(queryText) {
       const hasKorean = /[가-힣]/.test(queryText);
 
@@ -3559,7 +4022,6 @@
             queryPhoton(translated).catch(() => [])
           ]);
           const combined = [...nomEn, ...phoEn];
-          // 한국어 검색어와 영문 이름을 함께 표시해 직관성 향상
           if (combined.length > 0 && !/[가-힣]/.test(combined[0].name)) {
             combined[0].name = `${queryText} (${combined[0].name})`;
           }
@@ -3612,7 +4074,6 @@
         }
       };
 
-      // 병렬로 동시에 조회하여 가장 정확하고 빠른 결과를 사용
       const [directNom, translatedRes, wikiRes] = await Promise.all([
         queryNominatim(queryText).catch(() => []),
         translateKoToEnAndSearch(),
@@ -3623,7 +4084,6 @@
       if (translatedRes.length > 0) return translatedRes;
       if (wikiRes.length > 0) return wikiRes;
 
-      // Photon 원문 검색 및 Google Geocoder 추가 폴백
       const directPhoton = await queryPhoton(queryText).catch(() => []);
       if (directPhoton.length > 0) return directPhoton;
 
@@ -3729,17 +4189,6 @@
         photoAttrHtml: "",
         detailsLoaded: true
       };
-    }
-
-    function buildPlacesNewRestError(httpStatus, errData) {
-      const statusStr = errData?.error?.status || `HTTP_${httpStatus}`;
-      const msgStr = errData?.error?.message || "Places API (New) 요청이 거부되었습니다.";
-      const details = errData?.error?.details || [];
-      const reason = details.find((d) => d.reason)?.reason || "";
-      const err = new Error(`[${statusStr}${reason ? " / " + reason : ""}] ${msgStr}`);
-      err.reason = reason;
-      err.httpStatus = httpStatus;
-      return err;
     }
 
     // JS SDK Place 객체 정규화
@@ -3918,7 +4367,6 @@
       }
     }
 
-    // 상세 정보 온디맨드 조회 (카드를 눌렀을 때만 소개글·웹사이트 등 추가 조회)
     async function ensurePlaceDetailsLoaded(placeItem) {
       if (!placeItem || placeItem.detailsLoaded) return placeItem;
       if (state.placeDetailsCache.has(placeItem.id)) {
@@ -3927,7 +4375,6 @@
         return placeItem;
       }
 
-      // 1) JS SDK Place 인스턴스가 있는 경우
       if (placeItem.rawPlace && typeof placeItem.rawPlace.fetchFields === "function") {
         try {
           await placeItem.rawPlace.fetchFields({
@@ -3954,7 +4401,6 @@
         } catch (_) {}
       }
 
-      // 2) REST v1 Place Details 조회 (Google Place ID인 경우)
       if (placeItem.id && !placeItem.id.startsWith("osm_") && !placeItem.id.startsWith("nom_") && !placeItem.id.startsWith("geo_")) {
         try {
           const resp = await fetch(
@@ -3994,11 +4440,7 @@
     }
 
     // =========================================================================
-    // [7] 도보 및 대중교통 소요 시간·경로 계산 (국내·해외 대중교통 완벽 지원 3중 엔진)
-    //     1순위: Routes API REST v2 (https://routes.googleapis.com/...)
-    //     2순위: Maps JS SDK RouteMatrix / Route (v=weekly/beta)
-    //     3순위: Maps JS SDK DistanceMatrixService / DirectionsService (TRANSIT/WALKING)
-    //     4순위: OSRM 보행자 도로망 (도보 미지원 지역 보완)
+    // [7] 도보 및 대중교통 소요 시간·경로 계산 (국내·해외 대중교통 지원 3중 엔진)
     // =========================================================================
     async function computeTravelTimesForTopPlaces(originCoords, placesArray, seqId) {
       if (!originCoords) return;
@@ -4015,7 +4457,6 @@
       const originKey = `${originCoords.lat.toFixed(4)},${originCoords.lng.toFixed(4)}`;
       const destIdsKey = targets.map((t) => t.id).join(",");
 
-      // 도보와 대중교통 행렬을 병렬로 계산하며, 각 모드가 완료될 때마다 화면을 즉시 부분 갱신
       await Promise.all([
         fetchSingleModeMatrix(originCoords, targets, "WALKING", `${originKey}|WALK|${destIdsKey}`).then(() => {
           if (seqId === state.searchSeq) renderPlacesListAndMarkers(false);
@@ -4030,7 +4471,7 @@
       if (typeof durVal === "number" && isFinite(durVal)) return durVal;
       if (typeof durVal === "string") {
         const m = durVal.match(/^([0-9.]+)s$/);
-        if (m) return Math.round( parseFloat(m[1]) * 1000 );
+        if (m) return Math.round(parseFloat(m[1]) * 1000);
       }
       return null;
     }
@@ -4039,12 +4480,10 @@
       const inKorea = isInSouthKorea(originCoords);
 
       try {
-        let normalizedItems = null; // [{ durationMillis, distanceMeters, ok }]
+        let normalizedItems = null;
         if (state.routeMatrixCache.has(cacheKey)) {
           normalizedItems = state.routeMatrixCache.get(cacheKey);
         } else {
-          // [1차] 공식 Routes API REST v2 (https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix)
-          // 해외 및 국내 TRANSIT / WALK 모두 가장 일관되게 작동하는 공식 엔드포인트
           try {
             const restMode = travelMode === "TRANSIT" ? "TRANSIT" : "WALK";
             const resp = await fetch("https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix", {
@@ -4099,7 +4538,6 @@
             }
           } catch (_) {}
 
-          // [2차] Maps JS SDK RouteMatrix.computeRouteMatrix
           if (!normalizedItems && state.libs.RouteMatrix && typeof state.libs.RouteMatrix.computeRouteMatrix === "function") {
             try {
               const condEnum = state.libs.RouteMatrixItemCondition;
@@ -4134,7 +4572,6 @@
             } catch (_) {}
           }
 
-          // [3차] Maps JS SDK DistanceMatrixService (해외 대중교통/도보 지원 및 Routes API 미활성화 환경 자동 대응)
           if (!normalizedItems && state.libs.DistanceMatrixService) {
             try {
               const dms = new state.libs.DistanceMatrixService();
@@ -4220,12 +4657,10 @@
           }
         });
 
-        // 도보 누락분은 OSRM 실제 보행자 도로망 행렬로 보완
         if (travelMode === "WALKING" && anyWalkMissing) {
           await populateOsrmWalkingMatrix(originCoords, targets);
         }
 
-        // 대중교통(TRANSIT) 행렬에서 누락된 항목이 있는 경우 개별 경로 조회(computeRoutes / DirectionsService)로 한 번 더 확인
         if (travelMode === "TRANSIT" && anyTransitMissing) {
           const missingTargets = targets.filter((t) => t.transitStatus !== "OK").slice(0, 4);
           await Promise.all(
@@ -4254,7 +4689,6 @@
       }
     }
 
-    // OSRM 실제 보행 도로망 거리·시간 행렬 조회
     async function populateOsrmWalkingMatrix(originCoords, targets) {
       try {
         const coordsList = [
@@ -4354,9 +4788,7 @@
       }
     }
 
-    // 단일 목적지 상세 경로 조회 (Routes REST v2 -> JS SDK Route.computeRoutes -> DirectionsService -> OSRM 도보)
     async function fetchSingleRouteNewApi(origin, destination, travelMode) {
-      // [1차] 공식 Routes API REST v2 (https://routes.googleapis.com/directions/v2:computeRoutes)
       try {
         const restMode = travelMode === "TRANSIT" ? "TRANSIT" : "WALK";
         const fieldMask = [
@@ -4407,7 +4839,6 @@
         }
       } catch (_) {}
 
-      // [2차] Maps JS SDK Route.computeRoutes (fields: ["*"]로 모든 세부 단계 포함)
       if (state.libs.Route && typeof state.libs.Route.computeRoutes === "function") {
         try {
           const { routes } = await state.libs.Route.computeRoutes({
@@ -4429,7 +4860,6 @@
         } catch (_) {}
       }
 
-      // [3차] Maps JS SDK DirectionsService (해외 대중교통/도보 완벽 호환)
       if (state.libs.DirectionsService) {
         try {
           const ds = new state.libs.DirectionsService();
@@ -4466,7 +4896,6 @@
         } catch (_) {}
       }
 
-      // [4차] 도보(WALKING)인 경우 OSRM 보행자 도로망 경로선 폴백
       if (travelMode === "WALKING") {
         try {
           const coords = `${origin.lng.toFixed(6)},${origin.lat.toFixed(6)};${destination.lng.toFixed(6)},${destination.lat.toFixed(6)}`;
@@ -4497,7 +4926,6 @@
       return null;
     }
 
-    // Google Encoded Polyline 디코더 (Routes API REST v2용)
     function decodeEncodedPolyline(encoded) {
       if (!encoded || typeof encoded !== "string") return [];
       const poly = [];
@@ -4533,7 +4961,6 @@
       return poly;
     }
 
-    // Routes API (REST v2 & JS SDK Route) 대중교통 단계 파서
     function parseTransitStepsFromRoute(routeObj) {
       const stepsSummary = [];
       const legs = routeObj?.legs || [];
@@ -4594,7 +5021,6 @@
       return merged;
     }
 
-    // Maps JS DirectionsService 대중교통 단계 파서
     function parseTransitStepsFromDirectionsLeg(leg) {
       const stepsSummary = [];
       const steps = leg?.steps || [];
@@ -4690,37 +5116,51 @@
     }
 
     // =========================================================================
-    // [8] 검색 결과 정렬(기본: 평점 높은 순), 장소 카드 렌더링(거리·불필요 문구 제거)
+    // [8] 추천·정렬 필터 및 장소 카드 렌더링
     // =========================================================================
     function getSortedPlaces() {
-      const list = [...state.places];
+      let list = [...state.places];
       const sortBy = state.sortBy;
+
+      // 사용자가 ★4.0 이상만, ★4.3 이상만 필터를 선택한 경우
+      if (sortBy === "rating40") {
+        const filtered40 = list.filter((p) => typeof p.rating === "number" && p.rating >= 4.0);
+        if (filtered40.length > 0) list = filtered40;
+      } else if (sortBy === "rating43") {
+        const filtered43 = list.filter((p) => typeof p.rating === "number" && p.rating >= 4.3);
+        if (filtered43.length > 0) list = filtered43;
+      }
 
       list.sort((a, b) => {
         if (sortBy === "walk") {
-          const wa = a.walkDurationMs ?? Infinity;
-          const wb = b.walkDurationMs ?? Infinity;
+          const wa = a.walkDurationMs ?? a.straightDistM ?? Infinity;
+          const wb = b.walkDurationMs ?? b.straightDistM ?? Infinity;
           if (wa !== wb) return wa - wb;
-          return (b.rating ?? -1) - (a.rating ?? -1);
+          return (b.recommendScore ?? 0) - (a.recommendScore ?? 0);
         }
         if (sortBy === "transit") {
-          const ta = a.transitDurationMs ?? Infinity;
-          const tb = b.transitDurationMs ?? Infinity;
+          const ta = a.transitDurationMs ?? a.straightDistM ?? Infinity;
+          const tb = b.transitDurationMs ?? b.straightDistM ?? Infinity;
           if (ta !== tb) return ta - tb;
-          return (b.rating ?? -1) - (a.rating ?? -1);
+          return (b.recommendScore ?? 0) - (a.recommendScore ?? 0);
         }
         if (sortBy === "open") {
           const rankOpen = (p) => (p.isOpenNow === true ? 0 : p.isOpenNow === null ? 1 : 2);
           const oa = rankOpen(a);
           const ob = rankOpen(b);
           if (oa !== ob) return oa - ob;
-          return (b.rating ?? -1) - (a.rating ?? -1);
+          return (b.recommendScore ?? 0) - (a.recommendScore ?? 0);
         }
-        // 기본값("rating"): Google 평점 높은 순 (동점 시 리뷰 수 많은 순)
-        const ra = a.rating ?? -1;
-        const rb = b.rating ?? -1;
-        if (rb !== ra) return rb - ra;
-        return (b.userRatingCount ?? 0) - (a.userRatingCount ?? 0);
+        if (sortBy === "rating" || sortBy === "rating40" || sortBy === "rating43") {
+          const ra = a.rating ?? -1;
+          const rb = b.rating ?? -1;
+          if (rb !== ra) return rb - ra;
+          return (b.userRatingCount ?? 0) - (a.userRatingCount ?? 0);
+        }
+        // 기본값("recommend"): 평점(3.8+) + 리뷰 신뢰도 + 도보 근접성 종합 추천 점수 순!
+        const sa = a.recommendScore ?? computeRecommendScore(a, a.straightDistM);
+        const sb = b.recommendScore ?? computeRecommendScore(b, b.straightDistM);
+        return sb - sa;
       });
 
       return list;
@@ -4756,6 +5196,7 @@
     function createPlaceCardElement(place, indexNum) {
       const isSelected = place.id === state.selectedPlaceId;
       const inTrip = state.tripList.some((item) => item.id === place.id);
+      const inMyPlaces = isPlaceInMyPlaces(place);
 
       const card = document.createElement("article");
       card.className = "place-card" + (isSelected ? " selected" : "");
@@ -4800,8 +5241,6 @@
         transitText = "대중교통 (카드 선택 시 표시)";
       }
 
-      // 실제 소개글(editorialSummary)이 있으면 표시하고, 없으면 주소만 간결하게 표시
-      // 실제 소개글(editorialSummary)이 있으면 표시하고, 없으면 간결한 주소만 표시
       let summaryLineHtml = "";
       if (place.editorialSummary) {
         summaryLineHtml = `<div class="place-summary">${escapeHtml(place.editorialSummary)}</div>`;
@@ -4867,7 +5306,6 @@
       const mapsDetailUrl = buildGoogleMapsPlaceUrl(place);
       const mapsDirUrl = buildGoogleMapsDirectionsUrl(place);
 
-      // 실제 도보 시간/거리 및 대중교통 시간만 깔끔하게 표시
       card.innerHTML = `
         <div class="card-top">
           <div class="card-main-info">
@@ -4915,8 +5353,8 @@
           <button type="button" class="card-btn ${inTrip ? "in-trip" : ""}" data-action="trip">
             ${inTrip ? "✓ 코스담김" : "+ 코스추가"}
           </button>
-          <button type="button" class="card-btn ${state.savedHotel && state.savedHotel.id === place.id ? "hotel-saved" : ""}" data-action="save-hotel">
-            ${state.savedHotel && state.savedHotel.id === place.id ? "🏨 내숙소✓" : "🏨 숙소저장"}
+          <button type="button" class="card-btn ${inMyPlaces ? "fav-saved" : ""}" data-action="save-fav">
+            ${inMyPlaces ? "❤️ 내장소✓" : "🤍 내장소"}
           </button>
         </div>
       `;
@@ -4934,9 +5372,9 @@
             togglePlaceInTrip(place);
             return;
           }
-          if (act === "save-hotel") {
+          if (act === "save-fav") {
             e.stopPropagation();
-            setSavedHotel(place);
+            toggleMyPlace(place);
             return;
           }
           if (act === "detail") {
@@ -4983,7 +5421,6 @@
 
       const origin = state.searchOrigin || state.currentLocation;
 
-      // 상세 정보와 현재 선택된 모드 경로, 그리고 대중교통 세부 단계(transitSteps)를 동시에 조회
       await Promise.all([
         ensurePlaceDetailsLoaded(place),
         computeAndDisplaySingleRoute(place, state.activeRouteMode),
@@ -5030,15 +5467,9 @@
       });
       state.placeMarkers.clear();
 
-      const bounds = state.libs.LatLngBounds ? new state.libs.LatLngBounds() : null;
-      if (bounds && state.searchOrigin) {
-        bounds.extend(state.searchOrigin);
-      }
-
       placesList.forEach((place, idx) => {
         const num = idx + 1;
         const isSelected = place.id === state.selectedPlaceId;
-        if (bounds && place.location) bounds.extend(place.location);
 
         let marker;
         if (state.libs.AdvancedMarkerElement) {
@@ -5050,7 +5481,7 @@
             map: state.map,
             position: place.location,
             content: badge,
-            title: `${num}. ${place.name}`,
+            title: `${num}. ${place.name}${typeof place.rating === "number" ? " (★" + place.rating.toFixed(1) + ")" : ""}`,
             zIndex: isSelected ? 600 : 200 - idx
           });
 
@@ -5058,12 +5489,15 @@
             handlePlaceSelection(place, { toggleDrawer: false, scrollToCard: true });
           });
         } else {
-          const shortLbl = place.name ? `${num}.${place.name.slice(0, 5)}` : String(num);
+          const ratingLabel =
+            typeof place.rating === "number"
+              ? `${num} ★${place.rating.toFixed(1)}`
+              : `${num}`;
           marker = new google.maps.Marker({
             map: state.map,
             position: place.location,
             label: {
-              text: shortLbl,
+              text: ratingLabel,
               color: "#ffffff",
               fontWeight: "bold",
               fontSize: "11px"
@@ -5081,40 +5515,41 @@
       });
     }
 
-    // 지도 마커에 번호 + 장소 이름 + 평점을 한눈에 보여주는 미니 말풍선 스타일
+    // 지도 마커에는 장소 이름을 빼고 오직 [번호]와 [★평점]만 선명하게 표시하여,
+    // 현재 위치 주변에서 마커 겹침 없이 위치와 평점을 한눈에 비교해 선택할 수 있도록 구성!
     function styleMarkerElement(el, place, num, isSelected) {
-      const rawName = place?.name || "장소";
-      const shortName = rawName.length > 8 ? rawName.slice(0, 8) + "…" : rawName;
-      const ratingStr =
-        typeof place?.rating === "number" ? ` ★${place.rating.toFixed(1)}` : "";
+      const hasRating = typeof place?.rating === "number";
+      const ratingText = hasRating ? `★${place.rating.toFixed(1)}` : "★-";
 
       el.innerHTML = `
         <span style="
           display:inline-flex;
           align-items:center;
           justify-content:center;
-          min-width:19px;
-          height:19px;
+          min-width:20px;
+          height:20px;
           padding:0 5px;
           border-radius:999px;
           background:${isSelected ? "#ffffff" : "#2563eb"};
           color:${isSelected ? "#2563eb" : "#ffffff"};
-          font-size:11px;
+          font-size:11.5px;
           font-weight:900;
+          line-height:1;
         ">${num}</span>
         <span style="
-          font-size:${isSelected ? "12.5px" : "11.5px"};
+          font-size:${isSelected ? "12.5px" : "12px"};
           font-weight:800;
-          color:${isSelected ? "#ffffff" : "#0f172a"};
+          color:${
+            isSelected
+              ? "#fde047"
+              : hasRating
+              ? "#b45309"
+              : "#64748b"
+          };
           white-space:nowrap;
-        ">${escapeHtml(shortName)}</span>
-        ${
-          ratingStr
-            ? `<span style="font-size:11px; font-weight:800; color:${
-                isSelected ? "#fde68a" : "#d97706"
-              }; white-space:nowrap;">${ratingStr}</span>`
-            : ""
-        }
+          letter-spacing:-0.02em;
+          line-height:1;
+        ">${ratingText}</span>
       `;
 
       el.style.display = "inline-flex";
@@ -5122,12 +5557,12 @@
       el.style.gap = "4px";
       el.style.padding = "3px 8px 3px 4px";
       el.style.borderRadius = "999px";
-      el.style.background = isSelected ? "#2563eb" : "rgba(255, 255, 255, 0.96)";
+      el.style.background = isSelected ? "#2563eb" : "rgba(255, 255, 255, 0.98)";
       el.style.border = isSelected ? "2px solid #ffffff" : "1.5px solid #cbd5e1";
       el.style.boxShadow = isSelected
         ? "0 0 0 4px rgba(37, 99, 235, 0.35), 0 4px 12px rgba(15, 23, 42, 0.35)"
         : "0 2px 6px rgba(15, 23, 42, 0.22)";
-      el.style.transform = isSelected ? "scale(1.06)" : "scale(1)";
+      el.style.transform = isSelected ? "scale(1.1)" : "scale(1)";
       el.style.transition = "all 0.15s ease";
     }
 
@@ -5373,7 +5808,7 @@
 
       if (state.tripList.length === 0) {
         metricsBox.innerHTML =
-          "장소 카드에서 <strong>+ 여행추가</strong> 버튼을 눌러 방문할 장소를 담아보세요. (예: 오전 관광지 → 근처 카페 → 저녁 맛집 → 편의점/ATM)";
+          "장소 카드에서 <strong>+ 코스추가</strong> 버튼을 눌러 방문할 장소를 담아보세요. (예: 오전 관광지 → 근처 카페 → 저녁 맛집 → 편의점/ATM)";
         optNoteEl.textContent = "";
         stopsListEl.innerHTML = "";
         return;
@@ -5471,7 +5906,7 @@
       }
       const query = encodeURIComponent(`${place.name} ${place.address || ""}`.trim());
       const isGooglePlaceId =
-        place.id && !place.id.startsWith("osm_") && !place.id.startsWith("nom_") && !place.id.startsWith("geo_");
+        place.id && !place.id.startsWith("osm_") && !place.id.startsWith("nom_") && !place.id.startsWith("geo_") && !place.id.startsWith("my_") && !place.id.startsWith("leg_");
       const pid = isGooglePlaceId ? `&query_place_id=${encodeURIComponent(place.id)}` : "";
       return `https://www.google.com/maps/search/?api=1&query=${query}${pid}`;
     }
@@ -5481,9 +5916,9 @@
       const travelmode = mode === "transit" ? "transit" : "walking";
       const dest = `${place.location.lat},${place.location.lng}`;
       const isGooglePlaceId =
-        place.id && !place.id.startsWith("osm_") && !place.id.startsWith("nom_") && !place.id.startsWith("geo_");
+        place.id && !place.id.startsWith("osm_") && !place.id.startsWith("nom_") && !place.id.startsWith("geo_") && !place.id.startsWith("my_") && !place.id.startsWith("leg_");
       const pid = isGooglePlaceId ? `&destination_place_id=${encodeURIComponent(place.id)}` : "";
-      const refOrigin = state.searchOrigin || state.currentLocation;
+      const refOrigin = state.currentLocation || state.searchOrigin;
       const originParam = refOrigin
         ? `&origin=${refOrigin.lat},${refOrigin.lng}`
         : "";
