@@ -56,70 +56,118 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* 전체 앱 컨테이너 (세로 모바일 최적화) */
+    /* 전체 앱 컨테이너 (지도가 화면 맨 위부터 꽉 차는 A타입 레이아웃) */
     .app-shell {
       display: flex;
       flex-direction: column;
       width: 100%;
       height: 100dvh;
-      padding-top: var(--safe-top);
       padding-left: var(--safe-left);
       padding-right: var(--safe-right);
-      background: var(--bg-surface);
+      background: var(--bg-primary);
       position: relative;
       overflow: hidden;
     }
 
-    /* 상단 영역 */
+    /* 상단 투명 오버레이 헤더 (구글맵·네이버지도 앱 스타일) */
     .top-header {
-      flex-shrink: 0;
-      background: var(--bg-surface);
-      border-bottom: 1px solid var(--border);
-      padding: 10px 14px 8px;
-      z-index: 20;
-      box-shadow: var(--shadow-sm);
+      position: absolute;
+      top: calc(8px + var(--safe-top));
+      left: 10px;
+      right: 10px;
+      z-index: 25;
+      background: transparent;
+      border: none;
+      padding: 0;
+      pointer-events: none;
     }
 
-    .title-row {
+    .search-row {
+      pointer-events: auto;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 8px;
+      gap: 5px;
+      margin-bottom: 7px;
+      padding: 4px 5px 4px 12px;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      border-radius: 999px;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.14);
     }
 
-    .app-title {
-      font-size: 18px;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      margin: 0;
+    .search-input-wrap {
+      position: relative;
+      flex: 1;
       display: flex;
       align-items: center;
-      gap: 6px;
+      min-width: 0;
+    }
+
+    .search-input {
+      width: 100%;
+      height: 36px;
+      padding: 0 28px 0 2px;
+      border: none;
+      background: transparent;
       color: var(--text-primary);
+      /* 아이폰 Safari 자동 확대 방지를 위해 16px 고정 */
+      font-size: 16px;
+      outline: none;
     }
 
-    .header-actions {
-      display: flex;
+    .btn-clear-search {
+      position: absolute;
+      right: 2px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: none;
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      font-size: 14px;
+      display: none;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .btn-search {
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: none;
+      background: var(--text-primary);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .btn-search:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .btn-locate {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      min-height: 38px;
-      padding: 0 12px;
+      gap: 3px;
+      height: 34px;
+      padding: 0 10px;
       border-radius: 999px;
       border: 1px solid var(--accent);
       background: var(--accent);
       color: #ffffff;
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 700;
       cursor: pointer;
       transition: opacity 0.15s ease, transform 0.1s ease;
       white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .btn-locate:active {
@@ -134,137 +182,27 @@
     .btn-icon-pill {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      min-height: 38px;
-      padding: 0 11px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: var(--bg-subtle);
-      color: var(--text-secondary);
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .search-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 8px;
-    }
-
-    .search-input-wrap {
-      position: relative;
-      flex: 1;
-      display: flex;
-      align-items: center;
-    }
-
-    .search-input {
-      width: 100%;
-      height: 42px;
-      padding: 0 36px 0 12px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      background: var(--bg-subtle);
-      color: var(--text-primary);
-      /* 아이폰 Safari 자동 확대 방지를 위해 16px 고정 */
-      font-size: 16px;
-      outline: none;
-      transition: border-color 0.15s ease, background 0.15s ease;
-    }
-
-    .search-input:focus {
-      background: var(--bg-surface);
-      border-color: var(--accent);
-    }
-
-    .btn-clear-search {
-      position: absolute;
-      right: 6px;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      border: none;
-      background: transparent;
-      color: var(--text-muted);
-      font-size: 16px;
-      display: none;
-      align-items: center;
       justify-content: center;
-      cursor: pointer;
-    }
-
-    .btn-search {
-      height: 42px;
-      padding: 0 14px;
-      border-radius: var(--radius-sm);
-      border: none;
-      background: var(--text-primary);
-      color: #ffffff;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .btn-search:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    /* 반경 선택 바 */
-    .filter-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-
-    .radius-group {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      flex: 1;
-    }
-
-    .radius-label {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text-muted);
-      margin-right: 2px;
-      white-space: nowrap;
-    }
-
-    .radius-btn {
-      flex: 1;
-      min-height: 34px;
-      padding: 0 8px;
-      border-radius: 8px;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border-radius: 50%;
       border: 1px solid var(--border);
-      background: var(--bg-surface);
+      background: var(--bg-subtle);
       color: var(--text-secondary);
-      font-size: 13px;
-      font-weight: 600;
+      font-size: 15px;
       cursor: pointer;
+      flex-shrink: 0;
     }
 
-    .radius-btn.active {
-      background: var(--accent-soft);
-      border-color: var(--accent);
-      color: var(--accent-dark);
-      font-weight: 700;
-    }
-
-    /* 카테고리 가로 스크롤 */
+    /* 카테고리 가로 스크롤 (지도 위 반투명 알약 버튼) */
     .category-scroll {
+      pointer-events: auto;
       display: flex;
       align-items: center;
       gap: 6px;
       overflow-x: auto;
-      padding-bottom: 2px;
+      padding: 2px 2px 4px;
       scrollbar-width: none;
       -ms-overflow-style: none;
       -webkit-overflow-scrolling: touch;
@@ -278,15 +216,18 @@
       flex-shrink: 0;
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      min-height: 38px;
+      gap: 4px;
+      min-height: 36px;
       padding: 0 12px;
       border-radius: 999px;
-      border: 1px solid var(--border);
-      background: var(--bg-surface);
-      color: var(--text-secondary);
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: var(--text-primary);
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
       cursor: pointer;
       transition: all 0.15s ease;
     }
@@ -295,22 +236,26 @@
       background: var(--accent);
       border-color: var(--accent);
       color: #ffffff;
-      font-weight: 700;
-      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+      font-weight: 800;
+      box-shadow: 0 3px 10px rgba(37, 99, 235, 0.35);
     }
 
-    /* 상태/알림 배너 영역 */
+    /* 상태/알림 배너 영역 (플로팅 헤더 바로 아래 위치) */
     .status-banner {
+      position: absolute;
+      top: calc(102px + var(--safe-top));
+      left: 10px;
+      right: 10px;
+      border-radius: 12px;
       display: none;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      padding: 8px 14px;
-      font-size: 13px;
-      font-weight: 600;
-      border-bottom: 1px solid var(--border);
-      z-index: 18;
-      flex-shrink: 0;
+      padding: 8px 12px;
+      font-size: 12.5px;
+      font-weight: 700;
+      box-shadow: var(--shadow-md);
+      z-index: 24;
     }
 
     .status-banner.info {
@@ -386,7 +331,7 @@
     /* 지도 이동 시 나타나는 "이 지도 중심에서 주변 검색" 상단 플로팅 버튼 */
     .btn-search-here {
       position: absolute;
-      top: 12px;
+      top: calc(102px + var(--safe-top));
       left: 50%;
       transform: translateX(-50%) translateY(-150%);
       opacity: 0;
@@ -630,11 +575,11 @@
       font-weight: 800;
     }
 
-    /* 하단 시트 / 목록 패널 */
+    /* 하단 시트 / 목록 패널 (지도를 더 넓게 보도록 기본 높이 44%로 최적화) */
     .bottom-sheet {
       flex-shrink: 0;
-      height: 52%;
-      min-height: 220px;
+      height: 44%;
+      min-height: 195px;
       max-height: 82%;
       background: var(--bg-surface);
       border-top-left-radius: var(--radius-lg);
@@ -686,26 +631,27 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 6px;
-      padding: 0 12px 8px;
+      gap: 8px;
+      padding: 0 14px 8px;
       border-bottom: 1px solid var(--border);
     }
 
     .tab-group {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       min-width: 0;
+      flex-shrink: 1;
     }
 
     .tab-btn {
       min-height: 36px;
-      padding: 0 10px;
+      padding: 0 11px;
       border-radius: 999px;
       border: 1px solid var(--border);
       background: var(--bg-subtle);
       color: var(--text-secondary);
-      font-size: 12.5px;
+      font-size: 13px;
       font-weight: 700;
       cursor: pointer;
       display: inline-flex;
@@ -732,25 +678,56 @@
     .sheet-controls-right {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       flex-shrink: 0;
     }
 
+    /* 정렬 필터와 기준점 안내를 별도 2단 바로 분리해 '코스' 탭과 절대 겹치지 않게 배치 */
+    .places-filter-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 14px;
+      background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .origin-context-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      flex: 1;
+      color: var(--accent-dark);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .origin-context-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+
     .sort-select {
-      height: 34px;
-      max-width: 112px;
-      padding: 0 20px 0 8px;
+      height: 32px;
+      padding: 0 22px 0 9px;
       border-radius: 8px;
       border: 1px solid var(--border);
       background: var(--bg-surface);
       color: var(--text-primary);
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 700;
+      flex-shrink: 0;
+      cursor: pointer;
     }
 
     .btn-sheet-size {
       min-height: 34px;
-      padding: 0 9px;
+      padding: 0 10px;
       border-radius: 8px;
       border: 1px solid var(--border);
       background: var(--bg-subtle);
@@ -763,7 +740,7 @@
 
     .btn-sheet-hide {
       min-height: 34px;
-      padding: 0 9px;
+      padding: 0 10px;
       border-radius: 8px;
       border: 1px solid #cbd5e1;
       background: var(--bg-surface);
@@ -776,25 +753,6 @@
 
     .btn-sheet-hide:active {
       background: var(--bg-subtle);
-    }
-
-    /* 현재 검색 기준 위치 표시 바 */
-    .origin-context-bar {
-      display: none;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 6px 12px;
-      margin-bottom: 10px;
-      border-radius: 10px;
-      background: var(--accent-soft);
-      color: var(--accent-dark);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .origin-context-bar.visible {
-      display: flex;
     }
 
     /* 패널 내부 스크롤 목록 */
@@ -1105,10 +1063,95 @@
 
     /* 장소 카드 버튼 영역 */
     .card-actions {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
       margin-top: 11px;
+    }
+
+    .card-actions .card-btn {
+      flex: 1 1 calc(20% - 5px);
+      min-width: 60px;
+    }
+
+    .card-btn.hotel-saved {
+      background: #f3e8ff;
+      border-color: #9333ea;
+      color: #6b21a8;
+    }
+
+    /* 내 숙소 고정 바 (저장된 숙소가 있을 때 표시) */
+    .saved-hotel-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 6px 12px;
+      background: linear-gradient(90deg, #f3e8ff 0%, #ede9fe 100%);
+      border-bottom: 1px solid #ddd6fe;
+      color: #5b21b6;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .saved-hotel-bar.visible {
+      display: flex;
+    }
+
+    .saved-hotel-info {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .saved-hotel-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 800;
+    }
+
+    .saved-hotel-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .btn-hotel-chip {
+      border: 1px solid #c4b5fd;
+      background: #ffffff;
+      color: #5b21b6;
+      border-radius: 6px;
+      padding: 3px 7px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .btn-hotel-chip.primary {
+      background: #7c3aed;
+      border-color: #7c3aed;
+      color: #ffffff;
+    }
+
+    .map-fab.hotel-fab {
+      background: rgba(124, 58, 237, 0.95);
+      border-color: #ffffff;
+      color: #ffffff;
+      display: none;
+    }
+
+    .map-fab.hotel-fab.visible {
+      display: inline-flex;
     }
 
     .card-btn {
@@ -1431,41 +1474,30 @@
   -->
 
   <div class="app-shell">
-    <!-- 상단 헤더 -->
+    <!-- 상단 플로팅 오버레이 헤더 (A타입: 지도가 화면 전체에 꽉 차도록 투명하게 떠 있는 구조) -->
     <header class="top-header">
-      <div class="title-row">
-        <h1 class="app-title">🧭 주변 여행 도우미</h1>
-        <div class="header-actions">
-          <button type="button" id="btnLocate" class="btn-locate" aria-label="내 위치 찾기">
-            📍 <span id="locateBtnText">내 위치</span>
-          </button>
-          <button type="button" id="btnOpenHelp" class="btn-icon-pill" aria-label="도움말 및 API 키 안내">
-            ⚙️ 안내
-          </button>
-        </div>
-      </div>
-
-      <!-- 전 세계 장소·도시·키워드 검색창 -->
       <form id="searchForm" class="search-row" onsubmit="return false;">
         <div class="search-input-wrap">
           <input
             type="search"
             id="searchInput"
             class="search-input"
-            placeholder="전 세계 도시·장소·키워드 검색 (예: 도쿄 시부야, 에펠탑)"
+            placeholder="도시·숙소·장소 검색 (예: 코스모스 호텔 타이베이)"
             autocomplete="off"
           />
           <button type="button" id="btnClearSearch" class="btn-clear-search" aria-label="검색어 지우기">✕</button>
         </div>
         <button type="submit" id="btnSearch" class="btn-search">검색</button>
+        <button type="button" id="btnLocate" class="btn-locate" aria-label="내 위치 찾기" title="내 위치">
+          📍 <span id="locateBtnText">내위치</span>
+        </button>
+        <button type="button" id="btnOpenHelp" class="btn-icon-pill" aria-label="도움말 및 API 키 안내" title="API 키 및 안내">
+          ⚙️
+        </button>
       </form>
 
-
-
-      <!-- 카테고리 가로 스크롤 버튼 -->
-      <div id="categoryBar" class="category-scroll" role="tablist" aria-label="장소 카테고리">
-        <!-- JS에서 공식 Places API (New) Table A 장소 유형과 함께 렌더링 -->
-      </div>
+      <!-- 카테고리 가로 스크롤 알약 버튼 -->
+      <div id="categoryBar" class="category-scroll" role="tablist" aria-label="장소 카테고리"></div>
     </header>
 
     <!-- 상태 및 오류 알림 배너 -->
@@ -1513,8 +1545,11 @@
           <button type="button" id="btnMapRouteTransit" class="map-route-mode-btn">대중교통</button>
         </div>
 
-        <!-- 지도 우측 하단 플로팅 버튼 -->
+        <!-- 지도 우측 하단 플로팅 버튼 (저장된 숙소 복귀 + 내 위치 복귀) -->
         <div class="map-floating-controls">
+          <button type="button" id="btnHotelRouteFab" class="map-fab hotel-fab" title="저장된 내 숙소로 경로 보기">
+            🏨 숙소로 갈래요
+          </button>
           <button type="button" id="btnRecenter" class="map-fab" title="내 위치로 돌아가기">
             🎯 내 위치로
           </button>
@@ -1533,6 +1568,7 @@
           <div class="sheet-pill"></div>
         </div>
 
+        <!-- 1단 헤더: 좌측 탭(주변 장소 / 코스) + 우측 창 크기/내리기 버튼만 배치해 작은 모바일 화면에서도 겹침 원천 방지 -->
         <div class="sheet-header-row">
           <div class="tab-group">
             <button type="button" id="tabPlaces" class="tab-btn active">
@@ -1544,12 +1580,6 @@
           </div>
 
           <div class="sheet-controls-right">
-            <select id="sortSelect" class="sort-select" aria-label="정렬 기준">
-              <option value="rating" selected>평점 높은 순</option>
-              <option value="walk">도보 빠른 순</option>
-              <option value="transit">대중교통 빠른 순</option>
-              <option value="open">영업 중 우선</option>
-            </select>
             <button type="button" id="btnToggleSheet" class="btn-sheet-size" aria-label="패널 크게/기본">
               크게
             </button>
@@ -1559,12 +1589,35 @@
           </div>
         </div>
 
-        <div class="sheet-body">
-          <!-- 현재 검색 기준점(내 위치 vs 이동한 지도 중심/검색 지역) 안내 바 -->
-          <div id="originContextBar" class="origin-context-bar">
-            <span id="originContextText">📍 현재 내 위치 기준 검색 결과</span>
-            <button type="button" id="btnResetToMyLoc" class="btn-banner-help" style="display:none;">내 위치로 복귀</button>
+        <!-- 내 숙소 고정 바 (숙소를 저장해 두면 언제든 숙소로 길찾기·주변 검색 가능) -->
+        <div id="savedHotelBar" class="saved-hotel-bar">
+          <div class="saved-hotel-info">
+            <span>🏨</span>
+            <span id="savedHotelNameText" class="saved-hotel-name">내 숙소</span>
           </div>
+          <div class="saved-hotel-actions">
+            <button type="button" id="btnFocusSavedHotel" class="btn-hotel-chip" title="숙소 위치로 이동해 주변 검색">📍 숙소주변</button>
+            <button type="button" id="btnRouteToSavedHotel" class="btn-hotel-chip" title="현재 위치에서 숙소까지 지도 경로 표시">🗺️ 경로보기</button>
+            <a id="linkGoogleMapsToHotel" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="btn-hotel-chip primary">↗ 길찾기</a>
+            <button type="button" id="btnClearSavedHotel" class="btn-hotel-chip" title="저장된 숙소 해제" aria-label="저장된 숙소 해제">✕</button>
+          </div>
+        </div>
+
+        <!-- 2단 서브바: 현재 고정 기준점 안내 + 정렬 필터 드롭다운 분리 배치 -->
+        <div id="placesFilterBar" class="places-filter-bar">
+          <div id="originContextBar" class="origin-context-bar">
+            <span id="originContextText" class="origin-context-text">📍 기준점 확인 중...</span>
+            <button type="button" id="btnResetToMyLoc" class="btn-banner-help" style="display:none;">내 위치 복귀</button>
+          </div>
+          <select id="sortSelect" class="sort-select" aria-label="정렬 기준">
+            <option value="rating" selected>★ 평점 높은 순</option>
+            <option value="walk">🚶 도보 빠른 순</option>
+            <option value="transit">🚌 대중교통 순</option>
+            <option value="open">🟢 영업 중 우선</option>
+          </select>
+        </div>
+
+        <div class="sheet-body">
 
           <!-- 로딩 인디케이터 -->
           <div id="loadingBox" class="loading-box">
@@ -1692,6 +1745,7 @@
       { id: "restaurant", label: "맛집", icon: "🍽️", types: ["restaurant"], keywordHint: "맛집 레스토랑" },
       { id: "cafe", label: "카페", icon: "☕", types: ["cafe"], keywordHint: "카페 커피" },
       { id: "tourist_attraction", label: "관광지", icon: "📸", types: ["tourist_attraction"], keywordHint: "관광명소 볼거리" },
+      { id: "lodging", label: "숙소", icon: "🏨", types: ["lodging", "hotel"], keywordHint: "호텔 숙소" },
       { id: "convenience_store", label: "편의점", icon: "🏪", types: ["convenience_store"], keywordHint: "편의점" },
       { id: "atm", label: "ATM", icon: "🏧", types: ["atm"], keywordHint: "ATM 현금인출기" },
       { id: "bank", label: "은행", icon: "🏦", types: ["bank"], keywordHint: "은행" },
@@ -1822,9 +1876,12 @@
       activeRouteMode: "WALKING",              // 선택 장소 지도 경로 표시 모드: WALKING | TRANSIT
       userMarker: null,
       searchCenterMarker: null,
+      savedHotel: null,                        // 저장된 내 숙소 { id, name, address, location }
+      savedHotelMarker: null,                  // 내 숙소 전용 마커
+      lastSearchedTarget: null,                // 상단 검색창으로 방금 이동한 장소 객체
       placeMarkers: new Map(),                 // placeId -> marker
       activePolylines: [],
-      tripList: [],                            // 여행 코스에 담긴 장소 배열
+      tripList: [],                            // 여행 코스에 담긴 장소 배열 (localStorage 자동 저장)
       tripTravelMode: "WALKING",
       tripLegMetrics: [],                      // 구간별 소요 시간/거리
       tripTotalDurationMs: null,
@@ -1848,12 +1905,186 @@
     // [2] 초기화 및 이벤트 바인딩
     // =========================================================================
     document.addEventListener("DOMContentLoaded", () => {
+      loadPersistedTripAndHotel();
       renderCategoryButtons();
       bindUIEvents();
       bindSheetTouchGestures();
       checkEnvironmentSecurity();
       initApiKeyAndBootstrap();
     });
+
+    // 여행 코스 및 내 숙소를 localStorage에서 복원·저장
+    function loadPersistedTripAndHotel() {
+      try {
+        const savedTripJson = localStorage.getItem("TRAVEL_HELPER_TRIP_LIST_V1");
+        if (savedTripJson) {
+          const parsedTrip = JSON.parse(savedTripJson);
+          if (Array.isArray(parsedTrip)) {
+            state.tripList = parsedTrip.filter((p) => p && p.location && typeof p.location.lat === "number");
+            $("tripCountBadge").textContent = String(state.tripList.length);
+          }
+        }
+      } catch (_) {}
+
+      try {
+        const savedHotelJson = localStorage.getItem("TRAVEL_HELPER_SAVED_HOTEL_V1");
+        if (savedHotelJson) {
+          const parsedHotel = JSON.parse(savedHotelJson);
+          if (parsedHotel && parsedHotel.location && typeof parsedHotel.location.lat === "number") {
+            state.savedHotel = parsedHotel;
+          }
+        }
+      } catch (_) {}
+
+      updateSavedHotelBarUI();
+      updateRestoreBarText();
+    }
+
+    function saveTripListToStorage() {
+      try {
+        const serializable = state.tripList.map((p) => ({
+          id: p.id,
+          name: p.name,
+          address: p.address || "",
+          location: p.location,
+          primaryType: p.primaryType || "",
+          categoryLabel: p.categoryLabel || "장소",
+          rating: p.rating ?? null,
+          userRatingCount: p.userRatingCount ?? null,
+          googleMapsURI: p.googleMapsURI || null
+        }));
+        localStorage.setItem("TRAVEL_HELPER_TRIP_LIST_V1", JSON.stringify(serializable));
+      } catch (_) {}
+    }
+
+    function setSavedHotel(placeObj) {
+      if (!placeObj || !placeObj.location) return;
+      state.savedHotel = {
+        id: placeObj.id || `hotel_${Date.now()}`,
+        name: placeObj.name || "내 숙소",
+        address: placeObj.address || "",
+        location: {
+          lat: Number(placeObj.location.lat),
+          lng: Number(placeObj.location.lng)
+        },
+        categoryLabel: placeObj.categoryLabel || "숙소·호텔",
+        googleMapsURI: placeObj.googleMapsURI || null
+      };
+      try {
+        localStorage.setItem("TRAVEL_HELPER_SAVED_HOTEL_V1", JSON.stringify(state.savedHotel));
+      } catch (_) {}
+      updateSavedHotelBarUI();
+      renderSavedHotelMarker();
+      renderPlacesListAndMarkers(false);
+      showBanner(`🏨 '${state.savedHotel.name}'을(를) 내 숙소로 저장했습니다! 언제든 [숙소로 갈래요]로 찾아갈 수 있습니다.`, "info");
+    }
+
+    function clearSavedHotel() {
+      state.savedHotel = null;
+      try {
+        localStorage.removeItem("TRAVEL_HELPER_SAVED_HOTEL_V1");
+      } catch (_) {}
+      updateSavedHotelBarUI();
+      renderSavedHotelMarker();
+      renderPlacesListAndMarkers(false);
+      showBanner("저장된 내 숙소를 해제했습니다.", "info");
+    }
+
+    function updateSavedHotelBarUI() {
+      const bar = $("savedHotelBar");
+      const nameEl = $("savedHotelNameText");
+      const linkEl = $("linkGoogleMapsToHotel");
+      const fabBtn = $("btnHotelRouteFab");
+      if (!bar) return;
+
+      if (!state.savedHotel) {
+        bar.classList.remove("visible");
+        if (fabBtn) fabBtn.classList.remove("visible");
+        return;
+      }
+
+      bar.classList.add("visible");
+      if (fabBtn) fabBtn.classList.add("visible");
+      if (nameEl) nameEl.textContent = `내 숙소: ${state.savedHotel.name}`;
+      if (linkEl) {
+        // 길찾기 시 실제 내 GPS 위치가 있으면 내 위치에서 숙소로, 없으면 현재 기준점에서 숙소로 연결
+        const originForHotel = state.currentLocation || state.searchOrigin;
+        const originParam = originForHotel ? `&origin=${originForHotel.lat},${originForHotel.lng}` : "";
+        const dest = `${state.savedHotel.location.lat},${state.savedHotel.location.lng}`;
+        const mode = (state.activeRouteMode || "TRANSIT").toLowerCase() === "transit" ? "transit" : "walking";
+        linkEl.href = `https://www.google.com/maps/dir/?api=1${originParam}&destination=${encodeURIComponent(dest)}&travelmode=${mode}`;
+      }
+    }
+
+    function renderSavedHotelMarker() {
+      if (!state.map) return;
+      if (state.savedHotelMarker) {
+        if (state.savedHotelMarker.setMap) state.savedHotelMarker.setMap(null);
+        else state.savedHotelMarker.map = null;
+        state.savedHotelMarker = null;
+      }
+      if (!state.savedHotel || !state.savedHotel.location) return;
+
+      const shortHotelName =
+        state.savedHotel.name.length > 10
+          ? state.savedHotel.name.slice(0, 10) + "…"
+          : state.savedHotel.name;
+
+      if (state.libs.AdvancedMarkerElement) {
+        const badge = document.createElement("div");
+        badge.style.display = "inline-flex";
+        badge.style.alignItems = "center";
+        badge.style.gap = "4px";
+        badge.style.padding = "4px 9px";
+        badge.style.borderRadius = "999px";
+        badge.style.background = "#7c3aed";
+        badge.style.color = "#ffffff";
+        badge.style.fontSize = "11.5px";
+        badge.style.fontWeight = "800";
+        badge.style.border = "2px solid #ffffff";
+        badge.style.boxShadow = "0 3px 10px rgba(124, 58, 237, 0.45)";
+        badge.style.whiteSpace = "nowrap";
+        badge.textContent = `🏨 ${shortHotelName}`;
+
+        state.savedHotelMarker = new state.libs.AdvancedMarkerElement({
+          map: state.map,
+          position: state.savedHotel.location,
+          content: badge,
+          title: `내 숙소: ${state.savedHotel.name}`,
+          zIndex: 960
+        });
+      } else {
+        state.savedHotelMarker = new google.maps.Marker({
+          map: state.map,
+          position: state.savedHotel.location,
+          label: { text: "🏨숙소", color: "#ffffff", fontSize: "11px", fontWeight: "bold" },
+          title: `내 숙소: ${state.savedHotel.name}`,
+          zIndex: 960
+        });
+      }
+    }
+
+    async function navigateToSavedHotelOnMap() {
+      if (!state.savedHotel) return;
+      const origin = state.currentLocation || state.searchOrigin;
+      if (!origin) {
+        panToProgrammatically(state.savedHotel.location, 15);
+        showBanner("출발 기준 위치를 먼저 확인하거나 Google 지도 길찾기를 눌러주세요.", "info");
+        return;
+      }
+      const mode = isInSouthKorea(origin) ? "TRANSIT" : state.activeRouteMode || "TRANSIT";
+      state.activeRouteMode = mode;
+      setLoading(true, `'${state.savedHotel.name}'(내 숙소)로 가는 경로를 계산하는 중...`);
+      try {
+        await computeAndDisplaySingleRoute(state.savedHotel, mode);
+        if (state.map) {
+          panToProgrammatically(state.savedHotel.location, 14);
+        }
+        showBanner(`🏨 '${state.savedHotel.name}'(내 숙소)로 가는 경로를 지도에 표시했습니다.`, "info");
+      } finally {
+        setLoading(false);
+      }
+    }
 
     function checkEnvironmentSecurity() {
       if (window.location.protocol === "file:") {
@@ -2043,6 +2274,8 @@
         $("mapCenterReticle").classList.add("visible");
       });
 
+      renderSavedHotelMarker();
+
       state.map.addListener("dragend", () => {
         if (!state.map || !state.isUserDragging) return;
         state.isUserDragging = false;
@@ -2231,6 +2464,39 @@
       // "내 위치로 복귀" 작은 버튼
       $("btnResetToMyLoc").addEventListener("click", () => {
         $("btnRecenter").click();
+      });
+
+      // 내 숙소 관련 버튼 바인딩
+      $("btnFocusSavedHotel").addEventListener("click", () => {
+        if (!state.savedHotel) return;
+        state.searchOrigin = { ...state.savedHotel.location };
+        state.searchOriginLabel = `내 숙소 (${state.savedHotel.name})`;
+        state.selectedCategory = null;
+        state.places = [];
+        state.selectedPlaceId = null;
+        updateCategorySelectionUI();
+        clearMapMarkersAndPolylines();
+        panToProgrammatically(state.savedHotel.location, 15);
+        renderSearchCenterMarker(state.savedHotel.location);
+        updateOriginContextBar();
+        renderPlacesListAndMarkers(false);
+        warmPopularCategoriesInBackground(state.savedHotel.location);
+        updateEmptyStateMessage(
+          `🏨 내 숙소 '${state.savedHotel.name}' 주변입니다`,
+          `상단에서 🍽️ 맛집, ☕ 카페, 🏪 편의점 등 원하는 카테고리를 눌러 숙소 주변 장소를 찾아보세요.`
+        );
+      });
+
+      $("btnRouteToSavedHotel").addEventListener("click", () => {
+        navigateToSavedHotelOnMap();
+      });
+
+      $("btnHotelRouteFab").addEventListener("click", () => {
+        navigateToSavedHotelOnMap();
+      });
+
+      $("btnClearSavedHotel").addEventListener("click", () => {
+        clearSavedHotel();
       });
 
       // 지도를 이동했을 때 뜨는 "📌 현 지도 중심을 기준점으로 고정" 버튼
@@ -2425,24 +2691,25 @@
     }
 
     function updateOriginContextBar() {
-      const bar = $("originContextBar");
       const textEl = $("originContextText");
       const resetBtn = $("btnResetToMyLoc");
+      if (!textEl || !resetBtn) return;
+
       if (!state.searchOrigin) {
-        bar.classList.remove("visible");
+        textEl.textContent = "📍 기준점: 상단 카테고리 또는 검색어 선택";
+        resetBtn.style.display = "none";
         return;
       }
 
-      bar.classList.add("visible");
       const isMyLoc =
         state.currentLocation &&
         computeHaversineMeters(state.currentLocation, state.searchOrigin) < 50;
 
       if (isMyLoc) {
-        textEl.textContent = "📍 고정 기준점: 현재 내 위치 (반경 약 2km)";
+        textEl.textContent = "📍 기준점: 현재 내 위치 (반경 2km)";
         resetBtn.style.display = "none";
       } else {
-        textEl.textContent = `📌 고정 기준점: ${state.searchOriginLabel}`;
+        textEl.textContent = `📌 기준점: ${state.searchOriginLabel}`;
         resetBtn.style.display = state.currentLocation ? "inline-block" : "none";
       }
     }
@@ -2453,7 +2720,10 @@
       $("tabTrip").classList.toggle("active", !isPlaces);
       $("placesView").style.display = isPlaces ? "block" : "none";
       $("tripView").classList.toggle("active", !isPlaces);
-      $("sortSelect").style.display = isPlaces ? "inline-block" : "none";
+      const filterBar = $("placesFilterBar");
+      if (filterBar) {
+        filterBar.style.display = isPlaces ? "flex" : "none";
+      }
       updateRestoreBarText();
       if (!isPlaces) {
         renderTripPanel();
@@ -2474,12 +2744,12 @@
       const btnLocate = $("btnLocate");
       const locateBtnText = $("locateBtnText");
       btnLocate.disabled = true;
-      locateBtnText.textContent = "위치 확인 중...";
+      locateBtnText.textContent = "확인중";
 
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           btnLocate.disabled = false;
-          locateBtnText.textContent = "내 위치";
+          locateBtnText.textContent = "내위치";
 
           const coords = {
             lat: pos.coords.latitude,
@@ -2514,7 +2784,7 @@
         },
         (err) => {
           btnLocate.disabled = false;
-          locateBtnText.textContent = "내 위치";
+          locateBtnText.textContent = "내위치";
 
           if (!state.searchOrigin && state.map) {
             const fallbackCenter = extractLatLngLiteral(state.map.getCenter()) || DEFAULT_CENTER;
@@ -2711,10 +2981,37 @@
           renderPlacesListAndMarkers(false);
           updateRestoreBarText();
 
-          updateEmptyStateMessage(
-            `📌 '${targetPlace.name || kw}' 위치로 이동했습니다`,
-            `현재 위치가 고정 기준점으로 설정되었습니다. 상단에서 🍽️ 맛집, ☕ 카페, 📸 관광지 등 원하는 메뉴를 선택해 보세요.`
-          );
+          state.lastSearchedTarget = targetPlace;
+          const emptyEl = $("placesEmptyState");
+          if (emptyEl) {
+            const singleDirUrl = buildGoogleMapsDirectionsUrl(targetPlace);
+            emptyEl.innerHTML = `
+              <p class="empty-state-title">📌 '${escapeHtml(targetPlace.name || kw)}' 위치로 이동했습니다</p>
+              <p class="empty-state-desc" style="margin-bottom:12px;">
+                이 위치가 고정 기준점으로 설정되었습니다. 상단에서 <strong>🍽️ 맛집, ☕ 카페, 📸 관광지, 🏨 숙소</strong> 등 원하는 메뉴를 선택하거나, 아래 버튼으로 이 장소를 <strong>내 숙소</strong> 또는 <strong>여행 코스</strong>에 바로 저장할 수 있습니다.
+              </p>
+              <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
+                <button type="button" id="btnSaveTargetAsHotel" class="card-btn hotel-saved" style="padding:0 12px; flex:0 1 auto;">
+                  🏨 내 숙소로 저장
+                </button>
+                <button type="button" id="btnAddTargetToTrip" class="card-btn" style="padding:0 12px; flex:0 1 auto;">
+                  + 여행코스 추가
+                </button>
+                <a href="${singleDirUrl}" target="_blank" rel="noopener noreferrer" class="card-btn primary" style="padding:0 12px; flex:0 1 auto;">
+                  ↗ 이곳으로 길찾기
+                </a>
+              </div>
+            `;
+            const btnSaveHotel = $("btnSaveTargetAsHotel");
+            if (btnSaveHotel) {
+              btnSaveHotel.addEventListener("click", () => setSavedHotel(targetPlace));
+            }
+            const btnAddTrip = $("btnAddTargetToTrip");
+            if (btnAddTrip) {
+              btnAddTrip.addEventListener("click", () => togglePlaceInTrip(targetPlace));
+            }
+          }
+          updateSavedHotelBarUI();
 
           // 이동한 위치 주변의 맛집·카페를 백그라운드에서 미리 프리패치
           warmPopularCategoriesInBackground(targetCenter);
@@ -3032,6 +3329,7 @@
         restaurant: `node["amenity"="restaurant"](around:${r},${lat},${lng});node["amenity"="fast_food"](around:${r},${lat},${lng});`,
         cafe: `node["amenity"="cafe"](around:${r},${lat},${lng});`,
         tourist_attraction: `node["tourism"="attraction"](around:${r},${lat},${lng});node["tourism"="viewpoint"](around:${r},${lat},${lng});way["tourism"="attraction"](around:${r},${lat},${lng});`,
+        lodging: `node["tourism"="hotel"](around:${r},${lat},${lng});node["tourism"="hostel"](around:${r},${lat},${lng});node["tourism"="guest_house"](around:${r},${lat},${lng});way["tourism"="hotel"](around:${r},${lat},${lng});`,
         convenience_store: `node["shop"="convenience"](around:${r},${lat},${lng});`,
         atm: `node["amenity"="atm"](around:${r},${lat},${lng});node["amenity"="bank"](around:${r},${lat},${lng});`,
         bank: `node["amenity"="bank"](around:${r},${lat},${lng});`,
@@ -3180,6 +3478,7 @@
       if (tags.shop === "supermarket" || tags.shop === "grocery") return "supermarket";
       if (tags.shop === "mall" || tags.shop === "department_store") return "shopping_mall";
       if (tags.leisure === "park") return "park";
+      if (tags.tourism === "hotel" || tags.tourism === "hostel" || tags.tourism === "guest_house" || tags.tourism === "motel") return "lodging";
       if (tags.tourism === "museum" || tags.tourism === "gallery") return "museum";
       if (tags.tourism || tags.historic) return "tourist_attraction";
       return fallbackCatId || "restaurant";
@@ -4608,13 +4907,16 @@
             ℹ️ 상세·교통
           </button>
           <a href="${mapsDetailUrl}" target="_blank" rel="noopener noreferrer" class="card-btn" data-action="gmaps">
-            🗺️ Google 지도
+            🗺️ 구글지도
           </a>
           <a href="${mapsDirUrl}" target="_blank" rel="noopener noreferrer" class="card-btn primary" data-action="directions">
             ↗ 길찾기
           </a>
           <button type="button" class="card-btn ${inTrip ? "in-trip" : ""}" data-action="trip">
-            ${inTrip ? "✓ 코스 담김" : "+ 여행추가"}
+            ${inTrip ? "✓ 코스담김" : "+ 코스추가"}
+          </button>
+          <button type="button" class="card-btn ${state.savedHotel && state.savedHotel.id === place.id ? "hotel-saved" : ""}" data-action="save-hotel">
+            ${state.savedHotel && state.savedHotel.id === place.id ? "🏨 내숙소✓" : "🏨 숙소저장"}
           </button>
         </div>
       `;
@@ -4630,6 +4932,11 @@
           if (act === "trip") {
             e.stopPropagation();
             togglePlaceInTrip(place);
+            return;
+          }
+          if (act === "save-hotel") {
+            e.stopPropagation();
+            setSavedHotel(place);
             return;
           }
           if (act === "detail") {
@@ -4737,31 +5044,32 @@
         if (state.libs.AdvancedMarkerElement) {
           const badge = document.createElement("div");
           badge.className = "map-marker-pin";
-          styleMarkerElement(badge, num, isSelected);
+          styleMarkerElement(badge, place, num, isSelected);
 
           marker = new state.libs.AdvancedMarkerElement({
             map: state.map,
             position: place.location,
             content: badge,
             title: `${num}. ${place.name}`,
-            zIndex: isSelected ? 500 : 100 + idx
+            zIndex: isSelected ? 600 : 200 - idx
           });
 
           marker.addListener("click", () => {
             handlePlaceSelection(place, { toggleDrawer: false, scrollToCard: true });
           });
         } else {
+          const shortLbl = place.name ? `${num}.${place.name.slice(0, 5)}` : String(num);
           marker = new google.maps.Marker({
             map: state.map,
             position: place.location,
             label: {
-              text: String(num),
+              text: shortLbl,
               color: "#ffffff",
               fontWeight: "bold",
-              fontSize: "12px"
+              fontSize: "11px"
             },
             title: `${num}. ${place.name}`,
-            zIndex: isSelected ? 500 : 100 + idx
+            zIndex: isSelected ? 600 : 200 - idx
           });
 
           marker.addListener("click", () => {
@@ -4771,28 +5079,55 @@
 
         state.placeMarkers.set(place.id, { marker, place, num });
       });
-
-      // 카테고리 검색 시 fitBounds로 인해 지도가 확대/축소되며 중심점이 이동하는 문제를 방지하기 위해
-      // 기준점(searchOrigin) 중심과 현재 줌을 그대로 유지합니다.
     }
 
-    function styleMarkerElement(el, num, isSelected) {
-      el.textContent = String(num);
-      el.style.display = "flex";
+    // 지도 마커에 번호 + 장소 이름 + 평점을 한눈에 보여주는 미니 말풍선 스타일
+    function styleMarkerElement(el, place, num, isSelected) {
+      const rawName = place?.name || "장소";
+      const shortName = rawName.length > 8 ? rawName.slice(0, 8) + "…" : rawName;
+      const ratingStr =
+        typeof place?.rating === "number" ? ` ★${place.rating.toFixed(1)}` : "";
+
+      el.innerHTML = `
+        <span style="
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          min-width:19px;
+          height:19px;
+          padding:0 5px;
+          border-radius:999px;
+          background:${isSelected ? "#ffffff" : "#2563eb"};
+          color:${isSelected ? "#2563eb" : "#ffffff"};
+          font-size:11px;
+          font-weight:900;
+        ">${num}</span>
+        <span style="
+          font-size:${isSelected ? "12.5px" : "11.5px"};
+          font-weight:800;
+          color:${isSelected ? "#ffffff" : "#0f172a"};
+          white-space:nowrap;
+        ">${escapeHtml(shortName)}</span>
+        ${
+          ratingStr
+            ? `<span style="font-size:11px; font-weight:800; color:${
+                isSelected ? "#fde68a" : "#d97706"
+              }; white-space:nowrap;">${ratingStr}</span>`
+            : ""
+        }
+      `;
+
+      el.style.display = "inline-flex";
       el.style.alignItems = "center";
-      el.style.justifyContent = "center";
-      el.style.minWidth = isSelected ? "34px" : "28px";
-      el.style.height = isSelected ? "34px" : "28px";
-      el.style.padding = "0 7px";
+      el.style.gap = "4px";
+      el.style.padding = "3px 8px 3px 4px";
       el.style.borderRadius = "999px";
-      el.style.background = isSelected ? "#2563eb" : "#0f172a";
-      el.style.color = "#ffffff";
-      el.style.fontWeight = "800";
-      el.style.fontSize = isSelected ? "14px" : "12px";
-      el.style.border = "2.5px solid #ffffff";
+      el.style.background = isSelected ? "#2563eb" : "rgba(255, 255, 255, 0.96)";
+      el.style.border = isSelected ? "2px solid #ffffff" : "1.5px solid #cbd5e1";
       el.style.boxShadow = isSelected
-        ? "0 0 0 4px rgba(37, 99, 235, 0.35), 0 4px 10px rgba(0,0,0,0.35)"
-        : "0 2px 6px rgba(0,0,0,0.3)";
+        ? "0 0 0 4px rgba(37, 99, 235, 0.35), 0 4px 12px rgba(15, 23, 42, 0.35)"
+        : "0 2px 6px rgba(15, 23, 42, 0.22)";
+      el.style.transform = isSelected ? "scale(1.06)" : "scale(1)";
       el.style.transition = "all 0.15s ease";
     }
 
@@ -4800,8 +5135,8 @@
       state.placeMarkers.forEach(({ marker, place, num }) => {
         const isSelected = place.id === state.selectedPlaceId;
         if (marker.content && marker.content instanceof HTMLElement) {
-          styleMarkerElement(marker.content, num, isSelected);
-          marker.zIndex = isSelected ? 500 : 100;
+          styleMarkerElement(marker.content, place, num, isSelected);
+          marker.zIndex = isSelected ? 600 : 200;
         }
       });
     }
@@ -4829,6 +5164,7 @@
         showBanner(`'${place.name}' 장소를 여행 코스에 추가했습니다.`, "info");
       }
 
+      saveTripListToStorage();
       $("tripCountBadge").textContent = String(state.tripList.length);
       updateRestoreBarText();
       state.tripOptimizationLabel = "";
@@ -4850,12 +5186,14 @@
       const temp = state.tripList[index];
       state.tripList[index] = state.tripList[targetIdx];
       state.tripList[targetIdx] = temp;
+      saveTripListToStorage();
       state.tripOptimizationLabel = "사용자 지정 방문 순서";
       calculateAndRenderTripCourse(true);
     }
 
     function removeTripStop(index) {
       state.tripList.splice(index, 1);
+      saveTripListToStorage();
       $("tripCountBadge").textContent = String(state.tripList.length);
       updateRestoreBarText();
       state.tripOptimizationLabel = "";
@@ -5011,6 +5349,7 @@
         }
 
         const modeName = state.tripTravelMode === "TRANSIT" ? "대중교통" : "도보";
+        saveTripListToStorage();
         state.tripOptimizationLabel = `추천 방문 순서 정렬 완료 (${modeName} 기준)`;
         await calculateAndRenderTripCourse(true);
         showBanner("추천 방문 순서로 코스를 정렬했습니다.", "info");
