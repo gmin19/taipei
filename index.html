@@ -1689,11 +1689,8 @@
             <span id="originContextText" class="origin-context-text">📍 기준점 확인 중...</span>
             <button type="button" id="btnResetToMyLoc" class="btn-banner-help" style="display:none;">내 위치 복귀</button>
           </div>
-          <select id="sortSelect" class="sort-select" aria-label="추천 및 정렬 기준">
-            <option value="recommend" selected>★ 추천순 (3.8+·1km내)</option>
-            <option value="rating40">🔥 ★ 4.0 이상만</option>
-            <option value="rating43">💎 ★ 4.3 이상만</option>
-            <option value="rating">★ 평점 높은 순</option>
+          <select id="sortSelect" class="sort-select" aria-label="정렬 기준">
+            <option value="rating" selected>★ 구글 평점 높은 순 (기본)</option>
             <option value="walk">🚶 도보 빠른 순</option>
             <option value="transit">🚌 대중교통 순</option>
             <option value="open">🟢 영업 중 우선</option>
@@ -1817,28 +1814,27 @@
     // =========================================================================
     const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY";
 
-    // API 요청 및 추천 품질 기준 상수
-    const MAX_SEARCH_RESULTS = 10;          // 화면에 표시할 최종 엄선 장소 수 (최대 10개)
+    // API 요청 및 구글맵 평점 기준 상수
+    const MAX_SEARCH_RESULTS = 10;          // 화면에 표시할 장소 수 (구글 평점 기준 상위 10개)
     const MAX_ROUTE_MATRIX_TARGETS = 6;     // 상위 6개 장소의 도보·대중교통 시간 백그라운드 계산
-    const DEFAULT_SEARCH_RADIUS_M = 1000;   // 맛집·카페·편의점 기본 도보권 반경 1km (1,000m)
-    const MIN_RECOMMEND_RATING = 3.8;       // 맛집·카페·관광지 최소 추천 평점 기준 (3.4 등 저평점 자동 제외!)
+    const DEFAULT_SEARCH_RADIUS_M = 1500;   // 주변 검색 반경 1.5km
     const DEFAULT_CENTER = { lat: 37.5665, lng: 126.9780 }; // 초기 기본 중심
 
-    // Google Places API (New) Table A 공식 지원 장소 유형 매핑 ('숙소' 메뉴 제거, 카테고리별 최적 반경 및 평점 기준 설정)
+    // 카테고리 매핑 (조건에 따른 제외 없이 구글 평점 기준으로 10곳을 우선 표시)
     const CATEGORIES = [
-      { id: "restaurant", label: "맛집", icon: "🍽️", types: ["restaurant"], keywordHint: "맛집 레스토랑 음식점", radiusM: 1000, maxDistM: 1300, minRating: 3.8 },
-      { id: "cafe", label: "카페", icon: "☕", types: ["cafe"], keywordHint: "카페 커피 디저트", radiusM: 1000, maxDistM: 1300, minRating: 3.8 },
-      { id: "tourist_attraction", label: "관광지", icon: "📸", types: ["tourist_attraction"], keywordHint: "관광명소 볼거리 명소", radiusM: 1800, maxDistM: 2500, minRating: 3.8 },
-      { id: "convenience_store", label: "편의점", icon: "🏪", types: ["convenience_store"], keywordHint: "편의점", radiusM: 600, maxDistM: 1000, minRating: 0 },
-      { id: "atm", label: "ATM", icon: "🏧", types: ["atm"], keywordHint: "ATM 현금인출기", radiusM: 800, maxDistM: 1200, minRating: 0 },
-      { id: "bank", label: "은행", icon: "🏦", types: ["bank"], keywordHint: "은행", radiusM: 1000, maxDistM: 1500, minRating: 0 },
-      { id: "pharmacy", label: "약국", icon: "💊", types: ["pharmacy"], keywordHint: "약국", radiusM: 800, maxDistM: 1200, minRating: 0 },
-      { id: "park", label: "공원", icon: "🌳", types: ["park"], keywordHint: "공원 산책", radiusM: 1500, maxDistM: 2200, minRating: 3.8 },
-      { id: "museum", label: "박물관", icon: "🏛️", types: ["museum"], keywordHint: "박물관 미술관 전시", radiusM: 2000, maxDistM: 3000, minRating: 3.8 },
-      { id: "bakery", label: "베이커리", icon: "🥐", types: ["bakery"], keywordHint: "베이커리 빵집", radiusM: 1000, maxDistM: 1400, minRating: 3.8 },
-      { id: "supermarket", label: "마트", icon: "🛒", types: ["supermarket"], keywordHint: "슈퍼마켓 대형마트", radiusM: 1200, maxDistM: 1800, minRating: 0 },
-      { id: "shopping_mall", label: "쇼핑", icon: "🛍️", types: ["shopping_mall"], keywordHint: "쇼핑몰 백화점", radiusM: 1800, maxDistM: 2500, minRating: 3.8 },
-      { id: "gas_station", label: "주유소", icon: "⛽", types: ["gas_station"], keywordHint: "주유소", radiusM: 2000, maxDistM: 3000, minRating: 0 }
+      { id: "restaurant", label: "맛집", icon: "🍽️", types: ["restaurant"], keywordHint: "맛집 레스토랑 음식점", radiusM: 1500 },
+      { id: "cafe", label: "카페", icon: "☕", types: ["cafe"], keywordHint: "카페 커피 디저트", radiusM: 1500 },
+      { id: "tourist_attraction", label: "관광지", icon: "📸", types: ["tourist_attraction"], keywordHint: "관광명소 볼거리", radiusM: 2500 },
+      { id: "convenience_store", label: "편의점", icon: "🏪", types: ["convenience_store"], keywordHint: "편의점", radiusM: 1000 },
+      { id: "atm", label: "ATM", icon: "🏧", types: ["atm"], keywordHint: "ATM 현금인출기", radiusM: 1200 },
+      { id: "bank", label: "은행", icon: "🏦", types: ["bank"], keywordHint: "은행", radiusM: 1500 },
+      { id: "pharmacy", label: "약국", icon: "💊", types: ["pharmacy"], keywordHint: "약국", radiusM: 1200 },
+      { id: "park", label: "공원", icon: "🌳", types: ["park"], keywordHint: "공원", radiusM: 2000 },
+      { id: "museum", label: "박물관", icon: "🏛️", types: ["museum"], keywordHint: "박물관 미술관", radiusM: 3000 },
+      { id: "bakery", label: "베이커리", icon: "🥐", types: ["bakery"], keywordHint: "베이커리 빵집", radiusM: 1500 },
+      { id: "supermarket", label: "마트", icon: "🛒", types: ["supermarket"], keywordHint: "마트 슈퍼마켓", radiusM: 1800 },
+      { id: "shopping_mall", label: "쇼핑", icon: "🛍️", types: ["shopping_mall"], keywordHint: "쇼핑몰 백화점", radiusM: 2500 },
+      { id: "gas_station", label: "주유소", icon: "⛽", types: ["gas_station"], keywordHint: "주유소", radiusM: 3000 }
     ];
 
     // 영문 primaryType -> 한국어 표시 사전
@@ -1937,7 +1933,7 @@
       selectedRadius: DEFAULT_SEARCH_RADIUS_M,
       selectedCategory: null,                  // 앱 시작 시 자동 검색하지 않고 사용자가 카테고리를 누를 때 검색
       keyword: "",
-      sortBy: "recommend",                     // 기본 정렬: 추천 베스트 순 (평점 3.8+ · 리뷰 신뢰도 · 1km 근접성 종합)
+      sortBy: "rating",                     // 기본 정렬: 추천 베스트 순 (평점 3.8+ · 리뷰 신뢰도 · 1km 근접성 종합)
       isRequestInFlight: false,
       searchSeq: 0,
       lastSearchSignature: "",
@@ -2963,10 +2959,10 @@
         computeHaversineMeters(state.currentLocation, state.searchOrigin) < 50;
 
       if (isMyLoc) {
-        textEl.textContent = `📍 내 위치 기준 (반경 ${radiusLabel} · ★3.8+ 엄선)`;
+        textEl.textContent = `📍 내 위치 기준 (구글 평점순 상위 10곳)`;
         resetBtn.style.display = "none";
       } else {
-        textEl.textContent = `📌 기준점: ${state.searchOriginLabel} (${radiusLabel})`;
+        textEl.textContent = `📌 기준점: ${state.searchOriginLabel} (구글 평점순)`;
         resetBtn.style.display = state.currentLocation ? "inline-block" : "none";
       }
     }
@@ -3363,16 +3359,13 @@
         renderSearchCenterMarker(isSameAsUserLoc ? null : lockedCenter);
         updateOriginContextBar();
 
-        // [요구사항 3 해결] 거리 기준 + Google 평점(★3.8 미만 제외) + 리뷰 수 신뢰도 필터 및 점수 산출!
-        const curatedPlaces = curateAndFilterPlaces(rawPlaces, lockedCenter, catObj);
-
-        state.places = curatedPlaces.map((p) => {
+        // 조건 미달로 모든 장소가 제외되어 빈 화면이 되는 일이 없도록,
+        // 검색된 장소들을 구글 평점 기준으로 정렬하여 상위 10개 장소를 항상 보여줍니다!
+        const placesWithDist = rawPlaces.map((p) => {
           const straightDistM = p.location ? computeHaversineMeters(lockedCenter, p.location) : null;
-          const recommendScore = computeRecommendScore(p, straightDistM);
           return {
             ...p,
             straightDistM,
-            recommendScore,
             walkDurationMs: null,
             walkDistanceM: null,
             walkStatus: "PENDING",
@@ -3384,6 +3377,18 @@
           };
         });
 
+        // 1순위: 구글 평점 높은 순 (동점 시 리뷰 개수 많은 순, 평점 있는 장소 우선)
+        placesWithDist.sort((a, b) => {
+          const ra = typeof a.rating === "number" ? a.rating : -1;
+          const rb = typeof b.rating === "number" ? b.rating : -1;
+          if (rb !== ra) return rb - ra;
+          const ca = typeof a.userRatingCount === "number" ? a.userRatingCount : 0;
+          const cb = typeof b.userRatingCount === "number" ? b.userRatingCount : 0;
+          if (cb !== ca) return cb - ca;
+          return (a.straightDistM ?? Infinity) - (b.straightDistM ?? Infinity);
+        });
+
+        state.places = placesWithDist.slice(0, MAX_SEARCH_RESULTS);
         state.places = getSortedPlaces();
         renderPlacesListAndMarkers(false);
         updateRestoreBarText();
@@ -3409,84 +3414,6 @@
           setLoading(false);
         }
       }
-    }
-
-    // 맛집·카페·관광지 엄선 필터:
-    // 1) 너무 먼 장소(maxDistM 초과) 제외 (단, 가까운 곳이 3개 미만일 때만 반경 완화)
-    // 2) 평점이 필요한 카테고리(맛집·카페·베이커리·관광지·박물관)에서 평점 3.8 미만(예: 3.4) 저평점 제외!
-    // 3) 평점 정보가 있는 장소가 충분하면 '평점 정보 없음' 장소도 후순위로 제외해 검증된 곳만 추천
-    function curateAndFilterPlaces(rawPlaces, centerCoords, catObj) {
-      if (!Array.isArray(rawPlaces) || rawPlaces.length === 0) return [];
-
-      const maxDist = catObj?.maxDistM || 1300;
-      const minRating = typeof catObj?.minRating === "number" ? catObj.minRating : 3.8;
-
-      const withDist = rawPlaces.map((p) => ({
-        place: p,
-        distM: p.location ? computeHaversineMeters(centerCoords, p.location) : 99999
-      }));
-
-      // 1단계: 도보권 거리 필터 (예: 맛집/카페 1.3km 이내)
-      let distanceFiltered = withDist.filter((item) => item.distM <= maxDist);
-      if (distanceFiltered.length < 3) {
-        distanceFiltered = withDist.filter((item) => item.distM <= maxDist * 1.6);
-      }
-      if (distanceFiltered.length === 0) {
-        distanceFiltered = withDist;
-      }
-
-      // 2단계: 저평점(3.8 미만, 예: 3.4 등) 필터링
-      if (minRating > 0) {
-        const highRatedWithScore = distanceFiltered.filter(
-          (item) => typeof item.place.rating === "number" && item.place.rating >= minRating
-        );
-        if (highRatedWithScore.length >= 2) {
-          distanceFiltered = highRatedWithScore;
-        } else {
-          // 만약 주변에 평점 데이터가 있는 가게가 적더라도, 명시적으로 3.8 미만(3.4 등)인 저평점 가게는 제외!
-          const excludeExplicitLow = distanceFiltered.filter(
-            (item) => item.place.rating === null || item.place.rating >= minRating
-          );
-          if (excludeExplicitLow.length > 0) {
-            distanceFiltered = excludeExplicitLow;
-          }
-        }
-      }
-
-      // 3단계: 추천 점수 순으로 정렬 후 상위 MAX_SEARCH_RESULTS(10개) 반환
-      distanceFiltered.sort((a, b) => {
-        const scoreA = computeRecommendScore(a.place, a.distM);
-        const scoreB = computeRecommendScore(b.place, b.distM);
-        return scoreB - scoreA;
-      });
-
-      return distanceFiltered.slice(0, MAX_SEARCH_RESULTS).map((item) => item.place);
-    }
-
-    // 종합 추천 점수 공식:
-    // Google 평점(비중 60%) + 리뷰 수 신뢰도 로그 가산점(비중 25%) - 거리 감점(비중 15%)
-    function computeRecommendScore(place, distMeters) {
-      const distKm = typeof distMeters === "number" && isFinite(distMeters) ? distMeters / 1000 : 1.0;
-      const rating = typeof place?.rating === "number" ? place.rating : null;
-      const reviews = typeof place?.userRatingCount === "number" ? place.userRatingCount : 0;
-
-      if (rating === null) {
-        // 평점이 없는 장소는 평점 보유 장소보다 항상 아래에 오도록 기본 점수 낮게 부여
-        return 10 - distKm * 3;
-      }
-
-      // 베이지안 보정 평점 (리뷰가 1~2개뿐인 5.0 왜곡 방지)
-      const priorWeight = 8;
-      const priorMean = 4.0;
-      const bayesianRating = (rating * reviews + priorMean * priorWeight) / (reviews + priorWeight);
-
-      // 리뷰 수 가산점 (최대 +12점)
-      const reviewBonus = Math.min(12, Math.log10(reviews + 1) * 4.5);
-
-      // 거리 감점 (100m당 0.6점 감점 -> 가까울수록 높은 점수)
-      const distancePenalty = distKm * 6.0;
-
-      return bayesianRating * 20 + reviewBonus - distancePenalty;
     }
 
     // =========================================================================
@@ -3536,9 +3463,7 @@
               }
             }
           };
-          if (catObj.minRating && catObj.minRating >= 3.8) {
-            reqBody.minRating = catObj.minRating;
-          }
+
           const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
             method: "POST",
             headers: {
@@ -5122,45 +5047,34 @@
       let list = [...state.places];
       const sortBy = state.sortBy;
 
-      // 사용자가 ★4.0 이상만, ★4.3 이상만 필터를 선택한 경우
-      if (sortBy === "rating40") {
-        const filtered40 = list.filter((p) => typeof p.rating === "number" && p.rating >= 4.0);
-        if (filtered40.length > 0) list = filtered40;
-      } else if (sortBy === "rating43") {
-        const filtered43 = list.filter((p) => typeof p.rating === "number" && p.rating >= 4.3);
-        if (filtered43.length > 0) list = filtered43;
-      }
-
       list.sort((a, b) => {
         if (sortBy === "walk") {
           const wa = a.walkDurationMs ?? a.straightDistM ?? Infinity;
           const wb = b.walkDurationMs ?? b.straightDistM ?? Infinity;
           if (wa !== wb) return wa - wb;
-          return (b.recommendScore ?? 0) - (a.recommendScore ?? 0);
+          return (b.rating ?? -1) - (a.rating ?? -1);
         }
         if (sortBy === "transit") {
           const ta = a.transitDurationMs ?? a.straightDistM ?? Infinity;
           const tb = b.transitDurationMs ?? b.straightDistM ?? Infinity;
           if (ta !== tb) return ta - tb;
-          return (b.recommendScore ?? 0) - (a.recommendScore ?? 0);
+          return (b.rating ?? -1) - (a.rating ?? -1);
         }
         if (sortBy === "open") {
           const rankOpen = (p) => (p.isOpenNow === true ? 0 : p.isOpenNow === null ? 1 : 2);
           const oa = rankOpen(a);
           const ob = rankOpen(b);
           if (oa !== ob) return oa - ob;
-          return (b.recommendScore ?? 0) - (a.recommendScore ?? 0);
+          return (b.rating ?? -1) - (a.rating ?? -1);
         }
-        if (sortBy === "rating" || sortBy === "rating40" || sortBy === "rating43") {
-          const ra = a.rating ?? -1;
-          const rb = b.rating ?? -1;
-          if (rb !== ra) return rb - ra;
-          return (b.userRatingCount ?? 0) - (a.userRatingCount ?? 0);
-        }
-        // 기본값("recommend"): 평점(3.8+) + 리뷰 신뢰도 + 도보 근접성 종합 추천 점수 순!
-        const sa = a.recommendScore ?? computeRecommendScore(a, a.straightDistM);
-        const sb = b.recommendScore ?? computeRecommendScore(b, b.straightDistM);
-        return sb - sa;
+        // 기본값: 구글 평점 높은 순 (동점 시 리뷰 개수 많은 순, 가까운 순)
+        const ra = typeof a.rating === "number" ? a.rating : -1;
+        const rb = typeof b.rating === "number" ? b.rating : -1;
+        if (rb !== ra) return rb - ra;
+        const ca = typeof a.userRatingCount === "number" ? a.userRatingCount : 0;
+        const cb = typeof b.userRatingCount === "number" ? b.userRatingCount : 0;
+        if (cb !== ca) return cb - ca;
+        return (a.straightDistM ?? Infinity) - (b.straightDistM ?? Infinity);
       });
 
       return list;
