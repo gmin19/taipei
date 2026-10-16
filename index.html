@@ -3771,7 +3771,7 @@
         ["restaurant", "cafe"].forEach((catId) => {
           const catObj = CATEGORIES.find((c) => c.id === catId);
           const r = catObj ? catObj.radiusM : DEFAULT_SEARCH_RADIUS_M;
-          const sig = `nearby_v3|${originKey}|r=${r}|cat=${catId}`;
+          const sig = `nearby_v4|${originKey}|r=${r}|cat=${catId}`;
           if (!state.searchCache.has(sig) && !state.inflightNearbyMap.has(sig)) {
             const p = searchNearbyNewApi(originCoords, r, catId)
               .then((places) => {
@@ -3922,7 +3922,7 @@
         lng: Number(state.searchOrigin.lng)
       };
       const originKey = `${lockedCenter.lat.toFixed(4)},${lockedCenter.lng.toFixed(4)}`;
-      const signature = `nearby_v3|${originKey}|r=${targetRadius}|cat=${state.selectedCategory}`;
+      const signature = `nearby_v4|${originKey}|r=${targetRadius}|cat=${state.selectedCategory}`;
 
       if (!force && signature === state.lastSearchSignature && state.places.length > 0) {
         return;
@@ -4117,9 +4117,6 @@
                 }
               }
             };
-            if (Array.isArray(catObj.excludedPrimaryTypes) && catObj.excludedPrimaryTypes.length > 0) {
-              reqBody.excludedPrimaryTypes = catObj.excludedPrimaryTypes;
-            }
             const resp = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
               method: "POST",
               headers: {
@@ -4140,8 +4137,6 @@
             const reqBody = {
               textQuery: queryText,
               languageCode: "ko",
-              includedType: catObj.types[0],
-              strictTypeFiltering: true,
               maxResultCount: 20,
               locationBias: {
                 circle: {
@@ -5481,44 +5476,73 @@
       } catch (_) {}
     }
 
-    async function computeAndDisplaySingleRoute(placeItem, travelMode = state.activeRouteMode) {
-      const origin = state.searchOrigin || state.currentLocation;
-      if (!origin || !placeItem) return;
+    async function computeAndDisplaySingleRoute(placeItem, travelMode = state.activeRouteMode, fitRouteBounds = true) {
+      let origin = state.searchOrigin || state.currentLocation;
+      if (state.routeOriginMode === "my_location" && state.currentLocation) {
+        origin = state.currentLocation;
+      }
+      if (!origin || !placeItem || !placeItem.location) return;
 
-      const cacheKey = `${origin.lat.toFixed(4)},${origin.lng.toFixed(4)}->${placeItem.id}|${travelMode}`;
+      // 출발지와 목적지가 거의 같은 위치면 내 현재 위치를 출발지로 사용
+      if (computeHaversineMeters(origin, placeItem.location) < 25 && state.currentLocation) {
+        origin = state.currentLocation;
+      }
+
+      const getCachedOrFetchRoute = async (modeToFetch) => {
+        const cKey = `${origin.lat.toFixed(4)},${origin.lng.toFixed(4)}->${placeItem.id}|${modeToFetch}`;
+        if (state.singleRouteCache.has(cKey)) {
+          return state.singleRouteCache.get(cKey);
+        }
+        const fetched = await fetchSingleRouteNewApi(origin, placeItem.location, modeToFetch);
+        if (fetched) {
+          state.singleRouteCache.set(cKey, fetched);
+        }
+        return fetched;
+      };
+
       clearActivePolylines();
 
       try {
-        let routeData = null;
-        if (state.singleRouteCache.has(cacheKey)) {
-          routeData = state.singleRouteCache.get(cacheKey);
-        } else {
-          routeData = await fetchSingleRouteNewApi(origin, placeItem.location, travelMode);
-          if (routeData) {
-            state.singleRouteCache.set(cacheKey, routeData);
+        let effectiveMode = travelMode;
+        let routeData = await getCachedOrFetchRoute(effectiveMode);
+
+        // 핵심 복구: 대중교통(TRANSIT) 경로가 없는 가까운 거리이거나 대중교통 미제공 구간이면
+        // 즉시 도보(WALKING) 경로로 자동 전환하여 화면 지도에 실제 경로선을 표시!
+        if ((!routeData || !routeData.path || routeData.path.length === 0) && effectiveMode === "TRANSIT") {
+          placeItem.transitStatus = "NO_ROUTE";
+          placeItem.transitSteps = [];
+          const walkFallback = await getCachedOrFetchRoute("WALKING");
+          if (walkFallback) {
+            routeData = walkFallback;
+            effectiveMode = "WALKING";
           }
         }
 
+        // 만약 모든 라우팅 서버에서 상세 폴리라인을 받지 못한 경우에도 출발지->목적지 직선/보조 경로선을 지도에 표시!
         if (!routeData) {
-          if (travelMode === "TRANSIT") {
-            placeItem.transitStatus = "NO_ROUTE";
-            placeItem.transitSteps = [];
-            updateMapRouteBadge("대중교통 경로 없음 (도보 또는 Google 지도 길찾기 이용)", travelMode);
-          } else {
-            placeItem.walkStatus = isInSouthKorea(origin) ? "KR_UNSUPPORTED" : "NO_ROUTE";
-            updateMapRouteBadge("도보 경로 데이터 없음", travelMode);
-          }
-          renderPlacesListAndMarkers(false);
-          return;
+          const straightM = computeHaversineMeters(origin, placeItem.location);
+          const estWalkMs = Math.max(60000, Math.round((straightM * 1.3 / 1.25) * 1000));
+          routeData = {
+            rawRoute: null,
+            durationMillis: estWalkMs,
+            distanceMeters: Math.round(straightM * 1.25),
+            path: [
+              { lat: Number(origin.lat), lng: Number(origin.lng) },
+              { lat: Number(placeItem.location.lat), lng: Number(placeItem.location.lng) }
+            ],
+            transitSteps: [],
+            isFallbackLine: true
+          };
+          effectiveMode = "WALKING";
         }
 
-        if (travelMode === "WALKING") {
+        if (effectiveMode === "WALKING") {
           if (typeof routeData.durationMillis === "number") {
             placeItem.walkDurationMs = routeData.durationMillis;
             placeItem.walkDistanceM = routeData.distanceMeters ?? placeItem.walkDistanceM;
             placeItem.walkStatus = "OK";
           }
-        } else if (travelMode === "TRANSIT") {
+        } else if (effectiveMode === "TRANSIT") {
           if (typeof routeData.durationMillis === "number") {
             placeItem.transitDurationMs = routeData.durationMillis;
             placeItem.transitDistanceM = routeData.distanceMeters ?? placeItem.transitDistanceM;
@@ -5527,24 +5551,30 @@
           placeItem.transitSteps = routeData.transitSteps || [];
         }
 
-        drawRouteDataOnMap(routeData, travelMode);
+        drawRouteDataOnMap(routeData, effectiveMode, origin, placeItem.location, fitRouteBounds);
 
         const durText = formatDuration(routeData.durationMillis);
         const distText = formatDistance(routeData.distanceMeters);
-        const modeLabel = travelMode === "TRANSIT" ? "🚌 대중교통" : "🚶 도보";
-        updateMapRouteBadge(`${modeLabel} ${durText}${distText ? " · " + distText : ""}`, travelMode);
+        const modeLabel = effectiveMode === "TRANSIT" ? "🚌 대중교통" : "🚶 도보";
+        const fallbackNote = travelMode === "TRANSIT" && effectiveMode === "WALKING" ? " (도보 구간)" : "";
+        updateMapRouteBadge(`${modeLabel} ${durText}${distText ? " · " + distText : ""}${fallbackNote}`, effectiveMode);
 
         renderPlacesListAndMarkers(false);
       } catch (err) {
         console.warn(`${travelMode} 상세 경로 조회 실패:`, err);
-        if (travelMode === "TRANSIT") {
-          placeItem.transitStatus = "NO_ROUTE";
-          placeItem.transitSteps = [];
-          updateMapRouteBadge("대중교통 경로를 찾을 수 없습니다", travelMode);
-        } else {
-          placeItem.walkStatus = "NO_ROUTE";
-          updateMapRouteBadge("도보 경로를 찾을 수 없습니다", travelMode);
-        }
+        // 오류 시에도 출발지와 목적지를 잇는 경로선을 화면에 표시
+        const fallbackRoute = {
+          rawRoute: null,
+          durationMillis: null,
+          distanceMeters: computeHaversineMeters(origin, placeItem.location),
+          path: [
+            { lat: Number(origin.lat), lng: Number(origin.lng) },
+            { lat: Number(placeItem.location.lat), lng: Number(placeItem.location.lng) }
+          ],
+          isFallbackLine: true
+        };
+        drawRouteDataOnMap(fallbackRoute, "WALKING", origin, placeItem.location, fitRouteBounds);
+        updateMapRouteBadge(`📍 이동 거리 약 ${formatDistance(fallbackRoute.distanceMeters)}`, travelMode);
         renderPlacesListAndMarkers(false);
       }
     }
@@ -5819,10 +5849,11 @@
       return stepsSummary;
     }
 
-    function drawRouteDataOnMap(routeData, travelMode) {
+    function drawRouteDataOnMap(routeData, travelMode, originCoords = null, destCoords = null, fitRouteBounds = true) {
       if (!state.map || !routeData) return;
       clearActivePolylines();
 
+      let drawn = false;
       try {
         if (routeData.rawRoute && typeof routeData.rawRoute.createPolylines === "function") {
           const polylines = routeData.rawRoute.createPolylines();
@@ -5831,21 +5862,50 @@
               pl.setMap(state.map);
               state.activePolylines.push(pl);
             });
-            return;
+            drawn = true;
           }
         }
       } catch (_) {}
 
-      const pathCoords = routeData.path || [];
-      if (pathCoords.length > 0) {
-        const poly = new google.maps.Polyline({
+      const pathCoords = Array.isArray(routeData.path) && routeData.path.length > 0
+        ? routeData.path
+        : (originCoords && destCoords ? [originCoords, destCoords] : []);
+
+      if (!drawn && pathCoords.length > 0) {
+        // 외곽선(가시성 향상용 흰색 테두리) + 메인 경로선 2중 렌더링으로 지도 위에서 경로가 선명하게 보이도록 처리
+        const outlinePoly = new google.maps.Polyline({
+          path: pathCoords,
+          map: state.map,
+          strokeColor: "#ffffff",
+          strokeOpacity: 0.9,
+          strokeWeight: 8,
+          zIndex: 400
+        });
+        const mainPoly = new google.maps.Polyline({
           path: pathCoords,
           map: state.map,
           strokeColor: travelMode === "TRANSIT" ? "#059669" : "#2563eb",
-          strokeOpacity: 0.88,
-          strokeWeight: 5
+          strokeOpacity: 0.95,
+          strokeWeight: 5,
+          zIndex: 401
         });
-        state.activePolylines.push(poly);
+        state.activePolylines.push(outlinePoly, mainPoly);
+      }
+
+      // 출발지와 목적지, 경로 전체가 지도 화면 한눈에 들어오도록 자동 줌/바운드 맞춤
+      if (fitRouteBounds && state.libs.LatLngBounds && pathCoords.length > 0) {
+        try {
+          const bounds = new state.libs.LatLngBounds();
+          if (originCoords) bounds.extend(originCoords);
+          if (destCoords) bounds.extend(destCoords);
+          pathCoords.forEach((pt) => {
+            if (pt && typeof pt.lat === "number" && typeof pt.lng === "number") {
+              bounds.extend(pt);
+            }
+          });
+          state.isProgrammaticPan = true;
+          state.map.fitBounds(bounds, { top: 115, right: 40, bottom: 40, left: 40 });
+        } catch (_) {}
       }
     }
 
@@ -6162,9 +6222,9 @@
           <a href="${mapsDetailUrl}" target="_blank" rel="noopener noreferrer" class="card-btn" data-action="gmaps">
             🗺️ 구글지도
           </a>
-          <a href="${mapsDirTransitUrl}" target="_blank" rel="noopener noreferrer" class="card-btn primary" data-action="directions" title="대중교통 길찾기 (${escapeHtml(originLabelShort)} 출발)">
-            ↗ 길찾기
-          </a>
+          <button type="button" class="card-btn primary" data-action="directions" title="지도 화면에 경로 표시 및 길찾기 (${escapeHtml(originLabelShort)} 출발)">
+            🗺️ 길찾기
+          </button>
           <button type="button" class="card-btn ${inTrip ? "in-trip" : ""}" data-action="trip">
             ${inTrip ? "✓ 코스담김" : "+ 코스추가"}
           </button>
@@ -6178,8 +6238,14 @@
         const actionEl = e.target.closest("[data-action]");
         if (actionEl) {
           const act = actionEl.dataset.action;
-          if (act === "gmaps" || act === "directions") {
+          if (act === "gmaps") {
             e.stopPropagation();
+            return;
+          }
+          if (act === "directions") {
+            e.stopPropagation();
+            place.drawerOpen = true;
+            await handlePlaceSelection(place, { toggleDrawer: false, scrollToCard: false, forceFitRoute: true });
             return;
           }
           if (act === "trip") {
@@ -6204,7 +6270,7 @@
       return card;
     }
 
-    async function handlePlaceSelection(place, { toggleDrawer = false, scrollToCard = false } = {}) {
+    async function handlePlaceSelection(place, { toggleDrawer = false, scrollToCard = false, forceFitRoute = true } = {}) {
       const wasSelected = state.selectedPlaceId === place.id;
       state.selectedPlaceId = place.id;
 
@@ -6218,7 +6284,7 @@
         place.drawerOpen = true;
       }
 
-      if (state.map && place.location) {
+      if (state.map && place.location && !forceFitRoute) {
         panToProgrammatically(place.location);
       }
 
@@ -6238,7 +6304,7 @@
 
       await Promise.all([
         ensurePlaceDetailsLoaded(place),
-        computeAndDisplaySingleRoute(place, state.activeRouteMode),
+        computeAndDisplaySingleRoute(place, state.activeRouteMode, forceFitRoute),
         (async () => {
           if (origin && (place.transitSteps === null || place.transitStatus !== "OK")) {
             try {
@@ -6273,7 +6339,7 @@
       renderPlacesListAndMarkers(false);
     }
 
-        // =========================================================================
+    // =========================================================================
     // Google 평점이 누락된 장소에 대해 Google Places 검색을 통해 실시간으로 평점 보강!
     // =========================================================================
     function enrichPlacesWithGoogleRatings(placesList) {
@@ -6296,6 +6362,9 @@
             (results, status) => {
               if (status === "OK" && Array.isArray(results) && results.length > 0) {
                 const match = results[0];
+                if (match.place_id) {
+                  place.googlePlaceId = match.place_id;
+                }
                 if (typeof match.rating === "number" && match.rating > 0) {
                   place.rating = match.rating;
                   place.userRatingCount = match.user_ratings_total || place.userRatingCount;
@@ -6339,6 +6408,10 @@
             cardTop.appendChild(pBox);
           }
         }
+      }
+      const gmapsLink = card.querySelector('[data-action="gmaps"]');
+      if (gmapsLink) {
+        gmapsLink.href = buildGoogleMapsPlaceUrl(place);
       }
     }
 
@@ -6852,24 +6925,26 @@
         return sanitizeUrl(place.googleMapsURI);
       }
 
+      const candidateId = place.googlePlaceId || place.id || "";
       const isGooglePlaceId =
-        place.id &&
-        !place.id.startsWith("osm_") &&
-        !place.id.startsWith("nom_") &&
-        !place.id.startsWith("geo_") &&
-        !place.id.startsWith("my_") &&
-        !place.id.startsWith("leg_") &&
-        !place.id.startsWith("photon_") &&
-        !place.id.startsWith("wiki_");
+        candidateId &&
+        !candidateId.startsWith("osm_") &&
+        !candidateId.startsWith("nom_") &&
+        !candidateId.startsWith("geo_") &&
+        !candidateId.startsWith("my_") &&
+        !candidateId.startsWith("leg_") &&
+        !candidateId.startsWith("photon_") &&
+        !candidateId.startsWith("wiki_");
 
-      // 1순위: Google Place ID가 있으면 공식 Google Search URL로 바로 해당 장소 카드 열기
+      // 1순위: Google Place ID가 있으면 공식 query_place_id URL로 구글지도의 실제 장소 상세 페이지(리뷰·사진·영업시간) 열기
       if (isGooglePlaceId) {
-        return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${encodeURIComponent(place.id)}`;
+        return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${encodeURIComponent(candidateId)}`;
       }
 
-      // 2순위: 위도·경도 좌표와 장소명으로 정확한 핀 열기 (검색 실패나 엉뚱한 장소 표시 원천 방지)
+      // 2순위: Place ID가 없는 경우에도 ?q=위도,경도(단순 좌표 핀)를 쓰지 않고,
+      // 해당 좌표 뷰포트(@위도,경도,18z) 중심의 상호명 검색 URL을 사용하여 구글지도에서 해당 장소의 상세 정보가 바로 열리도록 처리!
       if (place.location && typeof place.location.lat === "number" && typeof place.location.lng === "number") {
-        return `https://www.google.com/maps?q=${place.location.lat},${place.location.lng}+(${encodeURIComponent(place.name)})`;
+        return `https://www.google.com/maps/search/${encodeURIComponent(place.name)}/@${place.location.lat},${place.location.lng},18z`;
       }
 
       return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name || "장소")}`;
@@ -6880,9 +6955,10 @@
       const mode = (modeOverride || state.activeRouteMode || "TRANSIT").toLowerCase();
       const travelmode = mode === "walking" ? "walking" : "transit";
 
+      const candidateId = place.googlePlaceId || place.id || "";
       const isGooglePlaceId =
-        place.id &&
-        !place.id.startsWith("osm_") &&
+        candidateId &&
+        !candidateId.startsWith("osm_") &&
         !place.id.startsWith("nom_") &&
         !place.id.startsWith("geo_") &&
         !place.id.startsWith("my_") &&
@@ -6896,7 +6972,7 @@
       // 구글 지도 앱에서 엉뚱한 주소나 다른 장소로 튀는 문제를 100% 방지함!
       let destParam = "";
       if (isGooglePlaceId) {
-        destParam = `destination=${encodeURIComponent(place.name)}&destination_place_id=${encodeURIComponent(place.id)}`;
+        destParam = `destination=${encodeURIComponent(place.name)}&destination_place_id=${encodeURIComponent(candidateId)}`;
       } else {
         destParam = `destination=${place.location.lat},${place.location.lng}`;
       }
