@@ -2137,11 +2137,18 @@
     ]);
 
     function resolveBestPrimaryType(typesArr, rawPrimaryType, fallbackCatObj) {
+      // 만약 도로(route)나 주소, 행정구역 타입이 포함되어 있으면 절대 음식점/카페 타입으로 덮어쓰지 않고 그대로 반환하여 필터에서 걸러지게 함!
+      const roadOrAdminTypes = ["route", "street_address", "intersection", "locality", "sublocality", "political", "postal_code"];
+      if (rawPrimaryType && roadOrAdminTypes.includes(rawPrimaryType)) return rawPrimaryType;
+      if (Array.isArray(typesArr)) {
+        const foundRoad = typesArr.find((t) => roadOrAdminTypes.includes(t));
+        if (foundRoad) return foundRoad;
+      }
+
       if (rawPrimaryType && !GENERIC_UMBRELLA_TYPES.has(rawPrimaryType)) {
         return rawPrimaryType;
       }
       if (Array.isArray(typesArr) && typesArr.length > 0) {
-        // 1) 현재 선택된 카테고리와 직접 매칭되는 구체적 타입이 있으면 최우선 선택
         if (fallbackCatObj) {
           const catMatched = typesArr.find(
             (t) =>
@@ -2151,12 +2158,11 @@
           );
           if (catMatched) return catMatched;
         }
-        // 2) 일반 포괄 태그(point_of_interest, establishment, food, store)가 아닌 첫 번째 구체적 타입 선택
         const specific = typesArr.find((t) => !GENERIC_UMBRELLA_TYPES.has(t));
         if (specific) return specific;
         return typesArr[0];
       }
-      return rawPrimaryType || fallbackCatObj?.types?.[0] || "point_of_interest";
+      return rawPrimaryType || "point_of_interest";
     }
 
     function resolveBestCategoryLabel(primaryType, rawDisplayName, fallbackCatObj) {
@@ -2177,11 +2183,45 @@
     // - 맛집(restaurant) 선택 시: 카페, 베이커리, 호텔/숙소, 편의점, 마트, 백화점, 미용실, 네일샵, 사진관, 스터디카페, 키즈카페, PC방, 병원, 약국, 부동산 등 원천 차단!
     // - 카페(cafe) 선택 시: 일반 음식점, 고깃집, 국밥집, 술집/포차, 스터디카페, 독서실, 키즈카페, 보드게임카페, 만화카페, 방탈출카페, PC방, 사주/타로카페, 힐링/수면카페, 호텔, 편의점 등 원천 차단!
     // =========================================================================
+    // 도로명(예: 해돋이로, 센트럴로, 컨벤시아대로 등), 지번/도로명 주소, 교차로, 행정구역 이름이 상호명으로 잘못 들어온 경우 100% 차단하는 함수
+    function isRoadOrNonBusinessName(name, address = "") {
+      if (!name) return true;
+      const clean = String(name).trim();
+      if (!clean || clean === "장소" || clean === "이름 정보 없음" || clean === "주변 장소") return true;
+
+      // 1) 순수 숫자/번지수 형태 (예: "107", "21-1", "102동")
+      if (/^\d+[-\d\s호층동번지]*$/.test(clean)) return true;
+
+      // 2) 도로명 + 번지수/번길 형태 (예: "해돋이로 107", "해돋이로120번길", "송도동 21-1", "컨벤시아대로 165")
+      if (/^[가-힣A-Za-z0-9]+(로|대로|길|번길|동|가|리)\s*\d+[-\d\s번길호층동]*$/.test(clean)) return true;
+
+      // 3) 사거리, 삼거리, 교차로, 나들목, 정류장, 행정구역 단독 명칭
+      if (/^[가-힣A-Za-z0-9\s]+(사거리|삼거리|오거리|네거리|교차로|나들목|분기점|정류장|정류소|톨게이트|IC|JC|주민센터|행정복지센터|파출소|지구대|소방서|우체국|보건소)$/.test(clean)) {
+        return true;
+      }
+      if (/^[가-힣]+(\d*동|\d*가|구|시|군|읍|면|리)$/.test(clean)) return true;
+
+      // 4) "해돋이로", "센트럴로", "컨벤시아대로", "인하로", "해돋이길" 등 도로명 단독 명칭 차단
+      // (단, '스시로', '~화로', '~구이로', '~포차로' 등 실제 음식점 단어는 예외 허용)
+      if (/^[가-힣A-Za-z0-9]{1,8}(대로|번길|로길|가길)$/.test(clean)) return true;
+      if (/^[가-힣]{2,6}(로|길)$/.test(clean)) {
+        if (!/(스시로|화로|구이로|포차로|술로|고기로|샤브로|화덕으로|생선구이로|초밥으로|족발로|막창으로)$/.test(clean)) {
+          return true;
+        }
+      }
+
+      // 5) 영문 도로명 단독 형태 (예: "Haedoji-ro", "Central-ro", "Main St")
+      if (/^[A-Za-z0-9\s-]+(-ro|-daero|-gil|\bRd\.?|\bSt\.?|\bAve\.?|\bBlvd\.?)$/i.test(clean)) return true;
+
+      return false;
+    }
+
     function isValidPlaceForCategory(place, categoryId) {
       if (!place || !place.name) return false;
+      const name = String(place.name || "").trim();
+      if (isRoadOrNonBusinessName(name, place.address)) return false;
       if (!categoryId) return true;
 
-      const name = String(place.name || "").trim();
       const catLabel = String(place.categoryLabel || "").trim();
       const combinedText = `${name} ${catLabel}`;
       const pType = String(place.primaryType || "").toLowerCase();
@@ -2194,16 +2234,17 @@
       const hasAnyType = (typeList) => typeList.some((t) => allTypes.has(t));
       const isPrimaryIn = (typeList) => Boolean(pType && typeList.includes(pType));
 
-      // 공통 행정구역·부동산·용역업체 차단
+      // 공통 도로(route)·주소(street_address)·행정구역·부동산·용역업체는 primaryType뿐 아니라 types 배열 어디에라도 있으면 즉시 차단!
       const ADMIN_OR_SERVICE_TYPES = [
         "locality", "sublocality", "sublocality_level_1", "sublocality_level_2",
         "administrative_area_level_1", "administrative_area_level_2", "country",
         "postal_code", "route", "street_address", "intersection", "political",
+        "neighborhood", "archipelago", "colloquial_area",
         "real_estate_agency", "moving_company", "locksmith", "plumber",
         "electrician", "roofing_contractor", "general_contractor", "funeral_home",
         "cemetery", "storage", "insurance_agency", "lawyer", "accounting"
       ];
-      if (isPrimaryIn(ADMIN_OR_SERVICE_TYPES)) return false;
+      if (isPrimaryIn(ADMIN_OR_SERVICE_TYPES) || hasAnyType(ADMIN_OR_SERVICE_TYPES)) return false;
 
       // 1) 맛집 (restaurant) - 오직 실제 식사·요리를 제공하는 음식점만 허용!
       if (categoryId === "restaurant") {
@@ -3771,7 +3812,7 @@
         ["restaurant", "cafe"].forEach((catId) => {
           const catObj = CATEGORIES.find((c) => c.id === catId);
           const r = catObj ? catObj.radiusM : DEFAULT_SEARCH_RADIUS_M;
-          const sig = `nearby_v4|${originKey}|r=${r}|cat=${catId}`;
+          const sig = `nearby_v5|${originKey}|r=${r}|cat=${catId}`;
           if (!state.searchCache.has(sig) && !state.inflightNearbyMap.has(sig)) {
             const p = searchNearbyNewApi(originCoords, r, catId)
               .then((places) => {
@@ -3922,7 +3963,7 @@
         lng: Number(state.searchOrigin.lng)
       };
       const originKey = `${lockedCenter.lat.toFixed(4)},${lockedCenter.lng.toFixed(4)}`;
-      const signature = `nearby_v4|${originKey}|r=${targetRadius}|cat=${state.selectedCategory}`;
+      const signature = `nearby_v5|${originKey}|r=${targetRadius}|cat=${state.selectedCategory}`;
 
       if (!force && signature === state.lastSearchSignature && state.places.length > 0) {
         return;
@@ -3982,8 +4023,7 @@
 
         // 조건 미달로 모든 장소가 제외되어 빈 화면이 되는 일이 없도록,
         // 검색된 장소들을 구글 평점 기준으로 정렬하여 상위 10개 장소를 항상 보여줍니다!
-        const verifiedPlaces = rawPlaces.filter((p) => isValidPlaceForCategory(p, state.selectedCategory));
-        const effectiveRawPlaces = verifiedPlaces.length > 0 ? verifiedPlaces : rawPlaces;
+        const effectiveRawPlaces = rawPlaces.filter((p) => isValidPlaceForCategory(p, state.selectedCategory));
         const placesWithDist = effectiveRawPlaces.map((p) => {
           const straightDistM = p.location ? computeHaversineMeters(lockedCenter, p.location) : null;
           return {
@@ -4561,25 +4601,25 @@
       const r = Math.min(2000, Math.max(500, Math.round(radiusMeters)));
       const catObj = CATEGORIES.find((c) => c.id === categoryId) || CATEGORIES[0];
 
-      // Overpass API (엄격한 OSM 업종 태그만 조회하여 비관련 장소 혼입 방지)
+      // Overpass API (반드시 상호명 ["name"] 태그가 존재하는 실제 업장만 조회하여 무명 도로 노드 배제!)
       const fastFilters = {
-        restaurant: `node["amenity"="restaurant"](around:${r},${lat},${lng});node["amenity"="fast_food"](around:${r},${lat},${lng});way["amenity"="restaurant"](around:${r},${lat},${lng});`,
-        cafe: `node["amenity"="cafe"](around:${r},${lat},${lng});way["amenity"="cafe"](around:${r},${lat},${lng});`,
-        tourist_attraction: `node["tourism"="attraction"](around:${r},${lat},${lng});node["tourism"="viewpoint"](around:${r},${lat},${lng});way["tourism"="attraction"](around:${r},${lat},${lng});node["historic"](around:${r},${lat},${lng});`,
-        convenience_store: `node["shop"="convenience"](around:${r},${lat},${lng});way["shop"="convenience"](around:${r},${lat},${lng});`,
-        atm: `node["amenity"="atm"](around:${r},${lat},${lng});node["amenity"="bank"]["atm"="yes"](around:${r},${lat},${lng});`,
-        bank: `node["amenity"="bank"](around:${r},${lat},${lng});way["amenity"="bank"](around:${r},${lat},${lng});`,
-        pharmacy: `node["amenity"="pharmacy"](around:${r},${lat},${lng});way["amenity"="pharmacy"](around:${r},${lat},${lng});`,
-        park: `node["leisure"="park"](around:${r},${lat},${lng});way["leisure"="park"](around:${r},${lat},${lng});`,
-        museum: `node["tourism"="museum"](around:${r},${lat},${lng});node["tourism"="gallery"](around:${r},${lat},${lng});way["tourism"="museum"](around:${r},${lat},${lng});`,
-        bakery: `node["shop"="bakery"](around:${r},${lat},${lng});way["shop"="bakery"](around:${r},${lat},${lng});`,
-        supermarket: `node["shop"="supermarket"](around:${r},${lat},${lng});way["shop"="supermarket"](around:${r},${lat},${lng});`,
-        shopping_mall: `node["shop"="mall"](around:${r},${lat},${lng});node["shop"="department_store"](around:${r},${lat},${lng});way["shop"="mall"](around:${r},${lat},${lng});`,
-        gas_station: `node["amenity"="fuel"](around:${r},${lat},${lng});way["amenity"="fuel"](around:${r},${lat},${lng});`
+        restaurant: `node["amenity"="restaurant"]["name"](around:${r},${lat},${lng});node["amenity"="fast_food"]["name"](around:${r},${lat},${lng});way["amenity"="restaurant"]["name"](around:${r},${lat},${lng});`,
+        cafe: `node["amenity"="cafe"]["name"](around:${r},${lat},${lng});way["amenity"="cafe"]["name"](around:${r},${lat},${lng});`,
+        tourist_attraction: `node["tourism"="attraction"]["name"](around:${r},${lat},${lng});node["tourism"="viewpoint"]["name"](around:${r},${lat},${lng});way["tourism"="attraction"]["name"](around:${r},${lat},${lng});node["historic"]["name"](around:${r},${lat},${lng});`,
+        convenience_store: `node["shop"="convenience"]["name"](around:${r},${lat},${lng});way["shop"="convenience"]["name"](around:${r},${lat},${lng});`,
+        atm: `node["amenity"="atm"](around:${r},${lat},${lng});node["amenity"="bank"]["name"](around:${r},${lat},${lng});`,
+        bank: `node["amenity"="bank"]["name"](around:${r},${lat},${lng});way["amenity"="bank"]["name"](around:${r},${lat},${lng});`,
+        pharmacy: `node["amenity"="pharmacy"]["name"](around:${r},${lat},${lng});way["amenity"="pharmacy"]["name"](around:${r},${lat},${lng});`,
+        park: `node["leisure"="park"]["name"](around:${r},${lat},${lng});way["leisure"="park"]["name"](around:${r},${lat},${lng});`,
+        museum: `node["tourism"="museum"]["name"](around:${r},${lat},${lng});node["tourism"="gallery"]["name"](around:${r},${lat},${lng});way["tourism"="museum"]["name"](around:${r},${lat},${lng});`,
+        bakery: `node["shop"="bakery"]["name"](around:${r},${lat},${lng});way["shop"="bakery"]["name"](around:${r},${lat},${lng});`,
+        supermarket: `node["shop"="supermarket"]["name"](around:${r},${lat},${lng});way["shop"="supermarket"]["name"](around:${r},${lat},${lng});`,
+        shopping_mall: `node["shop"="mall"]["name"](around:${r},${lat},${lng});node["shop"="department_store"]["name"](around:${r},${lat},${lng});way["shop"="mall"]["name"](around:${r},${lat},${lng});`,
+        gas_station: `node["amenity"="fuel"]["name"](around:${r},${lat},${lng});way["amenity"="fuel"]["name"](around:${r},${lat},${lng});`
       };
 
       const filterExpr = fastFilters[categoryId] || fastFilters.restaurant;
-      const query = `[out:json][timeout:5];(${filterExpr});out center 25;`;
+      const query = `[out:json][timeout:6];(${filterExpr});out center 40;`;
       const endpoints = [
         "https://overpass-api.de/api/interpreter",
         "https://lz4.overpass-api.de/api/interpreter",
@@ -4875,7 +4915,10 @@
       const lng = Number(item.lon);
       if (!isFinite(lat) || !isFinite(lng)) return null;
 
-      const rawName = item.name || (item.display_name ? item.display_name.split(",")[0].trim() : "장소");
+      // 중요: Nominatim에서 상호명(item.name)이 없는 무명 노드는 display_name의 첫 토큰이 도로명("해돋이로" 등)으로 되어 있으므로,
+      // 주변 카테고리 검색 시 item.name이 없거나 도로명이면 즉시 배제!
+      const rawName = (item.name || (!requiredCategoryId && item.display_name ? item.display_name.split(",")[0] : "") || "").trim();
+      if (!rawName || (requiredCategoryId && isRoadOrNonBusinessName(rawName))) return null;
       const cat = String(item.category || "").toLowerCase();
       const type = String(item.type || "").toLowerCase();
 
