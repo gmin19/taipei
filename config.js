@@ -856,7 +856,7 @@ function ensurePlaceRating(place) {
           try {
             const { places } = await state.libs.Place.searchByText({
               textQuery: place.name,
-              fields: ["id", "displayName", "location", "types", "rating", "userRatingCount", "photos", "googleMapsURI"],
+              fields: ["displayName", "location", "types", "rating", "userRatingCount", "photos", "googleMapsURI"],
               locationBias: { center: { lat: pLat, lng: pLng }, radius: 250 },
               maxResultCount: 5
             });

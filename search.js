@@ -153,20 +153,23 @@
         ];
         if (isPrimaryIn(FORBIDDEN_RESTAURANT_PRIMARY)) return false;
 
-        // types 배열에 숙박, 편의점, 마트, 백화점, 주유소, 약국, 병원, 미용실 등이 포함되어 있으면 제외
+        const isExplicitRestaurantPrimary =
+          pType === "restaurant" ||
+          pType.endsWith("_restaurant") ||
+          ["steak_house", "noodle_shop", "sandwich_shop", "diner", "bistro", "snack_bar", "meal_takeaway"].includes(pType);
+
+        // 명시적인 식당 primaryType이 아닌 경우에만 부수 타입(편의점·약국·주유소·병원·은행 등)으로 엄격 차단
         const STRICT_FORBIDDEN_ANY_FOR_REST = [
-          "lodging", "hotel", "motel", "resort_hotel", "hostel", "guest_house",
-          "convenience_store", "supermarket", "grocery_store", "grocery_or_supermarket",
-          "department_store", "shopping_mall", "gas_station", "pharmacy", "drugstore",
+          "convenience_store", "gas_station", "pharmacy", "drugstore",
           "hospital", "doctor", "dentist", "beauty_salon", "hair_care", "real_estate_agency",
           "car_wash", "car_repair", "laundry", "bank", "atm", "school", "university",
           "library", "movie_theater", "internet_cafe", "cat_cafe", "dog_cafe",
           "train_station", "subway_station", "airport"
         ];
-        if (hasAnyType(STRICT_FORBIDDEN_ANY_FOR_REST)) return false;
+        if (!isExplicitRestaurantPrimary && hasAnyType(STRICT_FORBIDDEN_ANY_FOR_REST)) return false;
 
-        // types에 cafe나 bakery가 포함되어 있을 때, 전문 음식점(_restaurant)이 아니거나 상호명이 카페/베이커리이면 제외
-        if (hasAnyType(["cafe", "coffee_shop", "bakery", "dessert_shop", "ice_cream_shop", "tea_house"]) && !pType.endsWith("_restaurant")) {
+        // primaryType이 식당이 아닌데 카페·베이커리·숙박·마트 태그가 있으면 제외
+        if (!isExplicitRestaurantPrimary && hasAnyType(["cafe", "coffee_shop", "bakery", "dessert_shop", "ice_cream_shop", "tea_house", "lodging", "hotel", "motel", "supermarket", "grocery_store"])) {
           return false;
         }
 
@@ -369,7 +372,7 @@
         ["restaurant", "cafe"].forEach((catId) => {
           const catObj = CATEGORIES.find((c) => c.id === catId);
           const r = catObj ? catObj.radiusM : DEFAULT_SEARCH_RADIUS_M;
-          const sig = `nearby_v7|${originKey}|r=${r}|cat=${catId}`;
+          const sig = `nearby_v8|${originKey}|r=${r}|cat=${catId}`;
           if (!state.searchCache.has(sig) && !state.inflightNearbyMap.has(sig)) {
             const p = searchNearbyNewApi(originCoords, r, catId)
               .then((places) => {
@@ -520,7 +523,7 @@
         lng: Number(state.searchOrigin.lng)
       };
       const originKey = `${lockedCenter.lat.toFixed(4)},${lockedCenter.lng.toFixed(4)}`;
-      const signature = `nearby_v7|${originKey}|r=${targetRadius}|cat=${state.selectedCategory}`;
+      const signature = `nearby_v8|${originKey}|r=${targetRadius}|cat=${state.selectedCategory}`;
 
       if (!force && signature === state.lastSearchSignature && state.places.length > 0) {
         return;
@@ -672,6 +675,8 @@
       const isDistCat = isDistancePriorityCategory(categoryId);
       const queryText = inKorea ? catObj.keywordKo : catObj.keywordEn;
 
+      let lastGoogleApiError = null;
+
       const filterAndCleanResults = (list) => {
         if (!Array.isArray(list)) return [];
         return list.filter((p) => {
@@ -695,7 +700,7 @@
         "places.googleMapsUri"
       ].join(",");
 
-      // [1차] 최신 Places API (New) REST v1: searchNearby (업종 중심) + searchText (strictTypeFiltering 적용) 병렬 실행
+      // [1차] 최신 Places API (New) REST v1: searchNearby + searchText 병렬 실행
       if (state.apiKey) {
         try {
           const nearbyPromise = (async () => {
@@ -713,6 +718,7 @@
             };
             const resp = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
               method: "POST",
+              referrerPolicy: "unsafe-url",
               headers: {
                 "Content-Type": "application/json",
                 "X-Goog-Api-Key": state.apiKey,
@@ -720,7 +726,11 @@
               },
               body: JSON.stringify(reqBody)
             });
-            if (!resp.ok) return [];
+            if (!resp.ok) {
+              const errJson = await resp.json().catch(() => ({}));
+              lastGoogleApiError = errJson?.error?.message || errJson?.error?.status || `HTTP ${resp.status}`;
+              return [];
+            }
             const data = await resp.json();
             return filterAndCleanResults(
               (data.places || []).map((it) => normalizeRestPlaceObject(it, catObj))
@@ -741,6 +751,7 @@
             };
             const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
               method: "POST",
+              referrerPolicy: "unsafe-url",
               headers: {
                 "Content-Type": "application/json",
                 "X-Goog-Api-Key": state.apiKey,
@@ -748,7 +759,13 @@
               },
               body: JSON.stringify(reqBody)
             });
-            if (!resp.ok) return [];
+            if (!resp.ok) {
+              const errJson = await resp.json().catch(() => ({}));
+              if (!lastGoogleApiError) {
+                lastGoogleApiError = errJson?.error?.message || errJson?.error?.status || `HTTP ${resp.status}`;
+              }
+              return [];
+            }
             const data = await resp.json();
             return filterAndCleanResults(
               (data.places || []).map((it) => normalizeRestPlaceObject(it, catObj))
@@ -764,47 +781,79 @@
           if (merged.length > 0) {
             return merged;
           }
-        } catch (_) {}
+        } catch (err) {
+          lastGoogleApiError = err?.message || String(err);
+        }
       }
 
       // [2차] Maps JS SDK Place.searchNearby & Place.searchByText
+      // 중요: Maps JS SDK의 Place.searchNearby / searchByText에서는 fields에 "id"를 넣으면 InvalidValueError가 발생하므로
+      // 공식 지원 필드만 전달합니다 (place.id는 기본 포함됨).
       if (state.libs.Place) {
         try {
           let jsResults = [];
+          const sdkFields = ["displayName", "formattedAddress", "location", "types", "rating", "userRatingCount", "photos"];
+          const minimalSdkFields = ["displayName", "location", "rating", "userRatingCount"];
+
           if (typeof state.libs.Place.searchNearby === "function") {
             try {
               const { places } = await state.libs.Place.searchNearby({
-                fields: ["id", "displayName", "formattedAddress", "location", "types", "rating", "userRatingCount", "photos"],
+                fields: sdkFields,
                 locationRestriction: { center: safeCenter, radius: safeRadius },
-                includedTypes: catObj.types,
+                includedTypes: [catObj.types[0]],
                 maxResultCount: 20
               });
               if (Array.isArray(places)) {
                 jsResults.push(...places.map((p) => normalizeJsPlaceObject(p, catObj)));
               }
-            } catch (_) {}
+            } catch (sdkErr1) {
+              try {
+                const { places } = await state.libs.Place.searchNearby({
+                  fields: minimalSdkFields,
+                  locationRestriction: { center: safeCenter, radius: safeRadius },
+                  includedTypes: [catObj.types[0]],
+                  maxResultCount: 20
+                });
+                if (Array.isArray(places)) {
+                  jsResults.push(...places.map((p) => normalizeJsPlaceObject(p, catObj)));
+                }
+              } catch (sdkErr2) {
+                if (!lastGoogleApiError) lastGoogleApiError = sdkErr2?.message || String(sdkErr2);
+              }
+            }
           }
+
           if (jsResults.length < 5 && typeof state.libs.Place.searchByText === "function") {
             try {
               const { places } = await state.libs.Place.searchByText({
                 textQuery: queryText,
-                includedType: catObj.types[0],
-                isStrictTypeFiltering: true,
-                fields: ["id", "displayName", "formattedAddress", "location", "types", "rating", "userRatingCount", "photos"],
+                fields: sdkFields,
                 locationBias: { center: safeCenter, radius: safeRadius },
                 maxResultCount: 20
               });
               if (Array.isArray(places)) {
                 jsResults.push(...places.map((p) => normalizeJsPlaceObject(p, catObj)));
               }
-            } catch (_) {}
+            } catch (sdkTextErr) {
+              try {
+                const { places } = await state.libs.Place.searchByText({
+                  textQuery: queryText,
+                  fields: minimalSdkFields,
+                  locationBias: { center: safeCenter, radius: safeRadius }
+                });
+                if (Array.isArray(places)) {
+                  jsResults.push(...places.map((p) => normalizeJsPlaceObject(p, catObj)));
+                }
+              } catch (_) {}
+            }
           }
+
           const filteredJs = filterAndCleanResults(mergeUniquePlaces(jsResults));
           if (filteredJs.length > 0) return filteredJs;
         } catch (_) {}
       }
 
-      // [3차] Maps JS SDK PlacesService (모든 브라우저·전 세계 지원되는 핵심 Google API)
+      // [3차] Maps JS SDK PlacesService (nearbySearch + textSearch)
       if (state.libs.PlacesService && state.map) {
         try {
           const svc = new state.libs.PlacesService(state.map);
@@ -813,7 +862,6 @@
             : safeCenter;
 
           const promises = [
-            // 3-A) 반경 내 순수 type 기반 nearbySearch
             new Promise((resolve) => {
               svc.nearbySearch(
                 {
@@ -825,6 +873,9 @@
                   if ((status === "OK" || status === google.maps.places?.PlacesServiceStatus?.OK) && Array.isArray(results) && results.length > 0) {
                     resolve(results.map((it) => normalizeLegacyPlaceResult(it, catObj)).filter(Boolean));
                   } else {
+                    if (status && status !== "ZERO_RESULTS" && !lastGoogleApiError) {
+                      lastGoogleApiError = `PlacesService: ${status}`;
+                    }
                     resolve([]);
                   }
                 }
@@ -832,7 +883,6 @@
             })
           ];
 
-          // 3-B) 거리 최우선 카테고리(편의점·ATM·은행·약국·주유소)는 RankBy.DISTANCE를 병행하여 바로 앞 가장 가까운 곳 100% 확보!
           if (isDistCat && window.google?.maps?.places?.RankBy?.DISTANCE) {
             promises.push(
               new Promise((resolve) => {
@@ -853,15 +903,13 @@
               })
             );
           } else if (typeof svc.textSearch === "function") {
-            // 3-C) 평점 우선 카테고리는 type을 명시한 textSearch를 보조로 병행
             promises.push(
               new Promise((resolve) => {
                 svc.textSearch(
                   {
                     query: queryText,
                     location: gLatLng,
-                    radius: safeRadius,
-                    type: catObj.types[0]
+                    radius: safeRadius
                   },
                   (results, status) => {
                     if ((status === "OK" || status === google.maps.places?.PlacesServiceStatus?.OK) && Array.isArray(results) && results.length > 0) {
@@ -881,11 +929,26 @@
         } catch (_) {}
       }
 
-      // [4차] 글로벌 백업 POI 검색 (Overpass 엄격 태그 필터)
+      // 만약 [1차]~[3차] Google Places API가 모두 권한/키 제한 오류로 실패한 경우 진단 박스에 기록하고 사용자에게 안내!
+      if (lastGoogleApiError) {
+        const diagBox = $("lastDiagnosticErrorBox");
+        if (diagBox) {
+          diagBox.style.display = "block";
+          diagBox.textContent = `Google Places API 응답: ${lastGoogleApiError}`;
+        }
+        showBanner(
+          "⚠️ 현재 API 키에서 Google Places API 권한(또는 웹사이트 리퍼러 제한)이 차단되어 구글 평점을 불러오지 못했습니다. 우측 [원인·해결]을 눌러 확인해 주세요.",
+          "warn",
+          true
+        );
+      }
+
+      // [4차] 글로벌 백업 POI 검색 (Overpass 엄격 태그 필터) + 실시간 Google 평점 매칭 대기
       try {
         const osmPlaces = await searchNearbyOpenStreetMapFast(safeCenter, safeRadius, categoryId);
         const filteredOsm = filterAndCleanResults(osmPlaces);
         if (filteredOsm.length > 0) {
+          await enrichPlacesWithGoogleRatings(filteredOsm);
           return filteredOsm;
         }
       } catch (osmErr) {
@@ -999,7 +1062,7 @@
               try {
                 const { places } = await state.libs.Place.searchByText({
                   textQuery: qStr,
-                  fields: ["id", "displayName", "formattedAddress", "location", "types", "rating", "userRatingCount", "photos"],
+                  fields: ["displayName", "formattedAddress", "location", "types", "rating", "userRatingCount", "photos"],
                   maxResultCount: 5
                 });
                 if (Array.isArray(places) && places.length > 0) {
@@ -1574,7 +1637,7 @@
       return {
         id: placeInstance.id,
         rawPlace: placeInstance,
-        name: placeInstance.displayName || "이름 정보 없음",
+        name: (typeof placeInstance.displayName === "string" ? placeInstance.displayName : (placeInstance.displayName?.text || placeInstance.name)) || "이름 정보 없음",
         address: placeInstance.formattedAddress || "",
         location: loc,
         primaryType: bestType,
@@ -1877,7 +1940,7 @@
           try {
             const { places } = await state.libs.Place.searchByText({
               textQuery: place.name,
-              fields: ["id", "displayName", "location", "types", "rating", "userRatingCount", "photos", "googleMapsURI"],
+              fields: ["displayName", "location", "types", "rating", "userRatingCount", "photos", "googleMapsURI"],
               locationBias: { center: { lat: pLat, lng: pLng }, radius: 250 },
               maxResultCount: 5
             });
