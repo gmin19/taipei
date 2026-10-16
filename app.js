@@ -1,5 +1,5 @@
 // ===========================================================================
-// [app.js] 앱 초기화, 지도 및 내 위치 제어, '❤️ 내 장소' 관리, 카드 및 마커 UI 렌더링
+// [app.js] 앱 초기화, 기기별 API 키 보안 저장, 지도·내 위치 제어, '❤️ 내 장소' 및 카드·마커 렌더링
 // ===========================================================================
 
 // =========================================================================
@@ -442,12 +442,16 @@
       const title = $("fallbackTitle");
       const desc = $("fallbackDesc");
       if (overlay) overlay.style.display = "flex";
-      if (title) title.textContent = "Google Maps API 키를 설정한 후 사용할 수 있습니다.";
+      if (title) title.textContent = "내 기기에 Google Maps API 키 저장";
       if (desc) {
         desc.innerHTML =
-          '파일 상단의 <code>const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY";</code>에 유효한 키를 입력하거나 아래 버튼을 눌러 키를 설정하세요.';
+          "보안을 위해 코드에 키를 넣지 않고 <strong>현재 스마트폰·PC 브라우저에만 안전하게 저장</strong>합니다. 아래에 API 키를 입력하면 다음부터 자동으로 열립니다.";
       }
-      showBanner("Google Maps API 키를 설정한 후 사용할 수 있습니다.", "info");
+      const overlayInput = $("overlayKeyInput");
+      if (overlayInput) {
+        setTimeout(() => overlayInput.focus(), 150);
+      }
+      showBanner("처음 한 번만 API 키를 입력하면 이 기기에 안전하게 저장됩니다.", "info");
     }
 
     window.gm_authFailure = function () {
@@ -927,10 +931,10 @@
         if (e.target === $("helpModal")) $("helpModal").classList.remove("open");
       });
 
-      $("btnApplyRuntimeKey").addEventListener("click", async () => {
-        const val = $("runtimeKeyInput").value.trim();
+      const saveAndLoadApiKey = async (rawKey) => {
+        const val = (rawKey || "").trim();
         if (!val) {
-          showBanner("유효한 Google Maps API 키를 입력해 주세요.", "warn");
+          showBanner("유효한 Google Maps API 키(AIzaSy...)를 입력해 주세요.", "warn");
           return;
         }
         try {
@@ -938,6 +942,8 @@
           localStorage.setItem("TRAVEL_HELPER_GMAPS_KEY", val);
         } catch (_) {}
         state.apiKey = val;
+        if ($("runtimeKeyInput")) $("runtimeKeyInput").value = val;
+        if ($("overlayKeyInput")) $("overlayKeyInput").value = val;
         state.searchCache.clear();
         state.routeMatrixCache.clear();
         state.placeDetailsCache.clear();
@@ -949,7 +955,64 @@
           return;
         }
         await loadGoogleMapsLibraries(val);
+      };
+
+      $("btnApplyRuntimeKey").addEventListener("click", () => {
+        saveAndLoadApiKey($("runtimeKeyInput").value);
       });
+
+      const btnSaveOverlayKey = $("btnSaveOverlayKey");
+      if (btnSaveOverlayKey) {
+        btnSaveOverlayKey.addEventListener("click", () => {
+          saveAndLoadApiKey($("overlayKeyInput").value);
+        });
+      }
+
+      const overlayKeyInput = $("overlayKeyInput");
+      if (overlayKeyInput) {
+        overlayKeyInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            saveAndLoadApiKey(overlayKeyInput.value);
+          }
+        });
+      }
+
+      const btnToggleOverlayKeyVis = $("btnToggleOverlayKeyVis");
+      if (btnToggleOverlayKeyVis && overlayKeyInput) {
+        btnToggleOverlayKeyVis.addEventListener("click", () => {
+          const isPwd = overlayKeyInput.type === "password";
+          overlayKeyInput.type = isPwd ? "text" : "password";
+          btnToggleOverlayKeyVis.textContent = isPwd ? "🙈" : "👁️";
+        });
+      }
+
+      const btnToggleModalKeyVis = $("btnToggleModalKeyVis");
+      const runtimeKeyInput = $("runtimeKeyInput");
+      if (btnToggleModalKeyVis && runtimeKeyInput) {
+        btnToggleModalKeyVis.addEventListener("click", () => {
+          const isPwd = runtimeKeyInput.type === "password";
+          runtimeKeyInput.type = isPwd ? "text" : "password";
+          btnToggleModalKeyVis.textContent = isPwd ? "🙈" : "👁️";
+        });
+      }
+
+      const btnDeleteStoredKey = $("btnDeleteStoredKey");
+      if (btnDeleteStoredKey) {
+        btnDeleteStoredKey.addEventListener("click", () => {
+          try {
+            sessionStorage.removeItem("TRAVEL_HELPER_GMAPS_KEY");
+            localStorage.removeItem("TRAVEL_HELPER_GMAPS_KEY");
+          } catch (_) {}
+          state.apiKey = "";
+          if ($("runtimeKeyInput")) $("runtimeKeyInput").value = "";
+          if ($("overlayKeyInput")) $("overlayKeyInput").value = "";
+          updateActiveKeyInfoUI();
+          $("helpModal").classList.remove("open");
+          showMissingKeyNotice();
+          showBanner("이 기기(브라우저)에 저장된 API 키를 완전히 삭제했습니다.", "info");
+        });
+      }
 
       const btnClearKeyCache = $("btnClearKeyCache");
       if (btnClearKeyCache) {
