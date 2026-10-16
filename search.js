@@ -369,7 +369,7 @@
         ["restaurant", "cafe"].forEach((catId) => {
           const catObj = CATEGORIES.find((c) => c.id === catId);
           const r = catObj ? catObj.radiusM : DEFAULT_SEARCH_RADIUS_M;
-          const sig = `nearby_v6|${originKey}|r=${r}|cat=${catId}`;
+          const sig = `nearby_v7|${originKey}|r=${r}|cat=${catId}`;
           if (!state.searchCache.has(sig) && !state.inflightNearbyMap.has(sig)) {
             const p = searchNearbyNewApi(originCoords, r, catId)
               .then((places) => {
@@ -520,7 +520,7 @@
         lng: Number(state.searchOrigin.lng)
       };
       const originKey = `${lockedCenter.lat.toFixed(4)},${lockedCenter.lng.toFixed(4)}`;
-      const signature = `nearby_v6|${originKey}|r=${targetRadius}|cat=${state.selectedCategory}`;
+      const signature = `nearby_v7|${originKey}|r=${targetRadius}|cat=${state.selectedCategory}`;
 
       if (!force && signature === state.lastSearchSignature && state.places.length > 0) {
         return;
@@ -688,12 +688,9 @@
         "places.formattedAddress",
         "places.location",
         "places.primaryType",
-        "places.primaryTypeDisplayName",
         "places.types",
         "places.rating",
         "places.userRatingCount",
-        "places.regularOpeningHours",
-        "places.priceLevel",
         "places.photos",
         "places.googleMapsUri"
       ].join(",");
@@ -777,7 +774,7 @@
           if (typeof state.libs.Place.searchNearby === "function") {
             try {
               const { places } = await state.libs.Place.searchNearby({
-                fields: ["id", "displayName", "formattedAddress", "location", "primaryType", "types", "rating", "userRatingCount", "photos"],
+                fields: ["id", "displayName", "formattedAddress", "location", "types", "rating", "userRatingCount", "photos"],
                 locationRestriction: { center: safeCenter, radius: safeRadius },
                 includedTypes: catObj.types,
                 maxResultCount: 20
@@ -793,7 +790,7 @@
                 textQuery: queryText,
                 includedType: catObj.types[0],
                 isStrictTypeFiltering: true,
-                fields: ["id", "displayName", "formattedAddress", "location", "primaryType", "types", "rating", "userRatingCount", "photos"],
+                fields: ["id", "displayName", "formattedAddress", "location", "types", "rating", "userRatingCount", "photos"],
                 locationBias: { center: safeCenter, radius: safeRadius },
                 maxResultCount: 20
               });
@@ -1002,7 +999,7 @@
               try {
                 const { places } = await state.libs.Place.searchByText({
                   textQuery: qStr,
-                  fields: ["id", "displayName", "formattedAddress", "location", "primaryType", "types", "rating", "userRatingCount", "photos"],
+                  fields: ["id", "displayName", "formattedAddress", "location", "types", "rating", "userRatingCount", "photos"],
                   maxResultCount: 5
                 });
                 if (Array.isArray(places) && places.length > 0) {
@@ -1798,56 +1795,165 @@
 // =========================================================================
     // Google 평점이 누락된 장소에 대해 Google Places 검색을 통해 실시간으로 평점 보강!
     // =========================================================================
-    function enrichPlacesWithGoogleRatings(placesList) {
+    async function enrichPlacesWithGoogleRatings(placesList) {
       if (!Array.isArray(placesList) || placesList.length === 0) return;
       placesList.forEach(ensurePlaceRating);
 
-      if (!state.libs.PlacesService || !state.map) return;
+      const unverified = placesList.filter((p) => p && p.location && !p.isGoogleRatingVerified);
+      if (unverified.length === 0) return;
 
-      try {
-        const svc = new state.libs.PlacesService(state.map);
-        placesList.slice(0, 10).forEach((place) => {
-          if (!place || !place.location || place.isGoogleRatingVerified) return;
-          const gLatLng = new google.maps.LatLng(place.location.lat, place.location.lng);
-          svc.textSearch(
-            {
-              query: place.name,
-              location: gLatLng,
-              radius: 300
-            },
-            (results, status) => {
-              if (status === "OK" && Array.isArray(results) && results.length > 0) {
-                // 도로(route)나 주소(street_address), 혹은 도로명('해돋이로' 등)인 결과는 절대 매칭하지 않도록 필터링!
-                const validMatch = results.find((r) => {
-                  if (!r || !r.name) return false;
-                  const rTypes = Array.isArray(r.types) ? r.types : [];
-                  if (rTypes.some((t) => ["route", "street_address", "intersection", "locality", "sublocality", "political", "postal_code"].includes(t))) {
-                    return false;
-                  }
-                  if (isRoadOrNonBusinessName(r.name)) return false;
-                  return true;
-                });
+      let anyUpdated = false;
 
-                if (validMatch) {
-                  if (validMatch.place_id) {
-                    place.googlePlaceId = validMatch.place_id;
+      const enrichOnePlace = async (place) => {
+        const pLat = Number(place.location.lat);
+        const pLng = Number(place.location.lng);
+
+        const isGoodCandidate = (candName, candLoc, candTypes) => {
+          if (!candName) return false;
+          const rTypes = Array.isArray(candTypes) ? candTypes : [];
+          if (rTypes.some((t) => ["route", "street_address", "intersection", "locality", "sublocality", "political", "postal_code"].includes(t))) {
+            return false;
+          }
+          if (isRoadOrNonBusinessName(candName)) return false;
+          if (candLoc && computeHaversineMeters(place.location, candLoc) > 350) {
+            return false;
+          }
+          return true;
+        };
+
+        // [방법 1] Places API (New) REST v1 places:searchText로 정확한 매장 평점 조회
+        if (state.apiKey) {
+          try {
+            const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Goog-Api-Key": state.apiKey,
+                "X-Goog-FieldMask": "places.id,places.displayName,places.location,places.types,places.rating,places.userRatingCount,places.googleMapsUri,places.photos"
+              },
+              body: JSON.stringify({
+                textQuery: place.name,
+                locationBias: {
+                  circle: {
+                    center: { latitude: pLat, longitude: pLng },
+                    radius: 250
                   }
-                  if (typeof validMatch.rating === "number" && validMatch.rating > 0) {
-                    place.rating = validMatch.rating;
-                    place.userRatingCount = validMatch.user_ratings_total || place.userRatingCount;
-                    place.isGoogleRatingVerified = true;
-                  }
-                  if (!place.photoUrl && validMatch.photos && validMatch.photos[0]) {
-                    try {
-                      place.photoUrl = validMatch.photos[0].getUrl({ maxWidth: 320, maxHeight: 240 });
-                    } catch (_) {}
-                  }
-                  updateSinglePlaceCard(place);
-                  updateSinglePlaceMarker(place);
+                },
+                maxResultCount: 5
+              })
+            });
+            if (resp.ok) {
+              const data = await resp.json();
+              const candidates = data.places || [];
+              const match = candidates.find((c) =>
+                isGoodCandidate(
+                  c.displayName?.text,
+                  c.location ? { lat: c.location.latitude, lng: c.location.longitude } : null,
+                  c.types
+                )
+              );
+              if (match) {
+                if (match.id) place.googlePlaceId = match.id;
+                if (match.googleMapsUri) place.googleMapsURI = match.googleMapsUri;
+                if (typeof match.rating === "number" && match.rating > 0) {
+                  place.rating = Math.round(match.rating * 10) / 10;
+                  place.userRatingCount = typeof match.userRatingCount === "number" ? match.userRatingCount : null;
+                  place.isGoogleRatingVerified = true;
+                  anyUpdated = true;
                 }
+                if (!place.photoUrl && Array.isArray(match.photos) && match.photos[0]?.name) {
+                  place.photoUrl = `https://places.googleapis.com/v1/${match.photos[0].name}/media?maxWidthPx=320&maxHeightPx=240&key=${encodeURIComponent(state.apiKey)}`;
+                }
+                updateSinglePlaceCard(place);
+                updateSinglePlaceMarker(place);
+                return;
               }
             }
-          );
-        });
-      } catch (_) {}
+          } catch (_) {}
+        }
+
+        // [방법 2] Maps JS SDK Place.searchByText로 조회
+        if (state.libs.Place && typeof state.libs.Place.searchByText === "function") {
+          try {
+            const { places } = await state.libs.Place.searchByText({
+              textQuery: place.name,
+              fields: ["id", "displayName", "location", "types", "rating", "userRatingCount", "photos", "googleMapsURI"],
+              locationBias: { center: { lat: pLat, lng: pLng }, radius: 250 },
+              maxResultCount: 5
+            });
+            if (Array.isArray(places) && places.length > 0) {
+              const match = places.find((c) =>
+                isGoodCandidate(c.displayName, extractLatLngLiteral(c.location), c.types)
+              );
+              if (match) {
+                if (match.id) place.googlePlaceId = match.id;
+                if (match.googleMapsURI) place.googleMapsURI = match.googleMapsURI;
+                if (typeof match.rating === "number" && match.rating > 0) {
+                  place.rating = Math.round(match.rating * 10) / 10;
+                  place.userRatingCount = typeof match.userRatingCount === "number" ? match.userRatingCount : null;
+                  place.isGoogleRatingVerified = true;
+                  anyUpdated = true;
+                }
+                if (!place.photoUrl && Array.isArray(match.photos) && match.photos[0] && typeof match.photos[0].getURI === "function") {
+                  try {
+                    place.photoUrl = match.photos[0].getURI({ maxWidth: 320, maxHeight: 240 });
+                  } catch (_) {}
+                }
+                updateSinglePlaceCard(place);
+                updateSinglePlaceMarker(place);
+                return;
+              }
+            }
+          } catch (_) {}
+        }
+
+        // [방법 3] PlacesService (Legacy textSearch) 조회
+        if (state.libs.PlacesService && state.map) {
+          try {
+            const svc = new state.libs.PlacesService(state.map);
+            const gLatLng = new google.maps.LatLng(pLat, pLng);
+            await new Promise((resolve) => {
+              svc.textSearch(
+                {
+                  query: place.name,
+                  location: gLatLng,
+                  radius: 250
+                },
+                (results, status) => {
+                  if (status === "OK" && Array.isArray(results) && results.length > 0) {
+                    const validMatch = results.find((r) =>
+                      isGoodCandidate(r.name, extractLatLngLiteral(r.geometry?.location), r.types)
+                    );
+                    if (validMatch) {
+                      if (validMatch.place_id) place.googlePlaceId = validMatch.place_id;
+                      if (typeof validMatch.rating === "number" && validMatch.rating > 0) {
+                        place.rating = Math.round(validMatch.rating * 10) / 10;
+                        place.userRatingCount = typeof validMatch.user_ratings_total === "number" ? validMatch.user_ratings_total : null;
+                        place.isGoogleRatingVerified = true;
+                        anyUpdated = true;
+                      }
+                      if (!place.photoUrl && validMatch.photos && validMatch.photos[0]) {
+                        try {
+                          place.photoUrl = validMatch.photos[0].getUrl({ maxWidth: 320, maxHeight: 240 });
+                        } catch (_) {}
+                      }
+                      updateSinglePlaceCard(place);
+                      updateSinglePlaceMarker(place);
+                    }
+                  }
+                  resolve();
+                }
+              );
+            });
+          } catch (_) {}
+        }
+      };
+
+      await Promise.all(unverified.slice(0, 10).map(enrichOnePlace));
+
+      // 실제 Google 평점이 새로 반영된 경우, 실제 평점 순서대로 카드를 즉시 재정렬!
+      if (anyUpdated) {
+        state.places = getSortedPlaces();
+        renderPlacesListAndMarkers(false);
+      }
     }

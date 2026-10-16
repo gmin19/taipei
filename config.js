@@ -420,19 +420,14 @@
 
 function ensurePlaceRating(place) {
       if (!place) return;
-      if (typeof place.rating === "number" && place.rating >= 1.0 && place.rating <= 5.0) {
-        if (typeof place.userRatingCount !== "number" || place.userRatingCount <= 0) {
-          place.userRatingCount = 120 + (Math.abs(hashString(place.name || place.id || "")) % 850);
-        }
-        return;
+      if (typeof place.rating === "number" && isFinite(place.rating) && place.rating > 0 && place.rating <= 5.0) {
+        place.rating = Math.round(place.rating * 10) / 10;
+        place.isGoogleRatingVerified = true;
+      } else {
+        place.rating = null;
+        place.userRatingCount = null;
+        place.isGoogleRatingVerified = false;
       }
-
-      // 장소 고유 식별자/이름 기반의 안정적인 결정론적(Deterministic) 평점 생성 (4.2 ~ 4.8)
-      const seedStr = (place.name || "") + (place.id || "") + (place.address || "");
-      const h = Math.abs(hashString(seedStr));
-      const ratingOptions = [4.3, 4.5, 4.6, 4.4, 4.7, 4.2, 4.8, 4.5];
-      place.rating = ratingOptions[h % ratingOptions.length];
-      place.userRatingCount = 85 + (h % 1450);
     }
 
     function hashString(str) {
@@ -483,13 +478,21 @@ function ensurePlaceRating(place) {
 
       const isDistCat = isDistancePriorityCategory(state.selectedCategory);
       ensurePlaceRating(place);
-      const ratingScore = typeof place.rating === "number" ? place.rating.toFixed(1) : "4.5";
-      const reviewCountText = place.userRatingCount ? `${place.userRatingCount.toLocaleString()}개 리뷰` : "320개 리뷰";
+      const hasRealRating = typeof place.rating === "number" && place.rating > 0;
+      const ratingScore = hasRealRating ? place.rating.toFixed(1) : null;
+      const reviewCountText =
+        hasRealRating && typeof place.userRatingCount === "number" && place.userRatingCount > 0
+          ? `(${place.userRatingCount.toLocaleString()}개 리뷰)`
+          : "";
 
-      // 거리 우선 카테고리(편의점·ATM·은행·약국·주유소)는 거리순임을 강조하고 평점은 보조로 표시
+      const realRatingSpan = hasRealRating
+        ? `<span class="rating-text">★ ${ratingScore}</span> ${reviewCountText ? `<span>${reviewCountText}</span>` : ""}`
+        : `<span class="status-unknown rating-placeholder">평점 정보 없음</span>`;
+
+      // 거리 우선 카테고리(편의점·ATM·은행·약국·주유소)는 거리순임을 강조하고 실제 평점이 있을 때만 함께 표시
       const ratingHtml = isDistCat
-        ? `<span style="color:#047857; font-weight:800;">📍 거리 우선 (가장 가까움 #${indexNum})</span> · <span class="rating-text">★ ${ratingScore}</span>`
-        : `<span class="rating-text">★ ${ratingScore}</span> <span>(${reviewCountText})</span>`;
+        ? `<span style="color:#047857; font-weight:800;">📍 거리 우선 (가장 가까움 #${indexNum})</span>${hasRealRating ? ` · ${realRatingSpan}` : ""}`
+        : realRatingSpan;
 
       let openBadgeHtml = `<span class="status-unknown">영업 상태 정보 없음</span>`;
       if (place.isOpenNow === true) {
@@ -771,58 +774,167 @@ function ensurePlaceRating(place) {
     // =========================================================================
     // Google 평점이 누락된 장소에 대해 Google Places 검색을 통해 실시간으로 평점 보강!
     // =========================================================================
-    function enrichPlacesWithGoogleRatings(placesList) {
+    async function enrichPlacesWithGoogleRatings(placesList) {
       if (!Array.isArray(placesList) || placesList.length === 0) return;
       placesList.forEach(ensurePlaceRating);
 
-      if (!state.libs.PlacesService || !state.map) return;
+      const unverified = placesList.filter((p) => p && p.location && !p.isGoogleRatingVerified);
+      if (unverified.length === 0) return;
 
-      try {
-        const svc = new state.libs.PlacesService(state.map);
-        placesList.slice(0, 10).forEach((place) => {
-          if (!place || !place.location || place.isGoogleRatingVerified) return;
-          const gLatLng = new google.maps.LatLng(place.location.lat, place.location.lng);
-          svc.textSearch(
-            {
-              query: place.name,
-              location: gLatLng,
-              radius: 300
-            },
-            (results, status) => {
-              if (status === "OK" && Array.isArray(results) && results.length > 0) {
-                // 도로(route)나 주소(street_address), 혹은 도로명('해돋이로' 등)인 결과는 절대 매칭하지 않도록 필터링!
-                const validMatch = results.find((r) => {
-                  if (!r || !r.name) return false;
-                  const rTypes = Array.isArray(r.types) ? r.types : [];
-                  if (rTypes.some((t) => ["route", "street_address", "intersection", "locality", "sublocality", "political", "postal_code"].includes(t))) {
-                    return false;
-                  }
-                  if (isRoadOrNonBusinessName(r.name)) return false;
-                  return true;
-                });
+      let anyUpdated = false;
 
-                if (validMatch) {
-                  if (validMatch.place_id) {
-                    place.googlePlaceId = validMatch.place_id;
+      const enrichOnePlace = async (place) => {
+        const pLat = Number(place.location.lat);
+        const pLng = Number(place.location.lng);
+
+        const isGoodCandidate = (candName, candLoc, candTypes) => {
+          if (!candName) return false;
+          const rTypes = Array.isArray(candTypes) ? candTypes : [];
+          if (rTypes.some((t) => ["route", "street_address", "intersection", "locality", "sublocality", "political", "postal_code"].includes(t))) {
+            return false;
+          }
+          if (isRoadOrNonBusinessName(candName)) return false;
+          if (candLoc && computeHaversineMeters(place.location, candLoc) > 350) {
+            return false;
+          }
+          return true;
+        };
+
+        // [방법 1] Places API (New) REST v1 places:searchText로 정확한 매장 평점 조회
+        if (state.apiKey) {
+          try {
+            const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Goog-Api-Key": state.apiKey,
+                "X-Goog-FieldMask": "places.id,places.displayName,places.location,places.types,places.rating,places.userRatingCount,places.googleMapsUri,places.photos"
+              },
+              body: JSON.stringify({
+                textQuery: place.name,
+                locationBias: {
+                  circle: {
+                    center: { latitude: pLat, longitude: pLng },
+                    radius: 250
                   }
-                  if (typeof validMatch.rating === "number" && validMatch.rating > 0) {
-                    place.rating = validMatch.rating;
-                    place.userRatingCount = validMatch.user_ratings_total || place.userRatingCount;
-                    place.isGoogleRatingVerified = true;
-                  }
-                  if (!place.photoUrl && validMatch.photos && validMatch.photos[0]) {
-                    try {
-                      place.photoUrl = validMatch.photos[0].getUrl({ maxWidth: 320, maxHeight: 240 });
-                    } catch (_) {}
-                  }
-                  updateSinglePlaceCard(place);
-                  updateSinglePlaceMarker(place);
+                },
+                maxResultCount: 5
+              })
+            });
+            if (resp.ok) {
+              const data = await resp.json();
+              const candidates = data.places || [];
+              const match = candidates.find((c) =>
+                isGoodCandidate(
+                  c.displayName?.text,
+                  c.location ? { lat: c.location.latitude, lng: c.location.longitude } : null,
+                  c.types
+                )
+              );
+              if (match) {
+                if (match.id) place.googlePlaceId = match.id;
+                if (match.googleMapsUri) place.googleMapsURI = match.googleMapsUri;
+                if (typeof match.rating === "number" && match.rating > 0) {
+                  place.rating = Math.round(match.rating * 10) / 10;
+                  place.userRatingCount = typeof match.userRatingCount === "number" ? match.userRatingCount : null;
+                  place.isGoogleRatingVerified = true;
+                  anyUpdated = true;
                 }
+                if (!place.photoUrl && Array.isArray(match.photos) && match.photos[0]?.name) {
+                  place.photoUrl = `https://places.googleapis.com/v1/${match.photos[0].name}/media?maxWidthPx=320&maxHeightPx=240&key=${encodeURIComponent(state.apiKey)}`;
+                }
+                updateSinglePlaceCard(place);
+                updateSinglePlaceMarker(place);
+                return;
               }
             }
-          );
-        });
-      } catch (_) {}
+          } catch (_) {}
+        }
+
+        // [방법 2] Maps JS SDK Place.searchByText로 조회
+        if (state.libs.Place && typeof state.libs.Place.searchByText === "function") {
+          try {
+            const { places } = await state.libs.Place.searchByText({
+              textQuery: place.name,
+              fields: ["id", "displayName", "location", "types", "rating", "userRatingCount", "photos", "googleMapsURI"],
+              locationBias: { center: { lat: pLat, lng: pLng }, radius: 250 },
+              maxResultCount: 5
+            });
+            if (Array.isArray(places) && places.length > 0) {
+              const match = places.find((c) =>
+                isGoodCandidate(c.displayName, extractLatLngLiteral(c.location), c.types)
+              );
+              if (match) {
+                if (match.id) place.googlePlaceId = match.id;
+                if (match.googleMapsURI) place.googleMapsURI = match.googleMapsURI;
+                if (typeof match.rating === "number" && match.rating > 0) {
+                  place.rating = Math.round(match.rating * 10) / 10;
+                  place.userRatingCount = typeof match.userRatingCount === "number" ? match.userRatingCount : null;
+                  place.isGoogleRatingVerified = true;
+                  anyUpdated = true;
+                }
+                if (!place.photoUrl && Array.isArray(match.photos) && match.photos[0] && typeof match.photos[0].getURI === "function") {
+                  try {
+                    place.photoUrl = match.photos[0].getURI({ maxWidth: 320, maxHeight: 240 });
+                  } catch (_) {}
+                }
+                updateSinglePlaceCard(place);
+                updateSinglePlaceMarker(place);
+                return;
+              }
+            }
+          } catch (_) {}
+        }
+
+        // [방법 3] PlacesService (Legacy textSearch) 조회
+        if (state.libs.PlacesService && state.map) {
+          try {
+            const svc = new state.libs.PlacesService(state.map);
+            const gLatLng = new google.maps.LatLng(pLat, pLng);
+            await new Promise((resolve) => {
+              svc.textSearch(
+                {
+                  query: place.name,
+                  location: gLatLng,
+                  radius: 250
+                },
+                (results, status) => {
+                  if (status === "OK" && Array.isArray(results) && results.length > 0) {
+                    const validMatch = results.find((r) =>
+                      isGoodCandidate(r.name, extractLatLngLiteral(r.geometry?.location), r.types)
+                    );
+                    if (validMatch) {
+                      if (validMatch.place_id) place.googlePlaceId = validMatch.place_id;
+                      if (typeof validMatch.rating === "number" && validMatch.rating > 0) {
+                        place.rating = Math.round(validMatch.rating * 10) / 10;
+                        place.userRatingCount = typeof validMatch.user_ratings_total === "number" ? validMatch.user_ratings_total : null;
+                        place.isGoogleRatingVerified = true;
+                        anyUpdated = true;
+                      }
+                      if (!place.photoUrl && validMatch.photos && validMatch.photos[0]) {
+                        try {
+                          place.photoUrl = validMatch.photos[0].getUrl({ maxWidth: 320, maxHeight: 240 });
+                        } catch (_) {}
+                      }
+                      updateSinglePlaceCard(place);
+                      updateSinglePlaceMarker(place);
+                    }
+                  }
+                  resolve();
+                }
+              );
+            });
+          } catch (_) {}
+        }
+      };
+
+      await Promise.all(unverified.slice(0, 10).map(enrichOnePlace));
+
+      // 실제 Google 평점이 새로 반영된 경우, 실제 평점 순서대로 카드를 즉시 재정렬!
+      if (anyUpdated) {
+        state.places = getSortedPlaces();
+        renderPlacesListAndMarkers(false);
+      }
     }
 
 // =========================================================================

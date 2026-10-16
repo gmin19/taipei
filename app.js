@@ -1345,9 +1345,9 @@
     }
 
     // =========================================================================
-    // 장소 평점 보장 함수: Google 공식 평점을 우선 사용하되,
-    // Google 서버에서 평점이 제공되지 않거나 백업 POI(OSM 등)인 경우에도
-    // 절대 '★-'나 '평점 정보 없음'으로 남지 않고 신뢰할 수 있는 엄선 평점을 자동 계산하여 표시!
+    // 실제 Google 평점 무결성 검증 함수:
+    // 가짜/임의 평점(예: 4.2~4.8 랜덤 생성)을 절대 만들지 않으며,
+    // 오직 실제 Google Maps에서 확인된 평점과 리뷰 수만 그대로 유지합니다!
     // =========================================================================
 
 function updateSinglePlaceCard(place) {
@@ -1355,10 +1355,13 @@ function updateSinglePlaceCard(place) {
       const card = document.getElementById(`place-card-${place.id}`);
       if (!card) return;
       const metaRow = card.querySelector(".meta-row");
-      if (metaRow && typeof place.rating === "number") {
-        const ratingSpan = metaRow.querySelector(".rating-text") || metaRow.querySelector(".status-unknown");
+      if (metaRow && typeof place.rating === "number" && place.rating > 0) {
+        const ratingSpan = metaRow.querySelector(".rating-text") || metaRow.querySelector(".rating-placeholder") || metaRow.querySelector(".status-unknown");
         if (ratingSpan) {
-          const reviewsText = place.userRatingCount ? ` (${place.userRatingCount.toLocaleString()}개 리뷰)` : "";
+          const reviewsText =
+            typeof place.userRatingCount === "number" && place.userRatingCount > 0
+              ? ` (${place.userRatingCount.toLocaleString()}개 리뷰)`
+              : "";
           ratingSpan.className = "rating-text";
           ratingSpan.innerHTML = `★ ${place.rating.toFixed(1)}<span>${reviewsText}</span>`;
         }
@@ -1405,13 +1408,13 @@ function updateSinglePlaceCard(place) {
       let bg = isSelected ? (isDistCat ? "#059669" : "#2563eb") : "#ffffff";
       let border = isSelected ? "#ffffff" : (isDistCat ? "#a7f3d0" : "#cbd5e1");
 
-      if (isDistCat) {
-        const dStr = formatShortDist(place.straightDistM);
-        badgeLabel = dStr || "근처";
-        labelColor = isSelected ? "#ffffff" : "#047857";
+      const hasRealRating = typeof place?.rating === "number" && place.rating > 0;
+      if (isDistCat || !hasRealRating) {
+        const dStr = formatShortDist(place?.straightDistM);
+        badgeLabel = dStr || "장소";
+        labelColor = isSelected ? "#ffffff" : (isDistCat ? "#047857" : "#334155");
       } else {
-        const ratingScore = typeof place?.rating === "number" ? place.rating.toFixed(1) : "4.5";
-        badgeLabel = `★ ${ratingScore}`;
+        badgeLabel = `★ ${place.rating.toFixed(1)}`;
         labelColor = isSelected ? "#fde047" : "#b45309";
       }
 
@@ -1499,13 +1502,13 @@ function updateSinglePlaceCard(place) {
       let circleBg = isSelected ? "#ffffff" : (isDistCat ? "#059669" : "#2563eb");
       let circleText = isSelected ? (isDistCat ? "#059669" : "#2563eb") : "#ffffff";
 
-      if (isDistCat) {
-        const dStr = formatShortDist(place.straightDistM);
-        badgeLabel = dStr ? `📍${dStr}` : "근처";
-        labelColor = isSelected ? "#ffffff" : "#047857";
+      const hasRealRating = typeof place?.rating === "number" && place.rating > 0;
+      if (isDistCat || !hasRealRating) {
+        const dStr = formatShortDist(place?.straightDistM);
+        badgeLabel = dStr ? `📍${dStr}` : "장소";
+        labelColor = isSelected ? "#ffffff" : (isDistCat ? "#047857" : "#334155");
       } else {
-        const ratingScore = typeof place?.rating === "number" ? place.rating.toFixed(1) : "4.5";
-        badgeLabel = `★ ${ratingScore}`;
+        badgeLabel = `★ ${place.rating.toFixed(1)}`;
         labelColor = isSelected ? "#fde047" : "#b45309";
       }
 
