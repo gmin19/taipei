@@ -1,5 +1,5 @@
 // ===========================================================================
-// [app.js] 앱 초기화, 기기별 API 키 보안 저장, 지도·내 위치 제어, '❤️ 내 장소' 및 카드·마커 렌더링
+// [app.js] 앱 초기화, 기기별 API 키 보안 저장, 2그룹 카테고리·취향칩 제어, 다이어트 카드 및 스크롤 마커 연동
 // ===========================================================================
 
 // =========================================================================
@@ -8,9 +8,11 @@
     document.addEventListener("DOMContentLoaded", () => {
       loadPersistedData();
       renderCategoryButtons();
+      renderQuickTasteBar();
       renderMyPlacesDropdown();
       bindUIEvents();
       bindSheetTouchGestures();
+      bindSheetScrollMarkerSync();
       checkEnvironmentSecurity();
       initApiKeyAndBootstrap();
     });
@@ -76,7 +78,9 @@
           categoryLabel: p.categoryLabel || "장소",
           rating: p.rating ?? null,
           userRatingCount: p.userRatingCount ?? null,
-          googleMapsURI: p.googleMapsURI || null
+          googleMapsURI: p.googleMapsURI || null,
+          day: p.day || 1,
+          memo: p.memo || ""
         }));
         localStorage.setItem("TRAVEL_HELPER_TRIP_LIST_V1", JSON.stringify(serializable));
       } catch (_) {}
@@ -702,9 +706,9 @@
     }
 
     // =========================================================================
-    // [4] 상단 '❤️ 내 장소' 버튼 + 카테고리 버튼 렌더링 및 이벤트 처리
+    // [4] 상단 '❤️ 내 장소' 버튼 + 2그룹 카테고리 바 + 세부 취향 칩 렌더링 및 이벤트 처리
     // =========================================================================
-        function updateSortSelectOptions() {
+    function updateSortSelectOptions() {
       const select = $("sortSelect");
       if (!select) return;
       const isDist = isDistancePriorityCategory(state.selectedCategory);
@@ -713,12 +717,14 @@
           <option value="dist" ${state.sortBy === "dist" ? "selected" : ""}>📍 가장 가까운 순 (기본)</option>
           <option value="walk" ${state.sortBy === "walk" ? "selected" : ""}>🚶 도보 빠른 순</option>
           <option value="transit" ${state.sortBy === "transit" ? "selected" : ""}>🚌 대중교통 순</option>
-          <option value="rating" ${state.sortBy === "rating" ? "selected" : ""}>★ 평점 높은 순</option>
+          <option value="popular" ${state.sortBy === "popular" ? "selected" : ""}>🏆 현지 인기순 (평점×리뷰)</option>
+          <option value="rating" ${state.sortBy === "rating" ? "selected" : ""}>★ 구글 평점 높은 순</option>
           <option value="open" ${state.sortBy === "open" ? "selected" : ""}>🟢 영업 중 우선</option>
         `;
       } else {
         select.innerHTML = `
-          <option value="rating" ${state.sortBy === "rating" ? "selected" : ""}>★ 구글 평점 높은 순 (기본)</option>
+          <option value="popular" ${state.sortBy === "popular" ? "selected" : ""}>🏆 현지 인기순 (평점×리뷰)</option>
+          <option value="rating" ${state.sortBy === "rating" ? "selected" : ""}>★ 구글 평점 높은 순</option>
           <option value="dist" ${state.sortBy === "dist" ? "selected" : ""}>📍 가장 가까운 순</option>
           <option value="walk" ${state.sortBy === "walk" ? "selected" : ""}>🚶 도보 빠른 순</option>
           <option value="transit" ${state.sortBy === "transit" ? "selected" : ""}>🚌 대중교통 순</option>
@@ -727,12 +733,12 @@
       }
     }
 
-
     function renderCategoryButtons() {
       const bar = $("categoryBar");
+      if (!bar) return;
       bar.innerHTML = "";
 
-      // 1) 맨 앞에 빨간 하트 '❤️ 내 장소' 버튼 배치!
+      // 1) 맨 앞에 빨간 하트 '❤️ 내 장소' 버튼 배치
       const myBtn = document.createElement("button");
       myBtn.type = "button";
       myBtn.id = "btnMyPlacesTop";
@@ -744,8 +750,34 @@
       });
       bar.appendChild(myBtn);
 
-      // 2) 주변 탐색 카테고리 버튼들
-      CATEGORIES.forEach((cat) => {
+      // 2) 목적성 기반 2개 카테고리 그룹 스위치: [✨ 여행발견 | 🛟 생활·편의]
+      const groupWrap = document.createElement("div");
+      groupWrap.className = "cat-group-switch";
+      groupWrap.setAttribute("role", "group");
+      groupWrap.setAttribute("aria-label", "카테고리 그룹 전환");
+      groupWrap.innerHTML = `
+        <button type="button" class="cat-group-btn ${state.activeCategoryGroup === "discovery" ? "active" : ""}" data-group="discovery">
+          ✨ 여행발견
+        </button>
+        <button type="button" class="cat-group-btn ${state.activeCategoryGroup === "utility" ? "active" : ""}" data-group="utility">
+          🛟 생활·편의
+        </button>
+      `;
+      groupWrap.querySelectorAll(".cat-group-btn").forEach((gBtn) => {
+        gBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const newGroup = gBtn.dataset.group;
+          if (state.activeCategoryGroup !== newGroup) {
+            state.activeCategoryGroup = newGroup;
+            renderCategoryButtons();
+          }
+        });
+      });
+      bar.appendChild(groupWrap);
+
+      // 3) 현재 선택된 그룹(discovery 또는 utility)에 속하는 카테고리 알약 버튼 렌더링
+      const visibleCategories = CATEGORIES.filter((c) => c.group === state.activeCategoryGroup);
+      visibleCategories.forEach((cat) => {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "cat-btn" + (cat.id === state.selectedCategory ? " active" : "");
@@ -756,17 +788,30 @@
         btn.addEventListener("click", () => {
           if (state.isMyPlacesOpen) toggleMyPlacesDropdown(false);
           state.selectedCategory = cat.id;
-          state.sortBy = isDistancePriorityCategory(cat.id) ? "dist" : "rating";
+          state.activeTasteKeyword = "";
+          state.visibleLimit = 10;
+          state.sortBy = isDistancePriorityCategory(cat.id) ? "dist" : "popular";
+
+          // 반경 기본값 동기화
+          const defaultR = cat.radiusM || DEFAULT_SEARCH_RADIUS_M;
+          state.customRadiusM = defaultR;
+          const rSelect = $("radiusSelect");
+          if (rSelect) {
+            rSelect.value = defaultR <= 800 ? "600" : defaultR >= 2500 ? "3000" : "1500";
+          }
+
           updateSortSelectOptions();
           updateCategorySelectionUI();
+          renderQuickTasteBar();
           if (state.sheetState === "hidden") setSheetState("normal");
 
-          // 기준점 보호: 사용자가 기준점(내 위치 / 검색한 호텔 / ❤️ 내 장소)을 두고 장소를 클릭해 지도가 자동 패닝된 경우에는 기존 기준점을 그대로 유지!
-          // 아직 기준점이 없거나, 일반 지도 중심 상태에서 사용자가 직접 지도를 드래그해 이동한 경우에만 지도 중심을 새 기준점으로 반영.
           if (state.map) {
             const currentCenter = extractLatLngLiteral(state.map.getCenter());
             if (currentCenter) {
-              const isGenericOrigin = !state.searchOrigin || state.searchOriginLabel.startsWith("지도 중심") || state.searchOriginLabel.startsWith("고정된 지도 중심");
+              const isGenericOrigin =
+                !state.searchOrigin ||
+                state.searchOriginLabel.startsWith("지도 중심") ||
+                state.searchOriginLabel.startsWith("고정된 지도 중심");
               if (!state.searchOrigin || (state.isMapMovedFromOrigin && isGenericOrigin)) {
                 state.searchOrigin = { lat: currentCenter.lat, lng: currentCenter.lng };
                 state.searchOriginLabel = `지도 중심 (${currentCenter.lat.toFixed(4)}, ${currentCenter.lng.toFixed(4)})`;
@@ -785,6 +830,34 @@
       });
     }
 
+    function renderQuickTasteBar() {
+      const bar = $("quickTasteBar");
+      if (!bar) return;
+      const tags = state.selectedCategory ? QUICK_TASTE_TAGS[state.selectedCategory] : null;
+      if (!tags || tags.length === 0) {
+        bar.classList.remove("visible");
+        bar.innerHTML = "";
+        return;
+      }
+
+      bar.classList.add("visible");
+      bar.innerHTML = "";
+      tags.forEach((tag) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        const isActive = state.activeTasteKeyword === tag.kw;
+        chip.className = "taste-chip" + (isActive ? " active" : "");
+        chip.textContent = tag.label;
+        chip.addEventListener("click", () => {
+          state.activeTasteKeyword = tag.kw;
+          state.visibleLimit = 10;
+          renderQuickTasteBar();
+          executeSearch({ mode: "nearby", force: true });
+        });
+        bar.appendChild(chip);
+      });
+    }
+
     function updateCategorySelectionUI() {
       document.querySelectorAll(".cat-btn[data-cat-id]").forEach((btn) => {
         const isSelected = btn.dataset.catId === state.selectedCategory;
@@ -793,11 +866,30 @@
       });
     }
 
+    // 입력된 검색어가 음식 메뉴·취향 키워드인지 판별하는 헬퍼
+    function isLikelyMenuOrThemeKeyword(kw) {
+      if (!kw) return false;
+      return /(우육면|라멘|국수|소바|우동|짬뽕|짜장|마라탕|훠궈|샤브|전골|삼겹살|갈비|고기|스테이크|야키니쿠|초밥|스시|회|해산물|돈까스|돈카츠|치킨|피자|버거|햄버거|타코|파스타|브런치|국밥|설렁탕|곰탕|칼국수|냉면|만두|딤섬|샤오롱바오|빙수|망고빙수|아이스크림|젤라또|케이크|빵|베이커리|소금빵|크루아상|펑리수|디저트|푸딩|마카롱|커피|카페|로스터리|핸드드립|라떼|에스프레소|밀크티|버블티|말차|찻집|루프탑|이자카야|포차|술집|바\b|펍\b|맥주|수제맥주|위스키|칵테일|와인|야시장|야경|전망대|마사지|스파|온천|소품샵|기념품|선물|맛집|식당|밥집|야식|혼밥)/i.test(kw.trim());
+    }
+
     function bindUIEvents() {
-      // 상단 내 장소 닫기 버튼
       const btnCloseMyPlaces = $("btnCloseMyPlaces");
       if (btnCloseMyPlaces) {
         btnCloseMyPlaces.addEventListener("click", () => toggleMyPlacesDropdown(false));
+      }
+
+      // 출발 기준점 전환 버튼 (📌고정 기준점 <-> 📍내 위치)
+      const btnToggleOriginMode = $("btnToggleOriginMode");
+      if (btnToggleOriginMode) {
+        btnToggleOriginMode.addEventListener("click", () => {
+          state.routeOriginMode = state.routeOriginMode === "my_location" ? "origin" : "my_location";
+          updateOriginContextBar();
+          renderPlacesListAndMarkers(false);
+          const selected = state.places.find((p) => p.id === state.selectedPlaceId);
+          if (selected) {
+            computeAndDisplaySingleRoute(selected, state.activeRouteMode, true);
+          }
+        });
       }
 
       // 내 위치 버튼
@@ -828,17 +920,14 @@
         }
       });
 
-      // "내 위치로 복귀" 작은 버튼
       $("btnResetToMyLoc").addEventListener("click", () => {
         $("btnRecenter").click();
       });
 
-      // 지도를 이동했을 때 뜨는 "🔍 이 지역에서 바로 검색" 버튼
       $("btnSearchMapCenter").addEventListener("click", () => {
         lockCurrentMapCenterAsOrigin(Boolean(state.selectedCategory));
       });
 
-      // 검색창 입력 및 지우기 버튼
       const searchInput = $("searchInput");
       const btnClearSearch = $("btnClearSearch");
       searchInput.addEventListener("input", () => {
@@ -849,26 +938,83 @@
         searchInput.value = "";
         btnClearSearch.style.display = "none";
         state.keyword = "";
+        state.activeTasteKeyword = "";
+        renderQuickTasteBar();
         if (state.selectedCategory) {
           executeSearch({ mode: "nearby", force: true });
         }
       });
 
-      // 상단 검색창 제출 (전 세계 어디든 검색!)
+      // [개선안 4] 🔍 주변검색 버튼: 현재 기준점(숙소/내위치)을 유지한 채 주변의 특정 메뉴·취향 키워드 검색!
+      const btnSearchNearbyKw = $("btnSearchNearbyKw");
+      if (btnSearchNearbyKw) {
+        btnSearchNearbyKw.addEventListener("click", () => {
+          if (state.isMyPlacesOpen) toggleMyPlacesDropdown(false);
+          const kw = searchInput.value.trim();
+          if (!kw) {
+            showBanner("주변에서 찾을 메뉴나 키워드(예: 우육면, 망고빙수, 루프탑, 마사지)를 입력해 주세요.", "info");
+            searchInput.focus();
+            return;
+          }
+          state.keyword = kw;
+          state.visibleLimit = 10;
+          if (state.sheetState === "hidden") setSheetState("normal");
+          executeSearch({ mode: "nearby_keyword", force: true });
+        });
+      }
+
+      // 상단 검색창 제출 (🌐 이동 버튼 클릭 또는 Enter 입력)
       $("searchForm").addEventListener("submit", (e) => {
         e.preventDefault();
         if (state.isMyPlacesOpen) toggleMyPlacesDropdown(false);
         const kw = searchInput.value.trim();
         state.keyword = kw;
+        state.visibleLimit = 10;
         if (state.sheetState === "hidden") setSheetState("normal");
         if (kw) {
-          executeSearch({ mode: "worldwide_text", force: true });
+          // 만약 Enter로 제출했는데 '우육면', '망고빙수' 같은 음식/취향 키워드이고 이미 기준점이 있다면 주변 키워드 검색으로 실행!
+          const submitterId = e.submitter?.id || "";
+          if (submitterId !== "btnSearch" && isLikelyMenuOrThemeKeyword(kw) && (state.searchOrigin || state.currentLocation)) {
+            executeSearch({ mode: "nearby_keyword", force: true });
+          } else {
+            executeSearch({ mode: "worldwide_text", force: true });
+          }
         } else if (state.selectedCategory) {
           executeSearch({ mode: "nearby", force: true });
         } else {
           showBanner("검색어를 입력하거나 상단에서 맛집·카페 등 카테고리를 선택해 주세요.", "info");
         }
       });
+
+      // [개선안 1] 🔥 리뷰 100개 이상 검증된 곳만 보기 토글 버튼
+      const btnFilterVerified100 = $("btnFilterVerified100");
+      if (btnFilterVerified100) {
+        btnFilterVerified100.addEventListener("click", () => {
+          state.onlyVerified100 = !state.onlyVerified100;
+          btnFilterVerified100.classList.toggle("active", state.onlyVerified100);
+          renderPlacesListAndMarkers(false);
+          if (state.onlyVerified100) {
+            showBanner("🔥 구글 리뷰 100개 이상으로 검증된 인기 장소만 필터링합니다.", "info");
+          } else {
+            showBanner("리뷰 수 제한 없이 주변 장소를 모두 표시합니다.", "info");
+          }
+        });
+      }
+
+      // 반경 선택 셀렉트 (600m / 1.5km / 3km)
+      const radiusSelect = $("radiusSelect");
+      if (radiusSelect) {
+        radiusSelect.addEventListener("change", (e) => {
+          state.customRadiusM = Number(e.target.value) || DEFAULT_SEARCH_RADIUS_M;
+          state.visibleLimit = 10;
+          if (state.selectedCategory || state.keyword) {
+            executeSearch({
+              mode: state.selectedCategory ? "nearby" : "nearby_keyword",
+              force: true
+            });
+          }
+        });
+      }
 
       // 추천/정렬 기준 선택
       $("sortSelect").addEventListener("change", (e) => {
@@ -879,6 +1025,18 @@
       // 탭 전환 (주변 장소 <-> 여행 코스)
       $("tabPlaces").addEventListener("click", () => switchBottomTab("places"));
       $("tabTrip").addEventListener("click", () => switchBottomTab("trip"));
+
+      // 여행 코스 Day 1 / Day 2 / Day 3 일자 전환 탭
+      document.querySelectorAll("#tripDayTabs .trip-day-btn").forEach((dayBtn) => {
+        dayBtn.addEventListener("click", () => {
+          state.currentTripDay = Number(dayBtn.dataset.day) || 1;
+          document.querySelectorAll("#tripDayTabs .trip-day-btn").forEach((b) => {
+            b.classList.toggle("active", Number(b.dataset.day) === state.currentTripDay);
+          });
+          state.tripOptimizationLabel = "";
+          calculateAndRenderTripCourse(false);
+        });
+      });
 
       // 하단 시트 확대/기본 토글 및 아래로 완전히 내리기/다시 올리기
       $("btnToggleSheet").addEventListener("click", () => {
@@ -912,7 +1070,11 @@
       // 여행 코스 컨트롤
       $("btnTripModeWalk").addEventListener("click", () => setTripTravelMode("WALKING"));
       $("btnTripModeTransit").addEventListener("click", () => setTripTravelMode("TRANSIT"));
-      $("btnOptimizeTrip").addEventListener("click", () => optimizeTripCourse());
+      $("btnOptimizeTrip").addEventListener("click", () => optimizeTripCourse("distance"));
+      const btnOptSmart = $("btnOptimizeTripSmart");
+      if (btnOptSmart) {
+        btnOptSmart.addEventListener("click", () => optimizeTripCourse("smart_time"));
+      }
       $("btnDrawTripRoute").addEventListener("click", () => calculateAndRenderTripCourse(true));
 
       // 배너 닫기 및 원인·해결 버튼
@@ -1025,13 +1187,12 @@
           $("helpModal").classList.remove("open");
           $("statusBanner").className = "status-banner";
           if (state.keyword || state.selectedCategory) {
-            executeSearch({ mode: state.keyword ? "worldwide_text" : "nearby", force: true });
+            executeSearch({ mode: state.selectedCategory ? "nearby" : "nearby_keyword", force: true });
           }
         });
       }
     }
 
-    // 사용자가 이동한 지도 중심 좌표를 새 기준점으로 단단히 고정
     function lockCurrentMapCenterAsOrigin(runCategorySearch = false) {
       if (!state.map) return;
       const center = extractLatLngLiteral(state.map.getCenter());
@@ -1061,13 +1222,14 @@
       if (runCategorySearch && state.selectedCategory) {
         executeSearch({ mode: "nearby", force: true });
       } else {
+        state.allCandidatePlaces = [];
         state.places = [];
         state.selectedPlaceId = null;
         clearMapMarkersAndPolylines();
         renderPlacesListAndMarkers(false);
         updateEmptyStateMessage(
           "📌 현재 지도 중심이 기준점으로 고정되었습니다",
-          "상단에서 🍽️ 맛집, ☕ 카페, 📸 관광지 등 원하는 메뉴를 선택하면 이 주변 고평점 장소를 바로 찾아줍니다."
+          "상단에서 ✨ 여행발견(맛집·카페·야시장·명소) 또는 🛟 생활·편의 메뉴를 누르거나, 검색창에 메뉴명을 입력해 [🔍 주변검색]을 눌러보세요."
         );
       }
     }
@@ -1088,7 +1250,7 @@
       if (!textEl) return;
 
       if (!state.searchOrigin) {
-        textEl.textContent = "📍 출발 기준점: 상단 카테고리 또는 ❤️ 내 장소 선택";
+        textEl.textContent = "📍 기준점: 상단 카테고리 또는 ❤️ 내 장소 선택";
         if (toggleBtn) toggleBtn.style.display = "none";
         if (resetBtn) resetBtn.style.display = "none";
         return;
@@ -1104,15 +1266,13 @@
       }
 
       if (isMyLoc) {
-        const priorityDesc = isDistancePriorityCategory(state.selectedCategory) ? "가까운 거리순" : "구글 평점순";
-        textEl.textContent = `📍 내 위치 기준 (${priorityDesc} 상위 10곳)`;
+        textEl.textContent = `📍 내 위치 기준`;
         if (resetBtn) resetBtn.style.display = "none";
       } else {
         const originDesc = state.routeOriginMode === "my_location"
           ? "현재 내 위치 (GPS)"
           : state.searchOriginLabel;
-        const priorityDesc = isDistancePriorityCategory(state.selectedCategory) ? "가까운 순" : "평점순";
-        textEl.textContent = `📌 출발: ${originDesc} (${priorityDesc})`;
+        textEl.textContent = `📌 기준: ${originDesc}`;
         if (resetBtn) resetBtn.style.display = state.currentLocation ? "inline-block" : "none";
       }
     }
@@ -1127,13 +1287,20 @@
       if (filterBar) {
         filterBar.style.display = isPlaces ? "flex" : "none";
       }
+      const tasteBar = $("quickTasteBar");
+      if (tasteBar) {
+        if (isPlaces && state.selectedCategory && QUICK_TASTE_TAGS[state.selectedCategory]) {
+          tasteBar.classList.add("visible");
+        } else {
+          tasteBar.classList.remove("visible");
+        }
+      }
       updateRestoreBarText();
       if (!isPlaces) {
         renderTripPanel();
       }
     }
 
-    // =========================================================================
     // [5] 현재 위치 자동 및 수동 감지
     // =========================================================================
     function requestUserLocation({ isAutoStart = false } = {}) {
@@ -1297,58 +1464,478 @@
     }
 
 // =========================================================================
-    // [8] 추천·정렬 필터 및 장소 카드 렌더링
+    // [8] 추천·정렬 필터(현지 인기순·리뷰 100+ 검증) 및 다이어트 장소 카드·스크롤 연동 렌더링
     // =========================================================================
+    function getFilteredCandidatePlaces() {
+      const basePool =
+        Array.isArray(state.allCandidatePlaces) && state.allCandidatePlaces.length > 0
+          ? [...state.allCandidatePlaces]
+          : [...state.places];
+
+      if (state.onlyVerified100) {
+        const verified = basePool.filter(
+          (p) => typeof p.userRatingCount === "number" && p.userRatingCount >= 100
+        );
+        if (verified.length > 0) {
+          return verified;
+        }
+      }
+      return basePool;
+    }
+
     function getSortedPlaces() {
-      let list = [...state.places];
+      let list = getFilteredCandidatePlaces();
       const isDistCat = isDistancePriorityCategory(state.selectedCategory);
       const sortBy = state.sortBy;
 
       list.sort((a, b) => {
         if (sortBy === "walk") {
-          const wa = a.walkDurationMs ?? a.straightDistM ?? Infinity;
-          const wb = b.walkDurationMs ?? b.straightDistM ?? Infinity;
+          const wa = a.walkDurationMs ?? (typeof a.straightDistM === "number" ? a.straightDistM * 1000 : Infinity);
+          const wb = b.walkDurationMs ?? (typeof b.straightDistM === "number" ? b.straightDistM * 1000 : Infinity);
           if (wa !== wb) return wa - wb;
-          return (b.rating ?? -1) - (a.rating ?? -1);
+          return computePopularityScore(b) - computePopularityScore(a);
         }
         if (sortBy === "transit") {
-          const ta = a.transitDurationMs ?? a.straightDistM ?? Infinity;
-          const tb = b.transitDurationMs ?? b.straightDistM ?? Infinity;
+          const ta = a.transitDurationMs ?? (typeof a.straightDistM === "number" ? a.straightDistM * 1000 : Infinity);
+          const tb = b.transitDurationMs ?? (typeof b.straightDistM === "number" ? b.straightDistM * 1000 : Infinity);
           if (ta !== tb) return ta - tb;
-          return (b.rating ?? -1) - (a.rating ?? -1);
+          return computePopularityScore(b) - computePopularityScore(a);
         }
         if (sortBy === "open") {
           const rankOpen = (p) => (p.isOpenNow === true ? 0 : p.isOpenNow === null ? 1 : 2);
           const oa = rankOpen(a);
           const ob = rankOpen(b);
           if (oa !== ob) return oa - ob;
-          return (b.rating ?? -1) - (a.rating ?? -1);
+          return computePopularityScore(b) - computePopularityScore(a);
         }
-        // 거리 최우선 카테고리(편의점·ATM·은행·약국·주유소) 또는 사용자가 'dist' 선택 시: 가까운 순서대로 정렬!
-        if (sortBy === "dist" || (sortBy === "default" && isDistCat) || (isDistCat && sortBy !== "rating")) {
+        if (sortBy === "dist" || (sortBy === "default" && isDistCat)) {
           const da = a.walkDistanceM ?? a.straightDistM ?? Infinity;
           const db = b.walkDistanceM ?? b.straightDistM ?? Infinity;
           if (da !== db) return da - db;
-          return (b.rating ?? -1) - (a.rating ?? -1);
+          return computePopularityScore(b) - computePopularityScore(a);
         }
-        // 맛집·카페·관광지 등: 구글 평점 높은 순 (동점 시 리뷰 개수 많은 순, 가까운 순)
-        const ra = typeof a.rating === "number" ? a.rating : -1;
-        const rb = typeof b.rating === "number" ? b.rating : -1;
-        if (rb !== ra) return rb - ra;
-        const ca = typeof a.userRatingCount === "number" ? a.userRatingCount : 0;
-        const cb = typeof b.userRatingCount === "number" ? b.userRatingCount : 0;
-        if (cb !== ca) return cb - ca;
+        if (sortBy === "rating") {
+          const ra = typeof a.rating === "number" ? a.rating : -1;
+          const rb = typeof b.rating === "number" ? b.rating : -1;
+          if (rb !== ra) return rb - ra;
+          const ca = typeof a.userRatingCount === "number" ? a.userRatingCount : 0;
+          const cb = typeof b.userRatingCount === "number" ? b.userRatingCount : 0;
+          if (cb !== ca) return cb - ca;
+          return (a.straightDistM ?? Infinity) - (b.straightDistM ?? Infinity);
+        }
+        // 기본 'popular': 베이지안 가중 현지 인기순 (평점 × 리뷰 신뢰도 종합)
+        const pa = computePopularityScore(a);
+        const pb = computePopularityScore(b);
+        if (Math.abs(pb - pa) > 0.001) return pb - pa;
         return (a.straightDistM ?? Infinity) - (b.straightDistM ?? Infinity);
       });
 
-      return list;
+      const limit = Math.max(10, state.visibleLimit || 10);
+      const sliced = list.slice(0, limit);
+      state.places = sliced;
+      return sliced;
     }
 
-    // =========================================================================
-    // 실제 Google 평점 무결성 검증 함수:
-    // 가짜/임의 평점(예: 4.2~4.8 랜덤 생성)을 절대 만들지 않으며,
-    // 오직 실제 Google Maps에서 확인된 평점과 리뷰 수만 그대로 유지합니다!
-    // =========================================================================
+function renderPlacesListAndMarkers(updateMapBounds = false) {
+      const sorted = getSortedPlaces();
+      const totalFiltered = getFilteredCandidatePlaces().length;
+      $("placeCountText").textContent = `(${sorted.length})`;
+      updateRestoreBarText();
+
+      const listEl = $("placesList");
+      const emptyEl = $("placesEmptyState");
+
+      if (sorted.length === 0) {
+        listEl.innerHTML = "";
+        emptyEl.style.display = "block";
+        return;
+      }
+
+      emptyEl.style.display = "none";
+      listEl.innerHTML = "";
+
+      sorted.forEach((place, idx) => {
+        const displayIdx = idx + 1;
+        place.displayIndex = displayIdx;
+        const card = createPlaceCardElement(place, displayIdx);
+        listEl.appendChild(card);
+      });
+
+      // [개선안 3] 하단 '+ 주변 장소 10곳 더 보기' 버튼 렌더링
+      if (totalFiltered > sorted.length || (state.selectedRadius || 1500) < 4000) {
+        const moreBtn = document.createElement("button");
+        moreBtn.type = "button";
+        moreBtn.id = "btnLoadMorePlaces";
+        moreBtn.className = "btn-load-more";
+        if (totalFiltered > sorted.length) {
+          const remain = totalFiltered - sorted.length;
+          moreBtn.innerHTML = `<span>➕ 주변 장소 ${Math.min(10, remain)}곳 더 보기</span><span style="font-size:12px; font-weight:600; opacity:0.85;">(현재 ${sorted.length} / 후보 ${totalFiltered}곳)</span>`;
+        } else {
+          const nextR = Math.min(4500, Math.max(2500, Math.round((state.selectedRadius || 1500) * 1.8)));
+          moreBtn.innerHTML = `<span>🔭 반경 ${formatDistance(nextR)}로 넓혀 주변 장소 10곳 더 찾기</span>`;
+        }
+        moreBtn.addEventListener("click", () => {
+          loadMorePlaces();
+        });
+        listEl.appendChild(moreBtn);
+      }
+
+      renderMapMarkers(sorted, updateMapBounds);
+    }
+
+    function createPlaceCardElement(place, indexNum) {
+      const isSelected = place.id === state.selectedPlaceId;
+      const isScrollFocused = place.id === state.hoveredPlaceId && !isSelected;
+      const inTrip = state.tripList.some((item) => item.id === place.id);
+      const inMyPlaces = isPlaceInMyPlaces(place);
+
+      const card = document.createElement("article");
+      card.className = "place-card" + (isSelected ? " selected" : "") + (isScrollFocused ? " scroll-focused" : "");
+      card.id = `place-card-${place.id}`;
+      card.dataset.placeId = place.id;
+
+      const isDistCat = isDistancePriorityCategory(state.selectedCategory);
+      ensurePlaceRating(place);
+      const hasRealRating = typeof place.rating === "number" && place.rating > 0;
+      const ratingScore = hasRealRating ? place.rating.toFixed(1) : null;
+      const isVerified100 = hasRealRating && typeof place.userRatingCount === "number" && place.userRatingCount >= 100;
+      const reviewCountText =
+        hasRealRating && typeof place.userRatingCount === "number" && place.userRatingCount > 0
+          ? `(${place.userRatingCount.toLocaleString()}개 리뷰${isVerified100 ? " · 🔥검증됨" : ""})`
+          : "";
+
+      const realRatingSpan = hasRealRating
+        ? `<span class="rating-text">★ ${ratingScore}</span> ${reviewCountText ? `<span style="${isVerified100 ? "color:#b45309; font-weight:700;" : ""}">${reviewCountText}</span>` : ""}`
+        : `<span class="status-unknown rating-placeholder">평점 정보 없음</span>`;
+
+      const ratingHtml = isDistCat
+        ? `<span style="color:#047857; font-weight:800;">📍 거리 우선 (#${indexNum})</span>${hasRealRating ? ` · ${realRatingSpan}` : ""}`
+        : realRatingSpan;
+
+      let openBadgeHtml = `<span class="status-unknown">영업시간 미확인</span>`;
+      if (place.isOpenNow === true) {
+        openBadgeHtml = `<span class="status-open">● 영업 중</span>`;
+      } else if (place.isOpenNow === false) {
+        openBadgeHtml = `<span class="status-closed">● 영업 종료</span>`;
+      }
+
+      const priceText =
+        place.priceLevel !== null && place.priceLevel !== undefined && PRICE_LEVEL_LABELS[place.priceLevel]
+          ? `<span class="price-badge">${PRICE_LEVEL_LABELS[place.priceLevel]}</span>`
+          : "";
+
+      // [개선안 5-3] 7위 이후 장소도 직선거리 기반 예상 도보 시간·거리를 즉시 표시!
+      let walkText = "도보 계산 중...";
+      if (place.walkStatus === "OK" && place.walkDurationMs !== null) {
+        const wDur = formatDuration(place.walkDurationMs);
+        const wDist = place.walkDistanceM !== null ? ` · ${formatDistance(place.walkDistanceM)}` : "";
+        walkText = `도보 ${wDur}${wDist}`;
+      } else if (typeof place.straightDistM === "number" && isFinite(place.straightDistM)) {
+        const estWalkM = Math.max(30, Math.round(place.straightDistM * 1.28));
+        const estWalkMin = Math.max(1, Math.round(estWalkM / 75));
+        walkText = `도보 약 ${estWalkMin}분 · 직선 ${formatDistance(place.straightDistM)}`;
+      } else {
+        walkText = "도보 경로 확인 가능";
+      }
+
+      let transitText = "대중교통 (선택 시 상세경로)";
+      if (place.transitStatus === "OK" && place.transitDurationMs !== null) {
+        transitText = `대중교통 ${formatDuration(place.transitDurationMs)}`;
+      } else if (place.transitStatus === "NO_ROUTE") {
+        transitText = "도보 이동 권장 구간";
+      }
+
+      let summaryLineHtml = "";
+      if (place.editorialSummary) {
+        summaryLineHtml = `<div class="place-summary">${escapeHtml(place.editorialSummary)}</div>`;
+      } else if (place.address) {
+        summaryLineHtml = `<div class="place-summary">📍 ${escapeHtml(place.address)}</div>`;
+      }
+
+      const todayHoursLine = place.todayHoursText
+        ? `<div class="opening-hours-line">🕒 ${escapeHtml(place.todayHoursText)}</div>`
+        : "";
+
+      const photoBoxHtml = place.photoUrl
+        ? `<div class="card-photo-box">
+             <img src="${place.photoUrl}" alt="${escapeHtml(place.name)}" class="card-photo" loading="lazy" />
+             ${place.photoAttrHtml ? `<div class="photo-attr">${place.photoAttrHtml}</div>` : ""}
+           </div>`
+        : "";
+
+      const weekdayListHtml =
+        Array.isArray(place.weekdayDescriptions) && place.weekdayDescriptions.length > 0
+          ? `<div class="detail-block-title">📅 요일별 영업시간</div>
+             <div style="font-size:12px; line-height:1.5;">${place.weekdayDescriptions.map(escapeHtml).join("<br/>")}</div>`
+          : `<div class="detail-block-title">📅 영업시간</div><div style="font-size:12px;">제공된 영업시간 정보가 없습니다.</div>`;
+
+      let transitDetailsHtml = "";
+      if (place.transitSteps !== null) {
+        if (place.transitSteps.length === 0) {
+          transitDetailsHtml = `<div class="detail-block-title">🚌 대중교통 세부 경로</div><div style="font-size:12px;">이 구간은 대중교통 노선이 없거나 도보 이동이 더 빠른 거리입니다.</div>`;
+        } else {
+          const transitOnlyCount = place.transitSteps.filter((s) => s.type === "TRANSIT").length;
+          const transferCount = Math.max(0, transitOnlyCount - 1);
+          const headerNote =
+            transitOnlyCount === 0
+              ? `총 ${formatDuration(place.transitDurationMs)} · 가까운 거리 도보 이동`
+              : `총 ${formatDuration(place.transitDurationMs)} · 환승 ${transferCount}회`;
+
+          transitDetailsHtml = `
+            <div class="detail-block-title">
+              🚌 대중교통 세부 경로 (${headerNote})
+            </div>
+            <div class="transit-steps-list">
+              ${place.transitSteps
+                .map(
+                  (st) => `
+                <div class="transit-step-item">
+                  <span class="transit-line-pill" style="${st.type === "WALKING" ? "background:#64748b;" : ""}">${escapeHtml(st.badge)}</span>
+                  <div>
+                    <div style="font-weight:700; color:var(--text-primary);">${escapeHtml(st.text)}</div>
+                    ${st.sub ? `<div style="font-size:11.5px; color:var(--text-muted);">${escapeHtml(st.sub)}</div>` : ""}
+                  </div>
+                </div>`
+                )
+                .join("")}
+            </div>
+          `;
+        }
+      }
+
+      const websiteHtml = place.websiteURI
+        ? `<div style="margin-top:6px; font-size:12px;">🌐 공식 웹사이트: <a href="${sanitizeUrl(place.websiteURI)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); font-weight:700;">바로가기 ↗</a></div>`
+        : "";
+
+      const isKorea = isInSouthKorea(place.location);
+      const mapsDetailUrl = buildGoogleMapsPlaceUrl(place);
+      const mapsDirTransitUrl = buildGoogleMapsDirectionsUrl(place, "TRANSIT");
+      const mapsDirWalkUrl = buildGoogleMapsDirectionsUrl(place, "WALKING");
+      const naverDirUrl = isKorea ? buildNaverDirectionsUrl(place) : "";
+      const kakaoDirUrl = isKorea ? buildKakaoDirectionsUrl(place) : "";
+      const originLabelShort = state.routeOriginMode === "my_location" ? "내위치" : (state.searchOriginLabel || "기준점");
+
+      // [개선안 5-1] 카드 UI 다이어트: 우측 상단에 [🤍 내장소] + [+코스] 아이콘 배치, 하단은 큼직한 핵심 액션 3개만 배치!
+      card.innerHTML = `
+        <div class="card-top">
+          <div class="card-main-info">
+            <div class="card-title-row">
+              <span class="place-index-badge" style="${isDistCat ? 'background:#059669;' : ''}">${indexNum}</span>
+              <h3 class="place-name">${escapeHtml(place.name)}</h3>
+              <span class="place-category-badge">${escapeHtml(place.categoryLabel)}</span>
+              <div class="card-quick-icons">
+                <button type="button" class="btn-card-icon ${inMyPlaces ? "fav-saved" : ""}" data-action="save-fav" title="내 장소에 저장">
+                  ${inMyPlaces ? "❤️ 저장됨" : "🤍 내장소"}
+                </button>
+                <button type="button" class="btn-card-icon ${inTrip ? "in-trip" : ""}" data-action="trip" title="Day ${state.currentTripDay} 여행 코스에 추가">
+                  ${inTrip ? "✓ 코스담김" : "+ 코스"}
+                </button>
+              </div>
+            </div>
+            <div class="meta-row">
+              ${ratingHtml}
+              <span>·</span>
+              ${openBadgeHtml}
+              ${priceText ? `<span>·</span>${priceText}` : ""}
+            </div>
+          </div>
+          ${photoBoxHtml}
+        </div>
+
+        <div class="distance-bar">
+          <span class="dist-chip walk">🚶 ${walkText}</span>
+          <span class="dist-divider">|</span>
+          <span class="dist-chip transit">🚌 ${transitText}</span>
+        </div>
+
+        ${summaryLineHtml}
+        ${todayHoursLine}
+
+        <div class="place-details-drawer ${place.drawerOpen ? "open" : ""}" id="drawer-${place.id}">
+          ${place.address ? `<div style="font-size:12px; margin-bottom:4px;">📍 주소: ${escapeHtml(place.address)}</div>` : ""}
+          ${weekdayListHtml}
+          ${websiteHtml}
+          ${transitDetailsHtml}
+          <div class="detail-block-title" style="margin-top:10px;">🗺️ 외부 지도앱 길찾기 바로가기 (${escapeHtml(originLabelShort)} 출발)</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+            <a href="${mapsDirTransitUrl}" target="_blank" rel="noopener noreferrer" class="card-btn primary" style="flex:1 1 calc(50% - 3px); min-width:130px;">
+              🚌 Google 대중교통
+            </a>
+            <a href="${mapsDirWalkUrl}" target="_blank" rel="noopener noreferrer" class="card-btn" style="flex:1 1 calc(50% - 3px); min-width:130px;">
+              🚶 Google 도보
+            </a>
+            ${isKorea ? `
+            <a href="${naverDirUrl}" target="_blank" rel="noopener noreferrer" class="card-btn" style="flex:1 1 calc(50% - 3px); min-width:130px; border-color:#03c75a; color:#03c75a; font-weight:800;">
+              🟢 네이버지도 길찾기
+            </a>
+            <a href="${kakaoDirUrl}" target="_blank" rel="noopener noreferrer" class="card-btn" style="flex:1 1 calc(50% - 3px); min-width:130px; border-color:#eab308; background:#fef08a; color:#713f12; font-weight:800;">
+              🟡 카카오맵 길찾기
+            </a>
+            ` : ""}
+          </div>
+        </div>
+
+        <div class="card-actions">
+          <button type="button" class="card-btn btn-detail-toggle" data-action="detail" style="flex:1;">
+            ℹ️ 상세·시간
+          </button>
+          <button type="button" class="card-btn primary" data-action="directions" style="flex:1.2;" title="지도에 이동 경로선 및 대중교통·도보 안내 표시">
+            🗺️ 경로보기
+          </button>
+          <a href="${mapsDetailUrl}" target="_blank" rel="noopener noreferrer" class="card-btn" data-action="gmaps" style="flex:1;">
+            ↗ 구글지도
+          </a>
+        </div>
+      `;
+
+      card.addEventListener("click", async (e) => {
+        const actionEl = e.target.closest("[data-action]");
+        if (actionEl) {
+          const act = actionEl.dataset.action;
+          if (act === "gmaps") {
+            e.stopPropagation();
+            return;
+          }
+          if (act === "directions") {
+            e.stopPropagation();
+            place.drawerOpen = true;
+            await handlePlaceSelection(place, { toggleDrawer: false, scrollToCard: false, forceFitRoute: true });
+            return;
+          }
+          if (act === "trip") {
+            e.stopPropagation();
+            togglePlaceInTrip(place);
+            return;
+          }
+          if (act === "save-fav") {
+            e.stopPropagation();
+            toggleMyPlace(place);
+            return;
+          }
+          if (act === "detail") {
+            e.stopPropagation();
+            await handlePlaceSelection(place, { toggleDrawer: true });
+            return;
+          }
+        }
+        await handlePlaceSelection(place, { toggleDrawer: false });
+      });
+
+      return card;
+    }
+
+    // [개선안 5-2] 하단 시트 스크롤 시 현재 보고 있는 카드의 지도 마커 자동 강조 연동
+    function bindSheetScrollMarkerSync() {
+      const sheetBody = document.querySelector(".sheet-body");
+      if (!sheetBody) return;
+      let ticking = false;
+
+      sheetBody.addEventListener(
+        "scroll",
+        () => {
+          if (ticking) return;
+          ticking = true;
+          requestAnimationFrame(() => {
+            ticking = false;
+            if (!state.places || state.places.length === 0) return;
+            const bodyRect = sheetBody.getBoundingClientRect();
+            const targetY = bodyRect.top + Math.min(110, bodyRect.height * 0.32);
+            const cards = sheetBody.querySelectorAll(".place-card");
+            let closestPlaceId = null;
+            let minDist = Infinity;
+
+            cards.forEach((c) => {
+              const r = c.getBoundingClientRect();
+              const center = (r.top + r.bottom) / 2;
+              const d = Math.abs(center - targetY);
+              if (d < minDist) {
+                minDist = d;
+                closestPlaceId = c.dataset.placeId || null;
+              }
+            });
+
+            if (closestPlaceId && closestPlaceId !== state.hoveredPlaceId) {
+              state.hoveredPlaceId = closestPlaceId;
+              cards.forEach((c) => {
+                c.classList.toggle("scroll-focused", c.dataset.placeId === closestPlaceId && c.dataset.placeId !== state.selectedPlaceId);
+              });
+              updateMarkerHighlight();
+            }
+          });
+        },
+        { passive: true }
+      );
+    }
+
+    async function handlePlaceSelection(place, { toggleDrawer = false, scrollToCard = false, forceFitRoute = true } = {}) {
+      const wasSelected = state.selectedPlaceId === place.id;
+      state.selectedPlaceId = place.id;
+      state.hoveredPlaceId = place.id;
+
+      if (scrollToCard && state.sheetState === "hidden") {
+        setSheetState("normal");
+      }
+
+      if (toggleDrawer) {
+        place.drawerOpen = !place.drawerOpen;
+      } else if (!wasSelected) {
+        place.drawerOpen = true;
+      }
+
+      if (state.map && place.location && !forceFitRoute) {
+        panToProgrammatically(place.location);
+      }
+
+      updateMarkerHighlight();
+
+      if (scrollToCard) {
+        switchBottomTab("places");
+        setTimeout(() => {
+          const cardEl = document.getElementById(`place-card-${place.id}`);
+          if (cardEl) {
+            cardEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }
+        }, 80);
+      }
+
+      const origin = state.searchOrigin || state.currentLocation;
+
+      await Promise.all([
+        ensurePlaceDetailsLoaded(place),
+        computeAndDisplaySingleRoute(place, state.activeRouteMode, forceFitRoute),
+        (async () => {
+          if (origin && (place.transitSteps === null || place.transitStatus !== "OK")) {
+            try {
+              const tData = await fetchSingleRouteNewApi(origin, place.location, "TRANSIT");
+              if (tData && typeof tData.durationMillis === "number") {
+                place.transitDurationMs = tData.durationMillis;
+                place.transitDistanceM = tData.distanceMeters ?? place.transitDistanceM;
+                place.transitStatus = "OK";
+                place.transitSteps = tData.transitSteps || [];
+              } else if (place.transitSteps === null) {
+                place.transitSteps = [];
+              }
+            } catch (_) {
+              if (place.transitSteps === null) place.transitSteps = [];
+            }
+          }
+        })(),
+        (async () => {
+          if (origin && place.walkStatus !== "OK") {
+            try {
+              const wData = await fetchSingleRouteNewApi(origin, place.location, "WALKING");
+              if (wData && typeof wData.durationMillis === "number") {
+                place.walkDurationMs = wData.durationMillis;
+                place.walkDistanceM = wData.distanceMeters ?? place.walkDistanceM;
+                place.walkStatus = "OK";
+              }
+            } catch (_) {}
+          }
+        })()
+      ]);
+
+      renderPlacesListAndMarkers(false);
+    }
 
 function updateSinglePlaceCard(place) {
       ensurePlaceRating(place);
@@ -1358,12 +1945,13 @@ function updateSinglePlaceCard(place) {
       if (metaRow && typeof place.rating === "number" && place.rating > 0) {
         const ratingSpan = metaRow.querySelector(".rating-text") || metaRow.querySelector(".rating-placeholder") || metaRow.querySelector(".status-unknown");
         if (ratingSpan) {
+          const isVerified100 = typeof place.userRatingCount === "number" && place.userRatingCount >= 100;
           const reviewsText =
             typeof place.userRatingCount === "number" && place.userRatingCount > 0
-              ? ` (${place.userRatingCount.toLocaleString()}개 리뷰)`
+              ? ` (${place.userRatingCount.toLocaleString()}개 리뷰${isVerified100 ? " · 🔥검증됨" : ""})`
               : "";
           ratingSpan.className = "rating-text";
-          ratingSpan.innerHTML = `★ ${place.rating.toFixed(1)}<span>${reviewsText}</span>`;
+          ratingSpan.innerHTML = `★ ${place.rating.toFixed(1)}<span style="${isVerified100 ? "color:#b45309; font-weight:700;" : ""}">${reviewsText}</span>`;
         }
       }
       if (place.photoUrl) {
@@ -1389,14 +1977,14 @@ function updateSinglePlaceCard(place) {
       if (!entry) return;
       const { marker, num } = entry;
       const isSelected = place.id === state.selectedPlaceId;
+      const isHovered = place.id === state.hoveredPlaceId;
       if (marker.content && marker.content instanceof HTMLElement) {
-        styleMarkerElement(marker.content, place, num, isSelected);
+        styleMarkerElement(marker.content, place, num, isSelected, isHovered);
       } else if (typeof marker.setIcon === "function") {
-        marker.setIcon(createMarkerSvgIcon(place, num, isSelected));
+        marker.setIcon(createMarkerSvgIcon(place, num, isSelected || isHovered));
       }
     }
 
-    // 모든 기기와 브라우저에서 잘림 없이 [번호]와 [★평점]을 선명하게 표시하는 SVG 캡슐 아이콘
     function createMarkerSvgIcon(place, num, isSelected) {
       ensurePlaceRating(place);
       const isDistCat = isDistancePriorityCategory(state.selectedCategory);
@@ -1449,20 +2037,21 @@ function updateSinglePlaceCard(place) {
       placesList.forEach((place, idx) => {
         const num = idx + 1;
         const isSelected = place.id === state.selectedPlaceId;
+        const isHovered = place.id === state.hoveredPlaceId;
 
         let marker = null;
         if (state.libs.AdvancedMarkerElement) {
           try {
             const badge = document.createElement("div");
             badge.className = "map-marker-pin";
-            styleMarkerElement(badge, place, num, isSelected);
+            styleMarkerElement(badge, place, num, isSelected, isHovered);
 
             marker = new state.libs.AdvancedMarkerElement({
               map: state.map,
               position: place.location,
               content: badge,
               title: `${num}. ${place.name}${typeof place.rating === "number" ? " (★" + place.rating.toFixed(1) + ")" : ""}`,
-              zIndex: isSelected ? 600 : 200 - idx
+              zIndex: isSelected ? 600 : isHovered ? 500 : 200 - idx
             });
 
             marker.addListener("click", () => {
@@ -1473,15 +2062,14 @@ function updateSinglePlaceCard(place) {
           }
         }
 
-        // AdvancedMarkerElement가 없거나 지원되지 않는 환경에서는 SVG 캡슐 아이콘으로 번호+평점 100% 보장
         if (!marker) {
-          const svgIcon = createMarkerSvgIcon(place, num, isSelected);
+          const svgIcon = createMarkerSvgIcon(place, num, isSelected || isHovered);
           marker = new google.maps.Marker({
             map: state.map,
             position: place.location,
             icon: svgIcon,
             title: `${num}. ${place.name}${typeof place.rating === "number" ? " (★" + place.rating.toFixed(1) + ")" : ""}`,
-            zIndex: isSelected ? 600 : 200 - idx
+            zIndex: isSelected ? 600 : isHovered ? 500 : 200 - idx
           });
 
           marker.addListener("click", () => {
@@ -1493,23 +2081,24 @@ function updateSinglePlaceCard(place) {
       });
     }
 
-    function styleMarkerElement(el, place, num, isSelected) {
+    function styleMarkerElement(el, place, num, isSelected, isHovered = false) {
       ensurePlaceRating(place);
       const isDistCat = isDistancePriorityCategory(state.selectedCategory);
+      const activeVisual = isSelected || isHovered;
 
       let badgeLabel = "";
-      let labelColor = isSelected ? "#fde047" : "#b45309";
-      let circleBg = isSelected ? "#ffffff" : (isDistCat ? "#059669" : "#2563eb");
-      let circleText = isSelected ? (isDistCat ? "#059669" : "#2563eb") : "#ffffff";
+      let labelColor = activeVisual ? "#fde047" : "#b45309";
+      let circleBg = activeVisual ? "#ffffff" : (isDistCat ? "#059669" : "#2563eb");
+      let circleText = activeVisual ? (isDistCat ? "#059669" : "#2563eb") : "#ffffff";
 
       const hasRealRating = typeof place?.rating === "number" && place.rating > 0;
       if (isDistCat || !hasRealRating) {
         const dStr = formatShortDist(place?.straightDistM);
         badgeLabel = dStr ? `📍${dStr}` : "장소";
-        labelColor = isSelected ? "#ffffff" : (isDistCat ? "#047857" : "#334155");
+        labelColor = activeVisual ? "#ffffff" : (isDistCat ? "#047857" : "#334155");
       } else {
         badgeLabel = `★ ${place.rating.toFixed(1)}`;
-        labelColor = isSelected ? "#fde047" : "#b45309";
+        labelColor = activeVisual ? "#fde047" : "#b45309";
       }
 
       el.innerHTML = `
@@ -1528,7 +2117,7 @@ function updateSinglePlaceCard(place) {
           line-height:1;
         ">${num}</span>
         <span style="
-          font-size:${isSelected ? "12px" : "11.5px"};
+          font-size:${activeVisual ? "12px" : "11.5px"};
           font-weight:800;
           color:${labelColor};
           white-space:nowrap;
@@ -1542,24 +2131,25 @@ function updateSinglePlaceCard(place) {
       el.style.gap = "5px";
       el.style.padding = "3px 9px 3px 4px";
       el.style.borderRadius = "999px";
-      el.style.background = isSelected ? (isDistCat ? "#059669" : "#2563eb") : "rgba(255, 255, 255, 0.98)";
-      el.style.border = isSelected ? "2px solid #ffffff" : (isDistCat ? "1.5px solid #a7f3d0" : "1.5px solid #cbd5e1");
-      el.style.boxShadow = isSelected
+      el.style.background = activeVisual ? (isDistCat ? "#059669" : "#2563eb") : "rgba(255, 255, 255, 0.98)";
+      el.style.border = activeVisual ? "2px solid #ffffff" : (isDistCat ? "1.5px solid #a7f3d0" : "1.5px solid #cbd5e1");
+      el.style.boxShadow = activeVisual
         ? `0 0 0 3px ${isDistCat ? "rgba(5, 150, 105, 0.35)" : "rgba(37, 99, 235, 0.35)"}, 0 4px 12px rgba(15, 23, 42, 0.35)`
         : "0 2px 6px rgba(15, 23, 42, 0.22)";
-      el.style.transform = isSelected ? "scale(1.08)" : "scale(1)";
+      el.style.transform = isSelected ? "scale(1.1)" : isHovered ? "scale(1.06)" : "scale(1)";
       el.style.transition = "all 0.15s ease";
     }
 
     function updateMarkerHighlight() {
       state.placeMarkers.forEach(({ marker, place, num }) => {
         const isSelected = place.id === state.selectedPlaceId;
+        const isHovered = place.id === state.hoveredPlaceId;
         if (marker.content && marker.content instanceof HTMLElement) {
-          styleMarkerElement(marker.content, place, num, isSelected);
-          marker.zIndex = isSelected ? 600 : 200;
+          styleMarkerElement(marker.content, place, num, isSelected, isHovered);
+          marker.zIndex = isSelected ? 600 : isHovered ? 500 : 200;
         } else if (typeof marker.setIcon === "function") {
-          marker.setIcon(createMarkerSvgIcon(place, num, isSelected));
-          marker.setZIndex(isSelected ? 600 : 200);
+          marker.setIcon(createMarkerSvgIcon(place, num, isSelected || isHovered));
+          marker.setZIndex(isSelected ? 600 : isHovered ? 500 : 200);
         }
       });
     }

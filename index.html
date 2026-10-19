@@ -36,12 +36,17 @@
             type="search"
             id="searchInput"
             class="search-input"
-            placeholder="도시·숙소·장소 검색 (예: 코스모스 호텔 타이베이)"
+            placeholder="메뉴·취향(우육면·루프탑) 또는 숙소·도시 입력"
             autocomplete="off"
           />
           <button type="button" id="btnClearSearch" class="btn-clear-search" aria-label="검색어 지우기">✕</button>
         </div>
-        <button type="submit" id="btnSearch" class="btn-search">검색</button>
+        <button type="button" id="btnSearchNearbyKw" class="btn-search-nearby-kw" title="현재 기준점 주변에서 세부 메뉴·키워드 검색">
+          🔍 주변검색
+        </button>
+        <button type="submit" id="btnSearch" class="btn-search" title="입력한 도시·숙소·장소로 지도 기준점 이동">
+          🌐 이동
+        </button>
         <button type="button" id="btnLocate" class="btn-locate" aria-label="내 위치 찾기" title="내 위치">
           📍 <span id="locateBtnText">내위치</span>
         </button>
@@ -163,20 +168,35 @@
           </div>
         </div>
 
-        <!-- 2단 서브바: 현재 고정 기준점 안내 + 추천/평점/거리 기준 필터 분리 배치 -->
-        <div id="placesFilterBar" class="places-filter-bar">
-          <div id="originContextBar" class="origin-context-bar">
+        <!-- 2단 서브바: 현재 고정 기준점 안내 + 리뷰 100+ 검증 토글 + 반경 + 정렬 필터 -->
+        <div id="placesFilterBar" class="places-filter-bar" style="flex-wrap:wrap;">
+          <div id="originContextBar" class="origin-context-bar" style="min-width:140px;">
             <span id="originContextText" class="origin-context-text">📍 기준점 확인 중...</span>
             <button type="button" id="btnToggleOriginMode" class="btn-banner-help" style="display:none; white-space:nowrap; margin-left:auto;">출발: 📌기준점</button>
             <button type="button" id="btnResetToMyLoc" class="btn-banner-help" style="display:none;">내 위치 복귀</button>
           </div>
-          <select id="sortSelect" class="sort-select" aria-label="정렬 기준">
-            <option value="rating" selected>★ 구글 평점 높은 순 (기본)</option>
-            <option value="walk">🚶 도보 빠른 순</option>
-            <option value="transit">🚌 대중교통 순</option>
-            <option value="open">🟢 영업 중 우선</option>
-          </select>
+          <div class="filter-controls-wrap">
+            <button type="button" id="btnFilterVerified100" class="btn-verified-toggle" title="리뷰 100개 이상 검증된 장소만 보기">
+              🔥 리뷰 100+
+            </button>
+            <select id="radiusSelect" class="radius-select" aria-label="검색 반경">
+              <option value="600">반경 600m</option>
+              <option value="1500" selected>반경 1.5km</option>
+              <option value="3000">반경 3km</option>
+            </select>
+            <select id="sortSelect" class="sort-select" aria-label="정렬 기준">
+              <option value="popular" selected>🏆 현지 인기순 (평점×리뷰)</option>
+              <option value="rating">★ 구글 평점 높은 순</option>
+              <option value="dist">📍 가장 가까운 순</option>
+              <option value="walk">🚶 도보 빠른 순</option>
+              <option value="transit">🚌 대중교통 순</option>
+              <option value="open">🟢 영업 중 우선</option>
+            </select>
+          </div>
         </div>
+
+        <!-- 3단 서브바: 카테고리별 세부 메뉴·취향 키워드 원탭 필터 바 -->
+        <div id="quickTasteBar" class="quick-taste-bar" role="region" aria-label="세부 메뉴 및 취향 키워드"></div>
 
         <div class="sheet-body">
 
@@ -198,11 +218,17 @@
             <div id="placesList" class="places-list"></div>
           </div>
 
-          <!-- 탭 2: 여행 코스 플래너 -->
+          <!-- 탭 2: 여행 코스 플래너 (Day 1~3 일자별 관리 + 메모 + 스마트 동선 최적화) -->
           <div id="tripView" class="trip-panel">
             <div class="trip-summary-box">
+              <div id="tripDayTabs" class="trip-day-tabs" role="tablist" aria-label="여행 일자 선택">
+                <button type="button" class="trip-day-btn active" data-day="1">🗓️ Day 1</button>
+                <button type="button" class="trip-day-btn" data-day="2">🗓️ Day 2</button>
+                <button type="button" class="trip-day-btn" data-day="3">🗓️ Day 3</button>
+              </div>
+
               <div class="trip-toolbar">
-                <strong>이동 수단 및 경로 계산</strong>
+                <strong>이동 수단 및 코스 동선</strong>
                 <div class="trip-mode-switch" role="group" aria-label="여행 코스 이동 수단">
                   <button type="button" id="btnTripModeWalk" class="trip-mode-btn active" data-mode="WALKING">🚶 도보</button>
                   <button type="button" id="btnTripModeTransit" class="trip-mode-btn" data-mode="TRANSIT">🚌 대중교통</button>
@@ -210,14 +236,19 @@
               </div>
 
               <div id="tripMetricsBox" class="trip-total-metrics">
-                장소 카드에서 <strong>+ 여행추가</strong> 버튼을 눌러 방문할 장소를 담아보세요. (예: 오전 관광지 → 카페 휴식 → 저녁 맛집 → 편의점/ATM)
+                장소 카드 우측 상단의 <strong>+코스</strong> 버튼을 눌러 일자별 방문 장소를 담아보세요.
               </div>
               <div id="tripOptNote" class="trip-opt-note"></div>
 
               <div class="trip-action-row">
-                <button type="button" id="btnOptimizeTrip" class="btn-trip-action accent">
-                  ✨ 추천 방문 순서 최적화
+                <button type="button" id="btnOptimizeTrip" class="btn-trip-action accent" title="가장 짧은 이동 거리 순서로 정렬">
+                  📍 최단 거리순 정렬
                 </button>
+                <button type="button" id="btnOptimizeTripSmart" class="btn-trip-action" style="border-color:var(--accent); color:var(--accent-dark);" title="오전 관광지 → 점심 식당 → 오후 카페 → 저녁 맛집 → 야경/바 순서로 정렬">
+                  🕒 시간·업종 맞춤 정렬
+                </button>
+              </div>
+              <div class="trip-action-row" style="margin-top:6px;">
                 <button type="button" id="btnDrawTripRoute" class="btn-trip-action">
                   🗺️ 지도에 코스 표시
                 </button>

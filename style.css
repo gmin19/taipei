@@ -1533,3 +1533,251 @@
       font-size: 16px;
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     }
+  
+    /* 카테고리 그룹 전환 버튼 (✨ 여행발견 vs 🛟 생활·편의) */
+    .cat-group-switch {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.92);
+      border-radius: 999px;
+      padding: 2px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+    }
+
+    .cat-group-btn {
+      border: none;
+      background: transparent;
+      color: #cbd5e1;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 6px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .cat-group-btn.active {
+      background: #ffffff;
+      color: var(--text-primary);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    }
+
+    /* 상단 검색창 듀얼 액션 버튼 (🔍주변검색 / 🌐위치이동) */
+    .btn-search-nearby-kw {
+      height: 34px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .btn-search-nearby-kw:active {
+      transform: scale(0.97);
+    }
+
+    /* 필터 바 내 리뷰 100+ 검증 토글 & 반경 선택 */
+    .filter-controls-wrap {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    .btn-verified-toggle {
+      height: 32px;
+      padding: 0 9px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-size: 11.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .btn-verified-toggle.active {
+      background: #fffbeb;
+      border-color: #f59e0b;
+      color: #b45309;
+      box-shadow: 0 1px 4px rgba(245, 158, 11, 0.2);
+    }
+
+    .radius-select {
+      height: 32px;
+      padding: 0 18px 0 7px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* 세부 메뉴·취향 키워드 빠른 칩 바 */
+    .quick-taste-bar {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 6px 14px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      flex-shrink: 0;
+    }
+
+    .quick-taste-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .quick-taste-bar.visible {
+      display: flex;
+    }
+
+    .taste-chip {
+      flex-shrink: 0;
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .taste-chip.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent-dark);
+      font-weight: 800;
+    }
+
+    /* 장소 카드 우측 상단 퀵 아이콘 버튼 (내장소 하트 + 코스 담기) */
+    .card-quick-icons {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .btn-card-icon {
+      height: 30px;
+      padding: 0 9px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      font-size: 11.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      white-space: nowrap;
+    }
+
+    .btn-card-icon.fav-saved {
+      background: var(--rose-soft);
+      border-color: #fda4af;
+      color: var(--rose);
+    }
+
+    .btn-card-icon.in-trip {
+      background: var(--emerald-soft);
+      border-color: #6ee7b7;
+      color: var(--emerald);
+    }
+
+    .place-card.scroll-focused {
+      border-color: #93c5fd;
+    }
+
+    /* + 주변 장소 10곳 더 보기 버튼 */
+    .btn-load-more {
+      width: 100%;
+      min-height: 46px;
+      margin-top: 4px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: 1.5px dashed var(--accent);
+      background: #eff6ff;
+      color: var(--accent-dark);
+      font-size: 13.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-load-more:active {
+      transform: scale(0.99);
+      background: var(--accent-soft);
+    }
+
+    /* 여행 코스 Day 1 / Day 2 / Day 3 탭 및 메모 입력 */
+    .trip-day-tabs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .trip-day-btn {
+      flex: 1;
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      font-size: 12.5px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .trip-day-btn.active {
+      background: var(--text-primary);
+      border-color: var(--text-primary);
+      color: #ffffff;
+    }
+
+    .trip-memo-input {
+      width: 100%;
+      height: 32px;
+      margin-top: 4px;
+      padding: 0 10px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 12px;
+      outline: none;
+    }
+
+    .trip-memo-input:focus {
+      border-color: var(--accent);
+      background: #ffffff;
+    }

@@ -1,5 +1,5 @@
 // ===========================================================================
-// [route.js] 도보·대중교통 경로 탐색, 지도 폴리라인 표시, 여행 코스 최적화 및 길찾기 URL 생성
+// [route.js] 도보·대중교통 경로 탐색, 지도 폴리라인, Day 1~3 여행 코스·메모·스마트 동선 최적화
 // ===========================================================================
 
 // =========================================================================
@@ -744,16 +744,24 @@
     }
 
 // =========================================================================
-    // [9] 여행 목록(여행 코스) 관리 및 경로 추천/최적화
+    // [9] 여행 코스(Day 1~3 일자별 관리 + 한 줄 메모 + 최단거리/시간·업종 맞춤 최적화)
     // =========================================================================
+    function getCurrentDayTripList() {
+      return state.tripList.filter((item) => (item.day || 1) === state.currentTripDay);
+    }
+
     function togglePlaceInTrip(place) {
       const idx = state.tripList.findIndex((item) => item.id === place.id);
       if (idx >= 0) {
-        state.tripList.splice(idx, 1);
-        showBanner(`'${place.name}' 장소를 여행 코스에서 제외했습니다.`, "info");
+        const removed = state.tripList.splice(idx, 1)[0];
+        showBanner(`'${removed.name}' 장소를 여행 코스에서 제외했습니다.`, "info");
       } else {
-        state.tripList.push({ ...place });
-        showBanner(`'${place.name}' 장소를 여행 코스에 추가했습니다.`, "info");
+        state.tripList.push({
+          ...place,
+          day: state.currentTripDay || 1,
+          memo: ""
+        });
+        showBanner(`'${place.name}' 장소를 [Day ${state.currentTripDay}] 여행 코스에 추가했습니다!`, "info");
       }
 
       saveTripListToStorage();
@@ -772,19 +780,30 @@
       calculateAndRenderTripCourse(true);
     }
 
-    function moveTripStop(index, direction) {
-      const targetIdx = index + direction;
-      if (targetIdx < 0 || targetIdx >= state.tripList.length) return;
-      const temp = state.tripList[index];
-      state.tripList[index] = state.tripList[targetIdx];
-      state.tripList[targetIdx] = temp;
+    function moveTripStop(dayLocalIdx, direction) {
+      const dayItems = getCurrentDayTripList();
+      const targetLocalIdx = dayLocalIdx + direction;
+      if (targetLocalIdx < 0 || targetLocalIdx >= dayItems.length) return;
+
+      const itemA = dayItems[dayLocalIdx];
+      const itemB = dayItems[targetLocalIdx];
+      const globalIdxA = state.tripList.findIndex((x) => x.id === itemA.id);
+      const globalIdxB = state.tripList.findIndex((x) => x.id === itemB.id);
+      if (globalIdxA < 0 || globalIdxB < 0) return;
+
+      const temp = state.tripList[globalIdxA];
+      state.tripList[globalIdxA] = state.tripList[globalIdxB];
+      state.tripList[globalIdxB] = temp;
+
       saveTripListToStorage();
-      state.tripOptimizationLabel = "사용자 지정 방문 순서";
+      state.tripOptimizationLabel = `Day ${state.currentTripDay} 사용자 지정 방문 순서`;
       calculateAndRenderTripCourse(true);
     }
 
-    function removeTripStop(index) {
-      state.tripList.splice(index, 1);
+    function removeTripStop(placeId) {
+      const idx = state.tripList.findIndex((x) => x.id === placeId);
+      if (idx < 0) return;
+      state.tripList.splice(idx, 1);
       saveTripListToStorage();
       $("tripCountBadge").textContent = String(state.tripList.length);
       updateRestoreBarText();
@@ -795,7 +814,8 @@
 
     async function calculateAndRenderTripCourse(drawOnMap = false) {
       renderTripPanel();
-      if (state.tripList.length === 0) {
+      const dayList = getCurrentDayTripList();
+      if (dayList.length === 0) {
         state.tripLegMetrics = [];
         state.tripTotalDurationMs = null;
         state.tripTotalDistanceM = null;
@@ -813,7 +833,7 @@
           isOrigin: true
         });
       }
-      state.tripList.forEach((p) => nodes.push(p));
+      dayList.forEach((p) => nodes.push(p));
 
       if (nodes.length < 2) {
         state.tripLegMetrics = [];
@@ -886,65 +906,86 @@
       renderTripPanel();
     }
 
-    async function optimizeTripCourse() {
-      if (state.tripList.length < 2) {
-        showBanner("방문 순서를 추천하려면 여행 코스에 장소를 2개 이상 추가해 주세요.", "info");
+    // 업종별 권장 방문 시간대 우선순위 (1: 오전 명소/공원 -> 2: 점심 식당 -> 3: 오후 카페/디저트/쇼핑 -> 4: 저녁 식당 -> 5: 야시장/바/스파)
+    function getPlaceTimeSlotPriority(place) {
+      const t = String(place.primaryType || "").toLowerCase();
+      const label = String(place.categoryLabel || "");
+      const name = String(place.name || "");
+      const combined = `${t} ${label} ${name}`;
+
+      if (/(night_market|bar|pub|izakaya|야시장|야경|전망대|바|펍|이자카야|포차|루프탑|spa|massage|스파|마사지)/i.test(combined)) {
+        return 5; // 밤·야간 코스
+      }
+      if (/(cafe|coffee|bakery|dessert|ice_cream|카페|커피|베이커리|디저트|빙수|소품|쇼핑|shopping|gift)/i.test(combined)) {
+        return 3; // 오후 티타임·쇼핑
+      }
+      if (/(restaurant|식당|맛집|음식점|한식|중식|일식|양식|우육면|라멘|훠궈)/i.test(combined)) {
+        return 2; // 식사
+      }
+      return 1; // 오전 관광명소·박물관·공원
+    }
+
+    async function optimizeTripCourse(optMode = "distance") {
+      const dayList = getCurrentDayTripList();
+      if (dayList.length < 2) {
+        showBanner(`Day ${state.currentTripDay} 코스에 장소를 2개 이상 추가해 주세요.`, "info");
         return;
       }
 
-      setLoading(true, "여행 코스의 추천 방문 순서를 계산하는 중...");
+      setLoading(true, `Day ${state.currentTripDay} 코스의 추천 방문 순서를 계산하는 중...`);
       try {
         const refOrigin = state.searchOrigin || state.currentLocation;
-        const hasOrigin = Boolean(refOrigin);
-        const startPoint = refOrigin || state.tripList[0].location;
+        const startPoint = refOrigin || dayList[0].location;
+        let orderedDayList = [];
 
-        const allNodes = hasOrigin
-          ? [{ id: "__ORIGIN__", location: startPoint }, ...state.tripList]
-          : [...state.tripList];
+        if (optMode === "smart_time") {
+          // [개선안 5-4] 시간대·업종 맥락(오전 명소 → 점심 맛집 → 오후 카페·쇼핑 → 저녁 식사 → 밤 야시장·바) + 근접성 결합 정렬
+          const remaining = [...dayList];
+          // 만약 식당이 2개 이상이면 하나는 점심(slot 2), 하나는 저녁(slot 4)으로 자동 배분!
+          const restItems = remaining.filter((p) => getPlaceTimeSlotPriority(p) === 2);
+          restItems.forEach((p, idx) => {
+            p._tempSlot = idx === 0 ? 2 : 4;
+          });
+          remaining.forEach((p) => {
+            if (!p._tempSlot) p._tempSlot = getPlaceTimeSlotPriority(p);
+          });
 
-        const n = allNodes.length;
-        const costMatrix = Array.from({ length: n }, () => Array(n).fill(Infinity));
-
-        for (let r = 0; r < n; r++) {
-          for (let c = 0; c < n; c++) {
-            if (r !== c) {
-              costMatrix[r][c] = computeHaversineMeters(allNodes[r].location, allNodes[c].location);
-            }
+          let currLoc = startPoint;
+          while (remaining.length > 0) {
+            const minSlot = Math.min(...remaining.map((p) => p._tempSlot));
+            const sameSlotCandidates = remaining.filter((p) => p._tempSlot === minSlot);
+            sameSlotCandidates.sort(
+              (a, b) => computeHaversineMeters(currLoc, a.location) - computeHaversineMeters(currLoc, b.location)
+            );
+            const chosen = sameSlotCandidates[0];
+            delete chosen._tempSlot;
+            orderedDayList.push(chosen);
+            currLoc = chosen.location;
+            const rmIdx = remaining.findIndex((x) => x.id === chosen.id);
+            if (rmIdx >= 0) remaining.splice(rmIdx, 1);
           }
-        }
-
-        const visited = new Array(n).fill(false);
-        const order = [0];
-        visited[0] = true;
-
-        for (let step = 1; step < n; step++) {
-          const last = order[order.length - 1];
-          let bestNext = -1;
-          let bestCost = Infinity;
-          for (let candidate = 0; candidate < n; candidate++) {
-            if (!visited[candidate] && costMatrix[last][candidate] < bestCost) {
-              bestCost = costMatrix[last][candidate];
-              bestNext = candidate;
-            }
-          }
-          if (bestNext === -1) {
-            bestNext = visited.findIndex((v) => !v);
-          }
-          visited[bestNext] = true;
-          order.push(bestNext);
-        }
-
-        if (hasOrigin) {
-          state.tripList = order.slice(1).map((idx) => allNodes[idx]);
+          state.tripOptimizationLabel = `✨ Day ${state.currentTripDay} 시간대·업종 맞춤 정렬 완료 (명소→식사→카페→야경 순)`;
         } else {
-          state.tripList = order.map((idx) => allNodes[idx]);
+          // 최단 거리 그리디(Nearest-Neighbor) 정렬
+          const remaining = [...dayList];
+          let currLoc = startPoint;
+          while (remaining.length > 0) {
+            remaining.sort(
+              (a, b) => computeHaversineMeters(currLoc, a.location) - computeHaversineMeters(currLoc, b.location)
+            );
+            const chosen = remaining.shift();
+            orderedDayList.push(chosen);
+            currLoc = chosen.location;
+          }
+          state.tripOptimizationLabel = `📍 Day ${state.currentTripDay} 최단 이동 거리순 정렬 완료`;
         }
 
-        const modeName = state.tripTravelMode === "TRANSIT" ? "대중교통" : "도보";
+        const otherDays = state.tripList.filter((item) => (item.day || 1) !== state.currentTripDay);
+        state.tripList = [...otherDays, ...orderedDayList];
+
         saveTripListToStorage();
-        state.tripOptimizationLabel = `추천 방문 순서 정렬 완료 (${modeName} 기준)`;
         await calculateAndRenderTripCourse(true);
-        showBanner("추천 방문 순서로 코스를 정렬했습니다.", "info");
+        showBanner(state.tripOptimizationLabel, "info");
       } catch (err) {
         console.error("여행 코스 추천 순서 계산 실패:", err);
         showBanner("추천 방문 순서를 계산하지 못했습니다. 수동으로 순서를 조정해 주세요.", "error");
@@ -961,11 +1002,20 @@
 
       $("tripCountBadge").textContent = String(state.tripList.length);
       updateRestoreBarText();
-      gmapsBtn.href = buildGoogleMapsTripUrl();
 
-      if (state.tripList.length === 0) {
-        metricsBox.innerHTML =
-          "장소 카드에서 <strong>+ 코스추가</strong> 버튼을 눌러 방문할 장소를 담아보세요. (예: 오전 관광지 → 근처 카페 → 저녁 맛집 → 편의점/ATM)";
+      // 각 Day 탭에 담긴 장소 개수 표시 업데이트
+      document.querySelectorAll("#tripDayTabs .trip-day-btn").forEach((btn) => {
+        const dNum = Number(btn.dataset.day) || 1;
+        const cnt = state.tripList.filter((it) => (it.day || 1) === dNum).length;
+        btn.textContent = `🗓️ Day ${dNum}${cnt > 0 ? ` (${cnt})` : ""}`;
+        btn.classList.toggle("active", dNum === state.currentTripDay);
+      });
+
+      const dayList = getCurrentDayTripList();
+      gmapsBtn.href = buildGoogleMapsTripUrl(dayList);
+
+      if (dayList.length === 0) {
+        metricsBox.innerHTML = `<strong>[Day ${state.currentTripDay}]</strong>에 담긴 장소가 없습니다. 장소 카드 우측 상단의 <strong>+코스</strong> 버튼을 눌러 장소를 담아보세요.`;
         optNoteEl.textContent = "";
         stopsListEl.innerHTML = "";
         return;
@@ -973,20 +1023,17 @@
 
       const startOrigin = state.searchOrigin || state.currentLocation;
       const modeLabel = state.tripTravelMode === "TRANSIT" ? "🚌 대중교통" : "🚶 도보";
-      if (state.tripTotalDurationMs !== null && state.tripList.length >= 1) {
+      if (state.tripTotalDurationMs !== null && dayList.length >= 1) {
         const totalDurText =
           state.tripTotalDurationMs > 0 ? formatDuration(state.tripTotalDurationMs) : "0분";
         const totalDistText =
           state.tripTotalDistanceM > 0 ? ` · 총 이동거리 ${formatDistance(state.tripTotalDistanceM)}` : "";
-        const incompleteWarn = state.tripHasIncompleteLegs
-          ? " <span style='color:var(--amber);'>(일부 구간 경로 미제공 제외)</span>"
-          : "";
         metricsBox.innerHTML = `
-          <div><strong>${modeLabel} 전체 예상 이동 시간: ${totalDurText}</strong>${totalDistText}${incompleteWarn}</div>
-          <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">총 ${state.tripList.length}개 방문 장소${startOrigin ? ` (${state.searchOriginLabel} 출발 기준)` : ""}</div>
+          <div><strong>[Day ${state.currentTripDay}] ${modeLabel} 예상 이동 시간: ${totalDurText}</strong>${totalDistText}</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">총 ${dayList.length}개 방문 장소${startOrigin ? ` (${state.searchOriginLabel} 출발 기준)` : ""}</div>
         `;
       } else {
-        metricsBox.innerHTML = `<div><strong>총 ${state.tripList.length}개 방문 장소</strong>가 저장되었습니다.</div>`;
+        metricsBox.innerHTML = `<div><strong>[Day ${state.currentTripDay}] 총 ${dayList.length}개 방문 장소</strong>가 저장되었습니다.</div>`;
       }
 
       optNoteEl.textContent = state.tripOptimizationLabel || "";
@@ -1003,11 +1050,11 @@
             ? `📍 기준 위치 → 1번째 장소: ${modeLabel} ${formatDuration(firstLeg.durationMs)}${
                 firstLeg.distanceM ? " (" + formatDistance(firstLeg.distanceM) + ")" : ""
               }`
-            : `📍 기준 위치 → 1번째 장소: ${state.tripTravelMode === "TRANSIT" ? "대중교통 경로 없음" : "경로 정보 없음"}`;
+            : `📍 기준 위치 → 1번째 장소: 도보 또는 대중교통 이동`;
         stopsListEl.appendChild(legDiv);
       }
 
-      state.tripList.forEach((place, idx) => {
+      dayList.forEach((place, idx) => {
         const card = document.createElement("div");
         card.className = "trip-stop-card";
         const singleDirUrl = buildGoogleMapsDirectionsUrl(place, state.tripTravelMode);
@@ -1018,26 +1065,40 @@
               <span class="place-index-badge">${idx + 1}</span>
               <div>
                 <div>${escapeHtml(place.name)}</div>
-                <div style="font-size:11.5px; color:var(--text-muted); font-weight:500;">${escapeHtml(place.categoryLabel)}</div>
+                <div style="font-size:11.5px; color:var(--text-muted); font-weight:500;">${escapeHtml(place.categoryLabel)}${typeof place.rating === "number" ? ` · ★${place.rating.toFixed(1)}` : ""}</div>
               </div>
             </div>
             <div class="trip-stop-controls">
               <button type="button" class="btn-mini" data-move="up" ${idx === 0 ? "disabled" : ""} aria-label="위로 이동">▲</button>
-              <button type="button" class="btn-mini" data-move="down" ${idx === state.tripList.length - 1 ? "disabled" : ""} aria-label="아래로 이동">▼</button>
+              <button type="button" class="btn-mini" data-move="down" ${idx === dayList.length - 1 ? "disabled" : ""} aria-label="아래로 이동">▼</button>
               <a href="${singleDirUrl}" target="_blank" rel="noopener noreferrer" class="btn-mini" style="text-decoration:none; display:inline-flex; align-items:center;">길찾기↗</a>
               <button type="button" class="btn-mini danger" data-remove="true" aria-label="목록에서 삭제">삭제</button>
             </div>
           </div>
+          <input
+            type="text"
+            class="trip-memo-input"
+            placeholder="📝 메모 입력 (예: 12시 점심 예약, 대표 메뉴 주문)"
+            value="${escapeHtml(place.memo || "")}"
+          />
         `;
 
         card.querySelector('[data-move="up"]').addEventListener("click", () => moveTripStop(idx, -1));
         card.querySelector('[data-move="down"]').addEventListener("click", () => moveTripStop(idx, 1));
-        card.querySelector('[data-remove="true"]').addEventListener("click", () => removeTripStop(idx));
+        card.querySelector('[data-remove="true"]').addEventListener("click", () => removeTripStop(place.id));
+
+        const memoInput = card.querySelector(".trip-memo-input");
+        if (memoInput) {
+          memoInput.addEventListener("change", (e) => {
+            place.memo = e.target.value.trim();
+            saveTripListToStorage();
+          });
+        }
 
         stopsListEl.appendChild(card);
 
         const legMetricIdx = hasOrigin ? idx + 1 : idx;
-        if (idx < state.tripList.length - 1 && state.tripLegMetrics[legMetricIdx]) {
+        if (idx < dayList.length - 1 && state.tripLegMetrics[legMetricIdx]) {
           const leg = state.tripLegMetrics[legMetricIdx];
           const legDiv = document.createElement("div");
           legDiv.className = "trip-leg-connector";
@@ -1046,15 +1107,12 @@
               ? `↓ 다음 장소까지 ${modeLabel} ${formatDuration(leg.durationMs)}${
                   leg.distanceM ? " (" + formatDistance(leg.distanceM) + ")" : ""
                 }`
-              : `↓ 다음 장소까지: ${
-                  state.tripTravelMode === "TRANSIT" ? "대중교통 경로 없음" : "경로 정보 없음"
-                }`;
+              : `↓ 다음 장소까지 도보/대중교통 이동`;
           stopsListEl.appendChild(legDiv);
         }
       });
     }
 
-    // =========================================================================
     // [10] Google 지도 공식 링크 생성 (아이폰 Safari 호환 Universal URLs)
     // =========================================================================
     function buildGoogleMapsPlaceUrl(place) {
@@ -1158,29 +1216,30 @@
       return `https://map.kakao.com/link/to/${encodeURIComponent(place.name)},${dest.lat},${dest.lng}`;
     }
 
-    function buildGoogleMapsTripUrl() {
-      if (state.tripList.length === 0) {
+    function buildGoogleMapsTripUrl(customStopList = null) {
+      const targetList = Array.isArray(customStopList) ? customStopList : getCurrentDayTripList();
+      if (targetList.length === 0) {
         return "https://www.google.com/maps";
       }
       const mode = state.tripTravelMode === "TRANSIT" ? "transit" : "walking";
-      if (state.tripList.length === 1) {
-        return buildGoogleMapsDirectionsUrl(state.tripList[0], state.tripTravelMode);
+      if (targetList.length === 1) {
+        return buildGoogleMapsDirectionsUrl(targetList[0], state.tripTravelMode);
       }
 
       const refOrigin = state.searchOrigin || state.currentLocation;
-      const lastStop = state.tripList[state.tripList.length - 1];
+      const lastStop = targetList[targetList.length - 1];
       const originCoord = refOrigin
         ? `${refOrigin.lat},${refOrigin.lng}`
-        : `${state.tripList[0].location.lat},${state.tripList[0].location.lng}`;
+        : `${targetList[0].location.lat},${targetList[0].location.lng}`;
 
       if (mode === "transit") {
-        const firstStop = state.tripList[0];
+        const firstStop = targetList[0];
         return buildGoogleMapsDirectionsUrl(firstStop, "TRANSIT");
       }
 
       const waypointStops = refOrigin
-        ? state.tripList.slice(0, -1)
-        : state.tripList.slice(1, -1);
+        ? targetList.slice(0, -1)
+        : targetList.slice(1, -1);
 
       const waypointsParam =
         waypointStops.length > 0
