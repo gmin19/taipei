@@ -1781,3 +1781,31 @@
       border-color: var(--accent);
       background: #ffffff;
     }
+
+  
+    .place-name-link {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text-primary);
+      text-decoration: none;
+       display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      word-break: keep-all;
+      border-bottom: 1.5px solid rgba(37, 99, 235, 0.35);
+      padding-bottom: 1px;
+      transition: color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .place-name-link:hover,
+    .place-name-link:active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .place-name-ext-icon {
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 900;
+      flex-shrink: 0;
+    }

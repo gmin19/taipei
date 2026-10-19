@@ -1064,7 +1064,7 @@
             <div class="trip-stop-title">
               <span class="place-index-badge">${idx + 1}</span>
               <div>
-                <div>${escapeHtml(place.name)}</div>
+                <div><a href="${buildGoogleMapsPlaceUrl(place)}" target="_blank" rel="noopener noreferrer" class="place-name-link" style="font-size:14px;"><span>${escapeHtml(place.name)}</span><span class="place-name-ext-icon" aria-hidden="true">↗</span></a></div>
                 <div style="font-size:11.5px; color:var(--text-muted); font-weight:500;">${escapeHtml(place.categoryLabel)}${typeof place.rating === "number" ? ` · ★${place.rating.toFixed(1)}` : ""}</div>
               </div>
             </div>

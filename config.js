@@ -11,7 +11,7 @@
     // API 요청 및 구글맵 평점 기준 상수
     const MAX_SEARCH_RESULTS = 10;          // 화면에 표시할 장소 수 (구글 평점 기준 상위 10개)
     const MAX_ROUTE_MATRIX_TARGETS = 6;     // 상위 6개 장소의 도보·대중교통 시간 백그라운드 계산
-    const DEFAULT_SEARCH_RADIUS_M = 1500;   // 주변 검색 반경 1.5km
+    const DEFAULT_SEARCH_RADIUS_M = 600;    // 기본 주변 탐색 반경 600m (도보권 우선 탐색 후 단계별 확장)
     const DEFAULT_CENTER = { lat: 37.5665, lng: 126.9780 }; // 초기 기본 중심
 
     // 카테고리 매핑: 목적성에 따라 [✨ 여행발견 (discovery)] 그룹과 [🛟 생활·편의 (utility)] 그룹으로 구조화
@@ -38,7 +38,7 @@
         ],
         keywordKo: "맛집 음식점 식당",
         keywordEn: "popular restaurant local food",
-        radiusM: 1500
+        radiusM: 600
       },
       {
         id: "cafe",
@@ -54,7 +54,7 @@
         ],
         keywordKo: "카페 커피전문점 로스터리",
         keywordEn: "cafe coffee shop roastery",
-        radiusM: 1500
+        radiusM: 600
       },
       {
         id: "bakery",
@@ -66,7 +66,7 @@
         excludedPrimaryTypes: ["restaurant", "korean_restaurant", "chinese_restaurant", "japanese_restaurant", "convenience_store", "supermarket", "hotel", "lodging"],
         keywordKo: "디저트 베이커리 빙수 빵집 제과점",
         keywordEn: "dessert bakery ice cream shaved ice pastry",
-        radiusM: 1500
+        radiusM: 600
       },
       {
         id: "night_market",
@@ -78,7 +78,7 @@
         excludedPrimaryTypes: ["convenience_store", "supermarket", "gas_station", "bank", "atm", "pharmacy", "hospital"],
         keywordKo: "야시장 야경 전망대 먹자골목",
         keywordEn: "night market night view observation deck street food",
-        radiusM: 2500
+        radiusM: 600
       },
       {
         id: "bar",
@@ -90,7 +90,7 @@
         excludedPrimaryTypes: ["convenience_store", "supermarket", "gas_station", "pharmacy", "hospital", "bank", "cafe"],
         keywordKo: "바 펍 이자카야 루프탑 맥주",
         keywordEn: "bar pub izakaya craft beer cocktail rooftop bar",
-        radiusM: 1800
+        radiusM: 600
       },
       {
         id: "tourist_attraction",
@@ -102,7 +102,7 @@
         excludedPrimaryTypes: ["restaurant", "cafe", "convenience_store", "gas_station", "bank", "atm", "pharmacy", "hotel", "lodging"],
         keywordKo: "관광명소 볼거리 랜드마크 포토스팟",
         keywordEn: "tourist attraction landmark sightseeing",
-        radiusM: 2500
+        radiusM: 600
       },
       {
         id: "shopping_mall",
@@ -114,7 +114,7 @@
         excludedPrimaryTypes: ["convenience_store", "restaurant", "cafe", "gas_station", "pharmacy", "bank"],
         keywordKo: "소품샵 기념품 쇼핑몰 백화점 상점가",
         keywordEn: "souvenir gift shop shopping mall",
-        radiusM: 2000
+        radiusM: 600
       },
       {
         id: "museum",
@@ -126,7 +126,7 @@
         excludedPrimaryTypes: ["restaurant", "cafe", "convenience_store", "hotel", "lodging"],
         keywordKo: "박물관 미술관 전시관 갤러리",
         keywordEn: "museum art gallery exhibition",
-        radiusM: 3000
+        radiusM: 600
       },
       {
         id: "park",
@@ -138,7 +138,7 @@
         excludedPrimaryTypes: ["restaurant", "cafe", "convenience_store", "hotel", "lodging", "gas_station"],
         keywordKo: "공원 산책로 수목원 정원",
         keywordEn: "park garden promenade",
-        radiusM: 2000
+        radiusM: 600
       },
       {
         id: "spa",
@@ -150,7 +150,7 @@
         excludedPrimaryTypes: ["restaurant", "cafe", "convenience_store", "gas_station", "bank"],
         keywordKo: "마사지 스파 온천 발마사지",
         keywordEn: "massage spa foot massage hot spring",
-        radiusM: 2000
+        radiusM: 600
       },
 
       // ==================== [그룹 2: 🛟 생활·편의 (가까운 거리 최우선)] ====================
@@ -164,7 +164,7 @@
         excludedPrimaryTypes: ["restaurant", "cafe", "supermarket", "hotel", "lodging", "pharmacy", "bank"],
         keywordKo: "편의점",
         keywordEn: "convenience store 7-eleven familymart lawson",
-        radiusM: 1000
+        radiusM: 600
       },
       {
         id: "pharmacy",
@@ -176,7 +176,7 @@
         excludedPrimaryTypes: ["restaurant", "cafe", "convenience_store", "hotel", "lodging", "hospital"],
         keywordKo: "약국 드럭스토어",
         keywordEn: "pharmacy drugstore",
-        radiusM: 1200
+        radiusM: 600
       },
       {
         id: "atm",
@@ -188,7 +188,7 @@
         excludedPrimaryTypes: ["restaurant", "cafe", "hotel", "lodging"],
         keywordKo: "ATM 현금인출기",
         keywordEn: "atm cash machine",
-        radiusM: 1200
+        radiusM: 600
       },
       {
         id: "bank",
@@ -200,7 +200,7 @@
         excludedPrimaryTypes: ["restaurant", "cafe", "hotel", "lodging", "convenience_store"],
         keywordKo: "은행 환전소",
         keywordEn: "bank currency exchange",
-        radiusM: 1500
+        radiusM: 600
       },
       {
         id: "supermarket",
@@ -212,7 +212,7 @@
         excludedPrimaryTypes: ["convenience_store", "restaurant", "cafe", "hotel", "lodging"],
         keywordKo: "대형마트 슈퍼마켓 식료품",
         keywordEn: "supermarket grocery mart",
-        radiusM: 1800
+        radiusM: 600
       },
       {
         id: "gas_station",
@@ -224,7 +224,7 @@
         excludedPrimaryTypes: ["restaurant", "cafe", "convenience_store", "hotel", "lodging"],
         keywordKo: "주유소",
         keywordEn: "gas station",
-        radiusM: 3000
+        radiusM: 600
       }
     ];
 

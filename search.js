@@ -614,7 +614,29 @@
           clearMapMarkersAndPolylines();
           renderPlacesListAndMarkers(false);
           updateRestoreBarText();
-          showBanner(`이 반경(${formatDistance(targetRadius)}) 내에 ${searchLabel} 검색 결과가 없습니다. 반경을 3km로 넓히거나 지도를 이동해 보세요.`, "info");
+          const nextR = getNextRadiusStep(targetRadius);
+          if (nextR) {
+            updateEmptyStateMessage(
+              `반경 ${formatDistance(targetRadius)} 내 ${searchLabel} 결과가 없습니다`,
+              `도보권(600m)에 해당 장소가 없다면 아래 버튼을 눌러 탐색 반경을 ${formatDistance(nextR)}로 넓혀보세요.`
+            );
+            const emptyEl = $("placesEmptyState");
+            if (emptyEl) {
+              const expBtn = document.createElement("button");
+              expBtn.type = "button";
+              expBtn.className = "btn-load-more";
+              expBtn.style.marginTop = "12px";
+              expBtn.innerHTML = `🔭 반경 ${formatDistance(nextR)}로 넓혀서 다시 찾기`;
+              expBtn.addEventListener("click", () => {
+                state.customRadiusM = nextR;
+                state.selectedRadius = nextR;
+                if ($("radiusSelect")) $("radiusSelect").value = String(nextR);
+                executeSearch({ mode, force: true });
+              });
+              emptyEl.appendChild(expBtn);
+            }
+          }
+          showBanner(`반경 ${formatDistance(targetRadius)} 내에 ${searchLabel} 결과가 없습니다. 반경을 넓혀보세요.`, "info");
           return;
         }
 
@@ -678,15 +700,25 @@
       }
     }
 
-    // [개선안 3] + 주변 장소 10곳 더 보기 (후보 풀 확장 및 반경 자동 확장 탐색)
-    async function loadMorePlaces() {
+    // 단계별 반경 확장 계산 (600m -> 1.2km -> 2km -> 3km)
+    const RADIUS_STEPS = [600, 1200, 2000, 3000];
+    function getNextRadiusStep(currentR) {
+      const r = Number(currentR) || 600;
+      for (const step of RADIUS_STEPS) {
+        if (step > r + 50) return step;
+      }
+      return null;
+    }
+
+    // [개선안 3] + 주변 장소 더 보기 및 단계별 반경 확장 (600m → 1.2km → 2km → 3km)
+    async function loadMorePlaces(forceExpandRadius = false) {
       if (state.isRequestInFlight) return;
       const lockedCenter = state.searchOrigin || state.currentLocation;
       if (!lockedCenter) return;
 
-      // 1) 이미 확보된 후보 장소(allCandidatePlaces)가 현재 표시 개수(visibleLimit)보다 많으면 즉시 10곳 추가 노출!
+      // 1) 강제 반경 확장이 아니고, 현재 반경 내 후보 장소(allCandidatePlaces)가 아직 남아있으면 10곳 추가 노출!
       const totalAvailable = getFilteredCandidatePlaces().length;
-      if (totalAvailable > state.visibleLimit) {
+      if (!forceExpandRadius && totalAvailable > state.visibleLimit) {
         const prevLimit = state.visibleLimit;
         state.visibleLimit += 10;
         state.places = getSortedPlaces();
@@ -700,33 +732,36 @@
             renderPlacesListAndMarkers(false);
           });
         }
-        showBanner(`주변 장소 ${newlyRevealed.length}곳을 추가로 불러왔습니다 (총 ${state.places.length}곳 표시 중).`, "info");
+        showBanner(`현재 반경(${formatDistance(state.selectedRadius)}) 내 장소 ${newlyRevealed.length}곳을 추가로 표시합니다.`, "info");
         return;
       }
 
-      // 2) 현재 반경의 후보가 모두 표시된 경우, 반경을 자동 확장(예: 1.5km -> 3km, 최대 4.5km)하여 새로운 로컬 포인트 추가 탐색!
-      const expandedRadius = Math.min(4500, Math.max(2500, Math.round((state.selectedRadius || 1500) * 1.8)));
-      if (expandedRadius <= state.selectedRadius && state.selectedRadius >= 4000) {
-        showBanner("현재 주변 반경(4km) 내의 모든 검색 결과를 표시했습니다.", "info");
+      // 2) 다음 단계 반경(600m → 1.2km → 2km → 3km)으로 점차 확장하여 새로운 로컬 포인트 탐색!
+      const nextRadius = getNextRadiusStep(state.selectedRadius || state.customRadiusM || 600);
+      if (!nextRadius) {
+        showBanner("최대 탐색 반경(3km) 내의 모든 검색 결과를 표시했습니다.", "info");
         return;
       }
 
+      const prevRadius = state.selectedRadius || 600;
       const currentSeq = ++state.searchSeq;
       state.isRequestInFlight = true;
-      setLoading(true, `반경을 ${formatDistance(expandedRadius)}로 넓혀 숨은 로컬 포인트를 더 찾는 중...`);
+      setLoading(true, `탐색 반경을 ${formatDistance(prevRadius)} → ${formatDistance(nextRadius)}로 넓혀 주변 장소를 더 찾는 중...`);
 
       try {
-        state.selectedRadius = expandedRadius;
-        state.customRadiusM = expandedRadius;
+        state.selectedRadius = nextRadius;
+        state.customRadiusM = nextRadius;
         const rSelect = $("radiusSelect");
-        if (rSelect && expandedRadius >= 2500) rSelect.value = "3000";
+        if (rSelect) {
+          rSelect.value = String(nextRadius);
+        }
 
         const isNearbyKeywordMode = !state.selectedCategory && Boolean(state.keyword);
         const effectiveSubKw = isNearbyKeywordMode ? state.keyword : (state.activeTasteKeyword || "");
 
         const moreRaw = await searchNearbyNewApi(
           lockedCenter,
-          expandedRadius,
+          nextRadius,
           isNearbyKeywordMode ? null : state.selectedCategory,
           effectiveSubKw
         );
@@ -770,12 +805,12 @@
           computeTravelTimesForTopPlaces(lockedCenter, newSlice, currentSeq).then(() => {
             if (currentSeq === state.searchSeq) renderPlacesListAndMarkers(false);
           });
-          showBanner(`반경 ${formatDistance(expandedRadius)} 내 새로운 장소 ${addedCount}곳을 추가로 발견했습니다!`, "info");
+          showBanner(`반경을 ${formatDistance(nextRadius)}로 확장하여 새로운 장소 ${addedCount}곳을 추가로 찾았습니다!`, "info");
         } else {
-          showBanner(`반경 ${formatDistance(expandedRadius)}까지 탐색했으나 추가 장소가 없습니다.`, "info");
+          showBanner(`반경을 ${formatDistance(nextRadius)}로 넓혔으나 추가 장소가 없습니다. 한 단계 더 넓혀보세요.`, "info");
         }
       } catch (err) {
-        console.warn("더보기 확장 검색 오류:", err);
+        console.warn("반경 확장 검색 오류:", err);
       } finally {
         if (currentSeq === state.searchSeq) {
           state.isRequestInFlight = false;
@@ -793,7 +828,7 @@
         lng: Number(centerCoords.lng)
       };
       const safeRadius = Math.min(5000, Math.max(300, Number(radiusMeters) || (catObj ? catObj.radiusM : 1500)));
-      const maxAllowedDistM = Math.max(safeRadius * 1.45, 2200);
+      const maxAllowedDistM = Math.round(safeRadius * 1.3);
       const inKorea = isInSouthKorea(safeCenter);
       const isDistCat = isDistancePriorityCategory(categoryId);
 

@@ -792,12 +792,12 @@
           state.visibleLimit = 10;
           state.sortBy = isDistancePriorityCategory(cat.id) ? "dist" : "popular";
 
-          // 반경 기본값 동기화
-          const defaultR = cat.radiusM || DEFAULT_SEARCH_RADIUS_M;
-          state.customRadiusM = defaultR;
+          // 기본 탐색 반경을 600m로 시작하고 사용자 선택으로 점차 확장
+          state.customRadiusM = DEFAULT_SEARCH_RADIUS_M;
+          state.selectedRadius = DEFAULT_SEARCH_RADIUS_M;
           const rSelect = $("radiusSelect");
           if (rSelect) {
-            rSelect.value = defaultR <= 800 ? "600" : defaultR >= 2500 ? "3000" : "1500";
+            rSelect.value = "600";
           }
 
           updateSortSelectOptions();
@@ -1561,23 +1561,35 @@ function renderPlacesListAndMarkers(updateMapBounds = false) {
         listEl.appendChild(card);
       });
 
-      // [개선안 3] 하단 '+ 주변 장소 10곳 더 보기' 버튼 렌더링
-      if (totalFiltered > sorted.length || (state.selectedRadius || 1500) < 4000) {
+      // [개선안 3] 하단 '+ 주변 장소 10곳 더 보기' 및 단계별 반경 확장(600m → 1.2km → 2km → 3km) 버튼 렌더링
+      const currentR = state.selectedRadius || state.customRadiusM || DEFAULT_SEARCH_RADIUS_M;
+      const nextStepR = getNextRadiusStep(currentR);
+
+      if (totalFiltered > sorted.length) {
+        const remain = totalFiltered - sorted.length;
         const moreBtn = document.createElement("button");
         moreBtn.type = "button";
         moreBtn.id = "btnLoadMorePlaces";
         moreBtn.className = "btn-load-more";
-        if (totalFiltered > sorted.length) {
-          const remain = totalFiltered - sorted.length;
-          moreBtn.innerHTML = `<span>➕ 주변 장소 ${Math.min(10, remain)}곳 더 보기</span><span style="font-size:12px; font-weight:600; opacity:0.85;">(현재 ${sorted.length} / 후보 ${totalFiltered}곳)</span>`;
-        } else {
-          const nextR = Math.min(4500, Math.max(2500, Math.round((state.selectedRadius || 1500) * 1.8)));
-          moreBtn.innerHTML = `<span>🔭 반경 ${formatDistance(nextR)}로 넓혀 주변 장소 10곳 더 찾기</span>`;
-        }
+        moreBtn.innerHTML = `<span>➕ 반경 ${formatDistance(currentR)} 내 장소 ${Math.min(10, remain)}곳 더 보기</span><span style="font-size:12px; font-weight:600; opacity:0.85;">(현재 ${sorted.length} / ${totalFiltered}곳)</span>`;
         moreBtn.addEventListener("click", () => {
-          loadMorePlaces();
+          loadMorePlaces(false);
         });
         listEl.appendChild(moreBtn);
+      }
+
+      if (nextStepR) {
+        const expandBtn = document.createElement("button");
+        expandBtn.type = "button";
+        expandBtn.id = "btnExpandRadiusStep";
+        expandBtn.className = "btn-load-more";
+        expandBtn.style.marginTop = "6px";
+        expandBtn.style.background = "#f8fafc";
+        expandBtn.innerHTML = `<span>🔭 탐색 반경 넓히기 (${formatDistance(currentR)} → ${formatDistance(nextStepR)})</span>`;
+        expandBtn.addEventListener("click", () => {
+          loadMorePlaces(true);
+        });
+        listEl.appendChild(expandBtn);
       }
 
       renderMapMarkers(sorted, updateMapBounds);
@@ -1721,7 +1733,12 @@ function renderPlacesListAndMarkers(updateMapBounds = false) {
           <div class="card-main-info">
             <div class="card-title-row">
               <span class="place-index-badge" style="${isDistCat ? 'background:#059669;' : ''}">${indexNum}</span>
-              <h3 class="place-name">${escapeHtml(place.name)}</h3>
+              <h3 class="place-name">
+                <a href="${mapsDetailUrl}" target="_blank" rel="noopener noreferrer" class="place-name-link" data-action="gmaps" title="클릭하면 Google 지도 상세 페이지로 이동합니다">
+                  <span>${escapeHtml(place.name)}</span>
+                  <span class="place-name-ext-icon" aria-hidden="true">↗</span>
+                </a>
+              </h3>
               <span class="place-category-badge">${escapeHtml(place.categoryLabel)}</span>
               <div class="card-quick-icons">
                 <button type="button" class="btn-card-icon ${inMyPlaces ? "fav-saved" : ""}" data-action="save-fav" title="내 장소에 저장">
@@ -1779,12 +1796,9 @@ function renderPlacesListAndMarkers(updateMapBounds = false) {
           <button type="button" class="card-btn btn-detail-toggle" data-action="detail" style="flex:1;">
             ℹ️ 상세·시간
           </button>
-          <button type="button" class="card-btn primary" data-action="directions" style="flex:1.2;" title="지도에 이동 경로선 및 대중교통·도보 안내 표시">
+          <button type="button" class="card-btn primary" data-action="directions" style="flex:1.3;" title="지도에 이동 경로선 및 대중교통·도보 안내 표시">
             🗺️ 경로보기
           </button>
-          <a href="${mapsDetailUrl}" target="_blank" rel="noopener noreferrer" class="card-btn" data-action="gmaps" style="flex:1;">
-            ↗ 구글지도
-          </a>
         </div>
       `;
 
