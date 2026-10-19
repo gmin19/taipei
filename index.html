@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="format-detection" content="telephone=no" />
-  <meta name="referrer" content="unsafe-url" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
   <title>주변 여행 도우미</title>
   <!-- 분리된 스타일시트 로드 -->
   <link rel="stylesheet" href="./style.css" />
@@ -41,11 +41,8 @@
           />
           <button type="button" id="btnClearSearch" class="btn-clear-search" aria-label="검색어 지우기">✕</button>
         </div>
-        <button type="button" id="btnSearchNearbyKw" class="btn-search-nearby-kw" title="현재 기준점 주변에서 세부 메뉴·키워드 검색">
-          🔍 주변검색
-        </button>
-        <button type="submit" id="btnSearch" class="btn-search" title="입력한 도시·숙소·장소로 지도 기준점 이동">
-          🌐 이동
+        <button type="submit" id="btnSearch" class="btn-search" title="장소·메뉴·숙소 검색">
+          🔍 검색
         </button>
         <button type="button" id="btnLocate" class="btn-locate" aria-label="내 위치 찾기" title="내 위치">
           📍 <span id="locateBtnText">내위치</span>

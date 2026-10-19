@@ -560,6 +560,9 @@
 
     function initMapInstance() {
       const mapEl = $("map");
+      if (!state.searchOrigin) {
+        state.searchOrigin = { ...DEFAULT_CENTER };
+      }
       state.map = new state.libs.Map(mapEl, {
         center: DEFAULT_CENTER,
         zoom: 15,
@@ -1112,7 +1115,7 @@
         state.singleRouteCache.clear();
         updateActiveKeyInfoUI();
         $("helpModal").classList.remove("open");
-        if (window.google && window.google.maps && state.mapsLoaded) {
+        if (window.google && window.google.maps) {
           window.location.reload();
           return;
         }
@@ -1467,10 +1470,16 @@
     // [8] 추천·정렬 필터(현지 인기순·리뷰 100+ 검증) 및 다이어트 장소 카드·스크롤 연동 렌더링
     // =========================================================================
     function getFilteredCandidatePlaces() {
-      const basePool =
+      const rawPool =
         Array.isArray(state.allCandidatePlaces) && state.allCandidatePlaces.length > 0
           ? [...state.allCandidatePlaces]
           : [...state.places];
+
+      const activeR = Number(state.selectedRadius || state.customRadiusM || DEFAULT_SEARCH_RADIUS_M);
+      const radiusFiltered = rawPool.filter(
+        (p) => typeof p.straightDistM !== "number" || p.straightDistM <= activeR * 1.25
+      );
+      const basePool = radiusFiltered.length > 0 ? radiusFiltered : rawPool;
 
       if (state.onlyVerified100) {
         const verified = basePool.filter(

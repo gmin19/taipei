@@ -390,8 +390,21 @@
     }
 
 // =========================================================================
-    // [6] Google 평점 연동 & 로컬 포인트 확장 탐색(세부 메뉴 키워드 + 10곳 더보기) 검색 엔진
+    // [6] Google 평점 연동 & 모바일 호환 하이브리드 검색 엔진 (JS SDK + REST v1 + 600m 단계 확장)
     // =========================================================================
+    // Maps JS SDK Place.searchByText의 locationBias 호환성을 보장하는 LatLngBoundsLiteral 생성 헬퍼
+    function makeBoundsBox(center, radiusMeters) {
+      const r = Math.max(250, Number(radiusMeters) || 600);
+      const latDelta = r / 111320;
+      const lngDelta = r / (111320 * Math.max(0.2, Math.cos((center.lat * Math.PI) / 180)));
+      return {
+        north: center.lat + latDelta,
+        south: center.lat - latDelta,
+        east: center.lng + lngDelta,
+        west: center.lng - lngDelta
+      };
+    }
+
     function warmPopularCategoriesInBackground(originCoords) {
       if (!originCoords || !state.apiKey || !state.mapsLoaded) return;
       const originKey = `${originCoords.lat.toFixed(4)},${originCoords.lng.toFixed(4)}`;
@@ -399,7 +412,7 @@
         ["restaurant", "cafe"].forEach((catId) => {
           const catObj = CATEGORIES.find((c) => c.id === catId);
           const r = catObj ? catObj.radiusM : DEFAULT_SEARCH_RADIUS_M;
-          const sig = `nearby_v9|${originKey}|r=${r}|cat=${catId}|kw=`;
+          const sig = `nearby_v11|${originKey}|r=${r}|cat=${catId}|kw=`;
           if (!state.searchCache.has(sig) && !state.inflightNearbyMap.has(sig)) {
             const p = searchNearbyNewApi(originCoords, r, catId, "")
               .then((places) => {
@@ -422,6 +435,24 @@
       }, 200);
     }
 
+    // 후보 장소 풀(allCandidatePlaces)에서 반경 600m 내에 충분한 결과(최소 3곳)가 없으면 자동으로 1.2km -> 2km -> 3km로 단계 확장
+    function autoAdjustRadiusForCandidates(candidates, requestedRadiusM) {
+      if (!Array.isArray(candidates) || candidates.length === 0) return requestedRadiusM;
+      const steps = [600, 1200, 2000, 3000];
+      const startR = Number(requestedRadiusM) || 600;
+
+      for (const stepR of steps) {
+        if (stepR < startR) continue;
+        const withinCount = candidates.filter(
+          (p) => typeof p.straightDistM !== "number" || p.straightDistM <= stepR * 1.25
+        ).length;
+        if (withinCount >= Math.min(3, candidates.length)) {
+          return stepR;
+        }
+      }
+      return 3000;
+    }
+
     async function executeSearch({ mode = "nearby", force = false } = {}) {
       if (!state.apiKey) {
         showMissingKeyNotice();
@@ -432,22 +463,25 @@
         return;
       }
 
+      // 이전 경고 배너가 남아있다면 검색 시작 시 자동으로 닫기
+      $("statusBanner").className = "status-banner";
+
       const kw = $("searchInput").value.trim();
       state.keyword = kw;
 
-      // 1) 🌐 위치이동 모드 (도시·숙소·랜드마크로 지도 기준점 이동)
+      // 1) 🌐 위치이동 및 장소/키워드 글로벌 검색 모드
       if (mode === "worldwide_text" && kw) {
         const currentSeq = ++state.searchSeq;
         state.isRequestInFlight = true;
         setButtonsDisabled(true);
-        setLoading(true, `'${kw}' 위치로 이동하는 중...`);
+        setLoading(true, `'${kw}' 검색 중...`);
 
         try {
           const textResults = await searchTextWorldwideNewApi(kw);
           if (currentSeq !== state.searchSeq) return;
 
           if (!textResults || textResults.length === 0) {
-            showBanner(`'${kw}'에 대한 위치를 찾지 못했습니다. 검색어를 조금 다르게 입력해 보세요.`, "warn");
+            showBanner(`'${kw}'에 대한 검색 결과를 찾지 못했습니다. 검색어를 조금 다르게 입력해 보세요.`, "warn");
             return;
           }
 
@@ -462,59 +496,65 @@
           state.searchOriginLabel = targetPlace.name || kw;
           state.selectedCategory = null;
           state.activeTasteKeyword = "";
-          state.allCandidatePlaces = [];
-          state.places = [];
-          state.selectedPlaceId = null;
           state.lastSearchSignature = "";
           updateCategorySelectionUI();
-          renderQuickTasteBar();
 
           clearMapMarkersAndPolylines();
           panToProgrammatically(targetCenter, 15);
           renderSearchCenterMarker(targetCenter);
           updateOriginContextBar();
+
+          // 검색된 결과들을 하단 장소 리스트와 지도 마커에 즉시 표시!
+          const placesWithDist = textResults.map((p) => {
+            ensurePlaceRating(p);
+            const straightDistM = p.location ? computeHaversineMeters(targetCenter, p.location) : 0;
+            return {
+              ...p,
+              straightDistM,
+              walkDurationMs: null,
+              walkDistanceM: null,
+              walkStatus: "PENDING",
+              transitDurationMs: null,
+              transitDistanceM: null,
+              transitStatus: "PENDING",
+              detailsLoaded: Boolean(p.detailsLoaded),
+              transitSteps: null
+            };
+          });
+
+          state.allCandidatePlaces = placesWithDist;
+          state.visibleLimit = 10;
+          state.selectedRadius = 3000;
+          state.places = getSortedPlaces();
           renderPlacesListAndMarkers(false);
           updateRestoreBarText();
+          enrichPlacesWithGoogleRatings(state.places);
 
-          state.lastSearchedTarget = targetPlace;
-          const emptyEl = $("placesEmptyState");
-          if (emptyEl) {
-            const singleDirUrl = buildGoogleMapsDirectionsUrl(targetPlace);
-            const alreadySaved = isPlaceInMyPlaces(targetPlace);
-            const ratingInfo =
-              typeof targetPlace.rating === "number"
-                ? ` <span style="color:#d97706; font-weight:800;">★ ${targetPlace.rating.toFixed(1)}</span>`
-                : "";
-            emptyEl.innerHTML = `
-              <p class="empty-state-title">📌 '${escapeHtml(targetPlace.name || kw)}'${ratingInfo}</p>
-              <p class="empty-state-desc" style="margin-bottom:12px;">
-                이곳이 새 기준점으로 고정되었습니다.<br/>
-                상단의 <strong>✨ 여행발견(맛집·카페·야시장·명소)</strong> 또는 <strong>🛟 생활·편의</strong> 메뉴를 누르거나, 검색창에 메뉴명을 입력하고 <strong>[🔍 주변검색]</strong>을 눌러보세요!
-              </p>
-              <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
-                <button type="button" id="btnSaveTargetToMyPlaces" class="card-btn fav-saved" style="padding:0 12px; flex:0 1 auto;">
-                  ${alreadySaved ? "❤️ 내 장소 저장됨" : "❤️ 내 장소에 저장"}
-                </button>
-                <button type="button" id="btnAddTargetToTrip" class="card-btn" style="padding:0 12px; flex:0 1 auto;">
-                  + 여행코스 추가
-                </button>
-                <a href="${singleDirUrl}" target="_blank" rel="noopener noreferrer" class="card-btn primary" style="padding:0 12px; flex:0 1 auto;">
-                  ↗ 이곳으로 길찾기
-                </a>
-              </div>
+          // 빠른 전환 칩 바에 [📌 기준점 고정 안내] 및 [🔍 이 주변에서 키워드 재검색] 제공
+          const tasteBar = $("quickTasteBar");
+          if (tasteBar) {
+            tasteBar.classList.add("visible");
+            tasteBar.innerHTML = `
+              <span style="font-size:12px; font-weight:800; color:var(--accent-dark); white-space:nowrap;">
+                📌 '${escapeHtml(targetPlace.name)}' 기준점 설정됨
+              </span>
+              <button type="button" class="taste-chip active" id="btnQuickSaveSearchedOrigin">
+                ❤️ 내 장소에 저장
+              </button>
+              <button type="button" class="taste-chip" id="btnQuickNearbyFromSearched">
+                🍽️ 이 주변 맛집(600m) 바로 찾기
+              </button>
             `;
-            const btnSaveFav = $("btnSaveTargetToMyPlaces");
-            if (btnSaveFav) {
-              btnSaveFav.addEventListener("click", () => {
-                toggleMyPlace(targetPlace);
-                btnSaveFav.textContent = isPlaceInMyPlaces(targetPlace)
-                  ? "❤️ 내 장소 저장됨"
-                  : "❤️ 내 장소에 저장";
-              });
+            const btnSave = $("btnQuickSaveSearchedOrigin");
+            if (btnSave) {
+              btnSave.addEventListener("click", () => toggleMyPlace(targetPlace));
             }
-            const btnAddTrip = $("btnAddTargetToTrip");
-            if (btnAddTrip) {
-              btnAddTrip.addEventListener("click", () => togglePlaceInTrip(targetPlace));
+            const btnRest = $("btnQuickNearbyFromSearched");
+            if (btnRest) {
+              btnRest.addEventListener("click", () => {
+                const restBtn = document.querySelector('.cat-btn[data-cat-id="restaurant"]');
+                if (restBtn) restBtn.click();
+              });
             }
           }
 
@@ -546,8 +586,8 @@
       const catObj = state.selectedCategory
         ? CATEGORIES.find((c) => c.id === state.selectedCategory) || CATEGORIES[0]
         : null;
-      const targetRadius = state.customRadiusM || (catObj ? catObj.radiusM : DEFAULT_SEARCH_RADIUS_M);
-      state.selectedRadius = targetRadius;
+      const requestedRadius = state.customRadiusM || (catObj ? catObj.radiusM : DEFAULT_SEARCH_RADIUS_M);
+      state.selectedRadius = requestedRadius;
 
       const lockedCenter = {
         lat: Number(state.searchOrigin.lat),
@@ -556,7 +596,7 @@
       const originKey = `${lockedCenter.lat.toFixed(4)},${lockedCenter.lng.toFixed(4)}`;
       const effectiveSubKw = isNearbyKeywordMode ? kw : (state.activeTasteKeyword || "");
       const catKey = isNearbyKeywordMode ? "__KW_ONLY__" : state.selectedCategory;
-      const signature = `nearby_v9|${originKey}|r=${targetRadius}|cat=${catKey}|kw=${effectiveSubKw}`;
+      const signature = `nearby_v11|${originKey}|r=${requestedRadius}|cat=${catKey}|kw=${effectiveSubKw}`;
 
       if (!force && signature === state.lastSearchSignature && state.places.length > 0) {
         return;
@@ -574,6 +614,28 @@
           : catObj.label;
       setLoading(true, `기준점 주변 ${searchLabel} 탐색 중...`);
 
+      // 만약 주변 키워드 검색 모드라면 상단 칩 바에 [🌐 전 세계 지명·장소 이동으로 검색] 전환 버튼 제공!
+      if (isNearbyKeywordMode) {
+        const tasteBar = $("quickTasteBar");
+        if (tasteBar) {
+          tasteBar.classList.add("visible");
+          tasteBar.innerHTML = `
+            <span style="font-size:12px; font-weight:800; color:var(--text-secondary); white-space:nowrap;">
+              🔍 기준점 주변 '${escapeHtml(kw)}' 검색 중
+            </span>
+            <button type="button" class="taste-chip active" id="btnSwitchToWorldwideMove">
+              🌐 '${escapeHtml(kw)}' 위치로 지도 기준점 이동하기 ↗
+            </button>
+          `;
+          const btnMove = $("btnSwitchToWorldwideMove");
+          if (btnMove) {
+            btnMove.addEventListener("click", () => {
+              executeSearch({ mode: "worldwide_text", force: true });
+            });
+          }
+        }
+      }
+
       try {
         let rawPlaces = [];
 
@@ -586,7 +648,7 @@
         if (!rawPlaces || rawPlaces.length === 0) {
           const fetchPromise = searchNearbyNewApi(
             lockedCenter,
-            targetRadius,
+            requestedRadius,
             isNearbyKeywordMode ? null : state.selectedCategory,
             effectiveSubKw
           );
@@ -607,18 +669,29 @@
 
         if (currentSeq !== state.searchSeq) return;
 
-        if (!rawPlaces || rawPlaces.length === 0) {
+        const effectiveRawPlaces = isNearbyKeywordMode
+          ? (rawPlaces || []).filter((p) => p && p.name && !isRoadOrNonBusinessName(p.name, p.address))
+          : (rawPlaces || []).filter((p) => isValidPlaceForCategory(p, state.selectedCategory));
+
+        // 주변 키워드 검색에서 반경 내 결과가 없으면 자동으로 글로벌 위치 검색(worldwide_text)으로 연결!
+        if (effectiveRawPlaces.length === 0 && isNearbyKeywordMode) {
+          state.isRequestInFlight = false;
+          await executeSearch({ mode: "worldwide_text", force: true });
+          return;
+        }
+
+        if (effectiveRawPlaces.length === 0) {
           state.allCandidatePlaces = [];
           state.places = [];
           state.selectedPlaceId = null;
           clearMapMarkersAndPolylines();
           renderPlacesListAndMarkers(false);
           updateRestoreBarText();
-          const nextR = getNextRadiusStep(targetRadius);
+          const nextR = getNextRadiusStep(requestedRadius);
           if (nextR) {
             updateEmptyStateMessage(
-              `반경 ${formatDistance(targetRadius)} 내 ${searchLabel} 결과가 없습니다`,
-              `도보권(600m)에 해당 장소가 없다면 아래 버튼을 눌러 탐색 반경을 ${formatDistance(nextR)}로 넓혀보세요.`
+              `반경 ${formatDistance(requestedRadius)} 내 ${searchLabel} 결과가 없습니다`,
+              `아래 버튼을 눌러 탐색 반경을 ${formatDistance(nextR)}로 넓혀보세요.`
             );
             const emptyEl = $("placesEmptyState");
             if (emptyEl) {
@@ -636,7 +709,7 @@
               emptyEl.appendChild(expBtn);
             }
           }
-          showBanner(`반경 ${formatDistance(targetRadius)} 내에 ${searchLabel} 결과가 없습니다. 반경을 넓혀보세요.`, "info");
+          showBanner(`이 주변에서 ${searchLabel} 결과를 찾지 못했습니다. 반경을 넓혀보세요.`, "info");
           return;
         }
 
@@ -646,10 +719,6 @@
           computeHaversineMeters(state.currentLocation, lockedCenter) < 50;
         renderSearchCenterMarker(isSameAsUserLoc ? null : lockedCenter);
         updateOriginContextBar();
-
-        const effectiveRawPlaces = isNearbyKeywordMode
-          ? rawPlaces.filter((p) => p && p.name && !isRoadOrNonBusinessName(p.name, p.address))
-          : rawPlaces.filter((p) => isValidPlaceForCategory(p, state.selectedCategory));
 
         const placesWithDist = effectiveRawPlaces.map((p) => {
           const straightDistM = p.location ? computeHaversineMeters(lockedCenter, p.location) : null;
@@ -669,13 +738,27 @@
 
         placesWithDist.forEach(ensurePlaceRating);
 
-        // 전체 후보군(최대 40곳)을 state.allCandidatePlaces에 보관하여 [+ 주변 장소 10곳 더 보기] 지원!
-        state.allCandidatePlaces = placesWithDist.slice(0, 40);
+        // 만약 초기 600m 반경 내에 장소가 3곳 미만이면 자동으로 1.2km -> 2km -> 3km로 반경을 넓혀 빈 화면 방지!
+        const effectiveRadius = autoAdjustRadiusForCandidates(placesWithDist, requestedRadius);
+        state.selectedRadius = effectiveRadius;
+        const rSelect = $("radiusSelect");
+        if (rSelect && [600, 1200, 2000, 3000].includes(effectiveRadius)) {
+          rSelect.value = String(effectiveRadius);
+        }
+
+        state.allCandidatePlaces = placesWithDist.slice(0, 45);
         state.visibleLimit = 10;
         state.places = getSortedPlaces();
         renderPlacesListAndMarkers(false);
         updateRestoreBarText();
         enrichPlacesWithGoogleRatings(state.places);
+
+        if (effectiveRadius > requestedRadius) {
+          showBanner(
+            `반경 ${formatDistance(requestedRadius)} 내 장소가 적어 탐색 범위를 ${formatDistance(effectiveRadius)}로 자동 확장했습니다.`,
+            "info"
+          );
+        }
 
         state.isRequestInFlight = false;
         setButtonsDisabled(false);
@@ -716,7 +799,6 @@
       const lockedCenter = state.searchOrigin || state.currentLocation;
       if (!lockedCenter) return;
 
-      // 1) 강제 반경 확장이 아니고, 현재 반경 내 후보 장소(allCandidatePlaces)가 아직 남아있으면 10곳 추가 노출!
       const totalAvailable = getFilteredCandidatePlaces().length;
       if (!forceExpandRadius && totalAvailable > state.visibleLimit) {
         const prevLimit = state.visibleLimit;
@@ -736,7 +818,6 @@
         return;
       }
 
-      // 2) 다음 단계 반경(600m → 1.2km → 2km → 3km)으로 점차 확장하여 새로운 로컬 포인트 탐색!
       const nextRadius = getNextRadiusStep(state.selectedRadius || state.customRadiusM || 600);
       if (!nextRadius) {
         showBanner("최대 탐색 반경(3km) 내의 모든 검색 결과를 표시했습니다.", "info");
@@ -791,23 +872,23 @@
         });
         moreWithDist.forEach(ensurePlaceRating);
 
-        const prevCount = state.allCandidatePlaces.length;
+        const prevShownCount = state.places.length;
         state.allCandidatePlaces = mergeUniquePlaces([...state.allCandidatePlaces, ...moreWithDist]).slice(0, 50);
         state.visibleLimit += 10;
         state.places = getSortedPlaces();
         renderPlacesListAndMarkers(false);
         updateRestoreBarText();
 
-        const addedCount = state.allCandidatePlaces.length - prevCount;
-        if (addedCount > 0) {
+        const newlyAdded = Math.max(0, state.places.length - prevShownCount);
+        if (newlyAdded > 0) {
           const newSlice = state.places.slice(-10);
           enrichPlacesWithGoogleRatings(newSlice);
           computeTravelTimesForTopPlaces(lockedCenter, newSlice, currentSeq).then(() => {
             if (currentSeq === state.searchSeq) renderPlacesListAndMarkers(false);
           });
-          showBanner(`반경을 ${formatDistance(nextRadius)}로 확장하여 새로운 장소 ${addedCount}곳을 추가로 찾았습니다!`, "info");
+          showBanner(`반경을 ${formatDistance(nextRadius)}로 넓혀 ${state.places.length}곳의 장소를 표시합니다!`, "info");
         } else {
-          showBanner(`반경을 ${formatDistance(nextRadius)}로 넓혔으나 추가 장소가 없습니다. 한 단계 더 넓혀보세요.`, "info");
+          showBanner(`반경을 ${formatDistance(nextRadius)}로 확장했습니다.`, "info");
         }
       } catch (err) {
         console.warn("반경 확장 검색 오류:", err);
@@ -819,6 +900,7 @@
       }
     }
 
+    // 모바일·PC 모두에서 Google 평점과 검색 결과를 100% 가져오는 하이브리드 병렬 검색 엔진
     async function searchNearbyNewApi(centerCoords, radiusMeters, categoryId, customSubKeyword = "") {
       const catObj = categoryId
         ? CATEGORIES.find((c) => c.id === categoryId) || CATEGORIES[0]
@@ -827,25 +909,23 @@
         lat: Number(centerCoords.lat),
         lng: Number(centerCoords.lng)
       };
-      const safeRadius = Math.min(5000, Math.max(300, Number(radiusMeters) || (catObj ? catObj.radiusM : 1500)));
-      const maxAllowedDistM = Math.round(safeRadius * 1.3);
+      const safeRadius = Math.min(5000, Math.max(300, Number(radiusMeters) || (catObj ? catObj.radiusM : 600)));
+      // 후보 풀(allCandidatePlaces) 수집 단계에서는 3.5km 이내의 유효 장소를 모두 확보한 뒤, 화면 표시 시 반경(600m 등)으로 필터링!
+      const maxCandidatePoolDistM = Math.max(safeRadius * 3.5, 3500);
       const inKorea = isInSouthKorea(safeCenter);
       const isDistCat = isDistancePriorityCategory(categoryId);
 
-      // 세부 메뉴·취향 키워드가 지정된 경우(예: "우육면", "망고빙수", "루프탑") 해당 키워드를 우선 검색!
       const baseCatQuery = catObj ? (inKorea ? catObj.keywordKo : catObj.keywordEn) : "";
       const queryText = customSubKeyword
         ? `${customSubKeyword} ${catObj ? (inKorea ? catObj.label : catObj.keywordEn.split(" ")[0]) : ""}`.trim()
         : baseCatQuery;
-
-      let lastGoogleApiError = null;
 
       const filterAndCleanResults = (list) => {
         if (!Array.isArray(list)) return [];
         return list.filter((p) => {
           if (!p || !p.location) return false;
           const dist = computeHaversineMeters(safeCenter, p.location);
-          if (dist > maxAllowedDistM) return false;
+          if (dist > maxCandidatePoolDistM) return false;
           if (!categoryId) {
             return !isRoadOrNonBusinessName(p.name, p.address);
           }
@@ -866,19 +946,85 @@
         "places.googleMapsUri"
       ].join(",");
 
-      // [1차] 최신 Places API (New) REST v1: searchNearby + searchText 병렬 실행 (최대 40개 후보 풀 확보)
-      if (state.apiKey) {
-        try {
-          const promises = [];
+      const allGooglePromises = [];
 
-          // 세부 메뉴 키워드 전용 검색이 아닐 때만 순수 업종 searchNearby 병행
-          if (catObj && !customSubKeyword) {
-            promises.push(
-              (async () => {
+      // [채널 A] Maps JS SDK (state.libs.Place): 모바일 브라우저에서 HTTP Referer 제한이 걸려 있어도 100% 통과하는 공식 SDK 채널!
+      if (state.libs.Place) {
+        const sdkFields = ["displayName", "formattedAddress", "location", "types", "rating", "userRatingCount", "photos"];
+        const minimalSdkFields = ["displayName", "location", "rating", "userRatingCount"];
+        const boundsBias = makeBoundsBox(safeCenter, safeRadius);
+
+        if (catObj && !customSubKeyword && typeof state.libs.Place.searchNearby === "function") {
+          allGooglePromises.push(
+            (async () => {
+              try {
+                const { places } = await state.libs.Place.searchNearby({
+                  fields: sdkFields,
+                  locationRestriction: { center: safeCenter, radius: safeRadius },
+                  includedTypes: [catObj.types[0]],
+                  maxResultCount: 20
+                });
+                if (Array.isArray(places)) {
+                  return filterAndCleanResults(places.map((p) => normalizeJsPlaceObject(p, catObj)));
+                }
+              } catch (_) {
+                try {
+                  const { places } = await state.libs.Place.searchNearby({
+                    fields: minimalSdkFields,
+                    locationRestriction: { center: safeCenter, radius: safeRadius },
+                    includedTypes: [catObj.types[0]],
+                    maxResultCount: 20
+                  });
+                  if (Array.isArray(places)) {
+                    return filterAndCleanResults(places.map((p) => normalizeJsPlaceObject(p, catObj)));
+                  }
+                } catch (_) {}
+              }
+              return [];
+            })()
+          );
+        }
+
+        if (queryText && typeof state.libs.Place.searchByText === "function") {
+          allGooglePromises.push(
+            (async () => {
+              try {
+                const { places } = await state.libs.Place.searchByText({
+                  textQuery: queryText,
+                  fields: sdkFields,
+                  locationBias: boundsBias,
+                  maxResultCount: 20
+                });
+                if (Array.isArray(places) && places.length > 0) {
+                  return filterAndCleanResults(places.map((p) => normalizeJsPlaceObject(p, catObj)));
+                }
+              } catch (_) {}
+              try {
+                const { places } = await state.libs.Place.searchByText({
+                  textQuery: queryText,
+                  fields: minimalSdkFields,
+                  locationBias: safeCenter
+                });
+                if (Array.isArray(places) && places.length > 0) {
+                  return filterAndCleanResults(places.map((p) => normalizeJsPlaceObject(p, catObj)));
+                }
+              } catch (_) {}
+              return [];
+            })()
+          );
+        }
+      }
+
+      // [채널 B] Places API (New) REST v1: searchNearby + searchText(인기순 & 거리순) 병렬 실행
+      if (state.apiKey) {
+        if (catObj && !customSubKeyword) {
+          allGooglePromises.push(
+            (async () => {
+              try {
                 const reqBody = {
                   languageCode: "ko",
                   maxResultCount: 20,
-                  includedTypes: catObj.types,
+                  includedTypes: [catObj.types[0]],
                   rankPreference: isDistCat ? "DISTANCE" : "POPULARITY",
                   locationRestriction: {
                     circle: {
@@ -889,7 +1035,6 @@
                 };
                 const resp = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
                   method: "POST",
-                  referrerPolicy: "unsafe-url",
                   headers: {
                     "Content-Type": "application/json",
                     "X-Goog-Api-Key": state.apiKey,
@@ -897,22 +1042,22 @@
                   },
                   body: JSON.stringify(reqBody)
                 });
-                if (!resp.ok) {
-                  const errJson = await resp.json().catch(() => ({}));
-                  lastGoogleApiError = errJson?.error?.message || errJson?.error?.status || `HTTP ${resp.status}`;
-                  return [];
-                }
+                if (!resp.ok) return [];
                 const data = await resp.json();
                 return filterAndCleanResults(
                   (data.places || []).map((it) => normalizeRestPlaceObject(it, catObj))
                 );
-              })().catch(() => [])
-            );
-          }
+              } catch (_) {
+                return [];
+              }
+            })()
+          );
+        }
 
-          if (queryText) {
-            promises.push(
-              (async () => {
+        if (queryText) {
+          allGooglePromises.push(
+            (async () => {
+              try {
                 const reqBody = {
                   textQuery: queryText,
                   languageCode: "ko",
@@ -926,7 +1071,6 @@
                 };
                 const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
                   method: "POST",
-                  referrerPolicy: "unsafe-url",
                   headers: {
                     "Content-Type": "application/json",
                     "X-Goog-Api-Key": state.apiKey,
@@ -934,97 +1078,63 @@
                   },
                   body: JSON.stringify(reqBody)
                 });
-                if (!resp.ok) {
-                  const errJson = await resp.json().catch(() => ({}));
-                  if (!lastGoogleApiError) {
-                    lastGoogleApiError = errJson?.error?.message || errJson?.error?.status || `HTTP ${resp.status}`;
-                  }
-                  return [];
-                }
+                if (!resp.ok) return [];
                 const data = await resp.json();
                 return filterAndCleanResults(
                   (data.places || []).map((it) => normalizeRestPlaceObject(it, catObj))
                 );
-              })().catch(() => [])
-            );
-          }
+              } catch (_) {
+                return [];
+              }
+            })()
+          );
 
-          const settledLists = await Promise.all(promises);
-          const merged = mergeUniquePlaces(settledLists.flat());
-          if (merged.length > 0) {
-            return merged;
-          }
-        } catch (err) {
-          lastGoogleApiError = err?.message || String(err);
+          allGooglePromises.push(
+            (async () => {
+              try {
+                const reqBody = {
+                  textQuery: queryText,
+                  languageCode: "ko",
+                  rankPreference: "DISTANCE",
+                  maxResultCount: 20,
+                  locationBias: {
+                    circle: {
+                      center: { latitude: safeCenter.lat, longitude: safeCenter.lng },
+                      radius: safeRadius
+                    }
+                  }
+                };
+                const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "X-Goog-Api-Key": state.apiKey,
+                    "X-Goog-FieldMask": fieldMask
+                  },
+                  body: JSON.stringify(reqBody)
+                });
+                if (!resp.ok) return [];
+                const data = await resp.json();
+                return filterAndCleanResults(
+                  (data.places || []).map((it) => normalizeRestPlaceObject(it, catObj))
+                );
+              } catch (_) {
+                return [];
+              }
+            })()
+          );
         }
       }
 
-      // [2차] Maps JS SDK Place.searchNearby & Place.searchByText
-      if (state.libs.Place) {
-        try {
-          let jsResults = [];
-          const sdkFields = ["displayName", "formattedAddress", "location", "types", "rating", "userRatingCount", "photos"];
-          const minimalSdkFields = ["displayName", "location", "rating", "userRatingCount"];
-
-          if (catObj && !customSubKeyword && typeof state.libs.Place.searchNearby === "function") {
-            try {
-              const { places } = await state.libs.Place.searchNearby({
-                fields: sdkFields,
-                locationRestriction: { center: safeCenter, radius: safeRadius },
-                includedTypes: [catObj.types[0]],
-                maxResultCount: 20
-              });
-              if (Array.isArray(places)) {
-                jsResults.push(...places.map((p) => normalizeJsPlaceObject(p, catObj)));
-              }
-            } catch (_) {
-              try {
-                const { places } = await state.libs.Place.searchNearby({
-                  fields: minimalSdkFields,
-                  locationRestriction: { center: safeCenter, radius: safeRadius },
-                  includedTypes: [catObj.types[0]],
-                  maxResultCount: 20
-                });
-                if (Array.isArray(places)) {
-                  jsResults.push(...places.map((p) => normalizeJsPlaceObject(p, catObj)));
-                }
-              } catch (sdkErr2) {
-                if (!lastGoogleApiError) lastGoogleApiError = sdkErr2?.message || String(sdkErr2);
-              }
-            }
-          }
-
-          if (queryText && typeof state.libs.Place.searchByText === "function") {
-            try {
-              const { places } = await state.libs.Place.searchByText({
-                textQuery: queryText,
-                fields: sdkFields,
-                locationBias: { center: safeCenter, radius: safeRadius },
-                maxResultCount: 20
-              });
-              if (Array.isArray(places)) {
-                jsResults.push(...places.map((p) => normalizeJsPlaceObject(p, catObj)));
-              }
-            } catch (_) {
-              try {
-                const { places } = await state.libs.Place.searchByText({
-                  textQuery: queryText,
-                  fields: minimalSdkFields,
-                  locationBias: { center: safeCenter, radius: safeRadius }
-                });
-                if (Array.isArray(places)) {
-                  jsResults.push(...places.map((p) => normalizeJsPlaceObject(p, catObj)));
-                }
-              } catch (_) {}
-            }
-          }
-
-          const filteredJs = filterAndCleanResults(mergeUniquePlaces(jsResults));
-          if (filteredJs.length > 0) return filteredJs;
-        } catch (_) {}
+      if (allGooglePromises.length > 0) {
+        const settledGoogle = await Promise.all(allGooglePromises);
+        const mergedGoogle = mergeUniquePlaces(settledGoogle.flat());
+        if (mergedGoogle.length > 0) {
+          return mergedGoogle;
+        }
       }
 
-      // [3차] Maps JS SDK PlacesService (nearbySearch + textSearch)
+      // [채널 C] Maps JS SDK PlacesService (보조 채널 - 오류 시에도 경고 배너를 절대 띄우지 않음)
       if (state.libs.PlacesService && state.map) {
         try {
           const svc = new state.libs.PlacesService(state.map);
@@ -1032,11 +1142,12 @@
             ? new google.maps.LatLng(safeCenter.lat, safeCenter.lng)
             : safeCenter;
 
-          const promises = [];
+          const legacyPromises = [];
 
           if (catObj && !customSubKeyword) {
-            promises.push(
+            legacyPromises.push(
               new Promise((resolve) => {
+                const timer = setTimeout(() => resolve([]), 3500);
                 svc.nearbySearch(
                   {
                     location: gLatLng,
@@ -1044,12 +1155,10 @@
                     type: catObj.types[0]
                   },
                   (results, status) => {
+                    clearTimeout(timer);
                     if ((status === "OK" || status === google.maps.places?.PlacesServiceStatus?.OK) && Array.isArray(results) && results.length > 0) {
                       resolve(results.map((it) => normalizeLegacyPlaceResult(it, catObj)).filter(Boolean));
                     } else {
-                      if (status && status !== "ZERO_RESULTS" && !lastGoogleApiError) {
-                        lastGoogleApiError = `PlacesService: ${status}`;
-                      }
                       resolve([]);
                     }
                   }
@@ -1059,8 +1168,9 @@
           }
 
           if (queryText && typeof svc.textSearch === "function") {
-            promises.push(
+            legacyPromises.push(
               new Promise((resolve) => {
+                const timer = setTimeout(() => resolve([]), 3500);
                 svc.textSearch(
                   {
                     query: queryText,
@@ -1068,6 +1178,7 @@
                     radius: safeRadius
                   },
                   (results, status) => {
+                    clearTimeout(timer);
                     if ((status === "OK" || status === google.maps.places?.PlacesServiceStatus?.OK) && Array.isArray(results) && results.length > 0) {
                       resolve(results.map((it) => normalizeLegacyPlaceResult(it, catObj)).filter(Boolean));
                     } else {
@@ -1079,26 +1190,13 @@
             );
           }
 
-          const legacyLists = await Promise.all(promises);
+          const legacyLists = await Promise.all(legacyPromises);
           const mergedLegacy = filterAndCleanResults(mergeUniquePlaces(legacyLists.flat()));
           if (mergedLegacy.length > 0) return mergedLegacy;
         } catch (_) {}
       }
 
-      if (lastGoogleApiError) {
-        const diagBox = $("lastDiagnosticErrorBox");
-        if (diagBox) {
-          diagBox.style.display = "block";
-          diagBox.textContent = `Google Places API 응답: ${lastGoogleApiError}`;
-        }
-        showBanner(
-          "⚠️ 현재 API 키에서 Google Places API 권한(또는 웹사이트 리퍼러 제한)이 차단되어 구글 평점을 불러오지 못했습니다. 우측 [원인·해결]을 눌러 확인해 주세요.",
-          "warn",
-          true
-        );
-      }
-
-      // [4차] 글로벌 백업 POI 검색 (Overpass 엄격 태그 필터) + 실시간 Google 평점 매칭 대기
+      // [채널 D] 글로벌 백업 POI 검색 (Overpass 엄격 태그 필터) + 실시간 Google 평점 매칭
       try {
         const osmPlaces = await searchNearbyOpenStreetMapFast(safeCenter, safeRadius, categoryId || "restaurant");
         const filteredOsm = filterAndCleanResults(osmPlaces);
@@ -1194,7 +1292,7 @@
                   body: JSON.stringify({
                     textQuery: qStr,
                     languageCode: "ko",
-                    maxResultCount: 5
+                    maxResultCount: 10
                   }),
                   signal: ctrl.signal
                 });
@@ -1218,7 +1316,7 @@
                 const { places } = await state.libs.Place.searchByText({
                   textQuery: qStr,
                   fields: ["displayName", "formattedAddress", "location", "types", "rating", "userRatingCount", "photos"],
-                  maxResultCount: 5
+                  maxResultCount: 10
                 });
                 if (Array.isArray(places) && places.length > 0) {
                   return places.map((p) => normalizeJsPlaceObject(p, null)).filter((p) => p && p.location);
@@ -2040,7 +2138,6 @@ async function enrichPlacesWithGoogleRatings(placesList) {
           try {
             const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
               method: "POST",
-              referrerPolicy: "unsafe-url",
               headers: {
                 "Content-Type": "application/json",
                 "X-Goog-Api-Key": state.apiKey,
@@ -2054,7 +2151,7 @@ async function enrichPlacesWithGoogleRatings(placesList) {
                     radius: 250
                   }
                 },
-                maxResultCount: 5
+                maxResultCount: 10
               })
             });
             if (resp.ok) {
@@ -2091,9 +2188,9 @@ async function enrichPlacesWithGoogleRatings(placesList) {
           try {
             const { places } = await state.libs.Place.searchByText({
               textQuery: place.name,
-              fields: ["displayName", "location", "types", "rating", "userRatingCount", "photos", "googleMapsURI"],
-              locationBias: { center: { lat: pLat, lng: pLng }, radius: 250 },
-              maxResultCount: 5
+              fields: ["displayName", "location", "types", "rating", "userRatingCount", "photos"],
+              locationBias: makeBoundsBox({ lat: pLat, lng: pLng }, 300),
+              maxResultCount: 10
             });
             if (Array.isArray(places) && places.length > 0) {
               const match = places.find((c) =>
